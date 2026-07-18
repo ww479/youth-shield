@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>青年心盾 · 智能问答助手</title>
+<script src="lib/chart.umd.min.js" defer></script>
+<style>
+:root{
+  --bg:#F0F4FF;
+  --card:#fff;
+  --border:rgba(99,120,210,.13);
+  --border-soft:rgba(99,120,210,.08);
+  --primary:#4060D4;
+  --accent:#7C3AED;
+  --text:#0F172A;
+  --text-2:#374151;
+  --muted:#64748B;
+  --muted-2:#6B7280;
+  --r:16px;--r-sm:10px;
+  --shadow-xs:0 1px 2px rgba(15,23,42,.06);
+  --shadow-sm:0 2px 8px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04);
+  --shadow-md:0 8px 24px rgba(15,23,42,.08),0 2px 8px rgba(15,23,42,.05);
+  --shadow-lg:0 20px 48px rgba(15,23,42,.10),0 4px 14px rgba(15,23,42,.06);
+  --risk-h:#EF4444;--risk-m:#F59E0B;--risk-l:#10B981;--risk-vl:#6B9DFF;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;height:100%;}
+body{
+  font-family:'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;
+  background:
+    radial-gradient(ellipse 1100px 600px at 10% -8%,rgba(64,96,212,.09) 0%,transparent 55%),
+    radial-gradient(ellipse 800px 500px at 92% 108%,rgba(124,58,237,.07) 0%,transparent 55%),
+    var(--bg);
+  color:var(--text);
+  height:100%;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+
+
+/* ── HEADER ── */
+header{
+  padding:12px 32px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(210,220,245,.4);
+  box-shadow:0 1px 0 rgba(255,255,255,.9),0 2px 16px rgba(15,23,42,.05);
+  position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.logo-icon{
+  width:34px;height:34px;border-radius:10px;
+  background:linear-gradient(135deg,#4060D4,#7C3AED);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:#fff;
+  box-shadow:0 4px 12px rgba(64,96,212,.35);
+}
+.logo-name{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.2px;}
+.logo-sub{font-size:11px;color:var(--muted-2);margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:6px;}
+.nav-link{
+  padding:6px 13px;border-radius:8px;font-size:13px;color:var(--muted);
+  text-decoration:none;transition:background .15s,color .15s;
+}
+.nav-link:hover{background:rgba(64,96,212,.07);color:var(--primary);}
+.nav-link.active{background:rgba(64,96,212,.1);color:var(--primary);font-weight:600;}
+.badge-ai{
+  background:var(--primary);
+  color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;
+  letter-spacing:.5px;
+}
+
+/* ── LAYOUT ── */
+.page{flex:1;display:flex;flex-direction:column;min-width:0;padding:0;overflow:hidden;}
+
+/* ── CHAT AREA ── */
+.chat-area{flex:1;min-height:0;overflow-y:auto;padding:4px 2px 16px;display:flex;flex-direction:column;gap:18px;}
+.chat-area::-webkit-scrollbar{width:4px;}
+.chat-area::-webkit-scrollbar-track{background:transparent;}
+.chat-area::-webkit-scrollbar-thumb{background:rgba(64,96,212,.2);border-radius:99px;}
+
+/* ── MESSAGE BUBBLES ── */
+.msg-row{display:flex;gap:10px;align-items:flex-end;}
+.msg-row.user{flex-direction:row-reverse;}
+.avatar{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  letter-spacing:-.5px;
+}
+.avatar.ai{
+  background:var(--primary);color:#fff;
+  box-shadow:0 2px 8px rgba(64,96,212,.22);
+  font-size:11px;
+}
+.avatar.user{background:#059669;color:#fff;font-size:11px;}
+.bubble{
+  max-width:74%;padding:11px 15px;border-radius:18px;font-size:14px;line-height:1.7;
+  word-break:break-word;overflow-wrap:break-word;
+}
+.bubble.ai{
+  background:#fff;border:1px solid var(--border-soft);
+  border-bottom-left-radius:5px;
+  box-shadow:var(--shadow-sm);color:var(--text-2);
+}
+.bubble.user{
+  background:linear-gradient(135deg,#4060D4,#7C3AED);color:#fff;
+  border-bottom-right-radius:5px;
+  box-shadow:0 4px 16px rgba(64,96,212,.28);
+}
+
+/* ── RICH REPLY BLOCK ── */
+.reply-block{max-width:100%;display:flex;flex-direction:column;gap:10px;flex:1;min-width:0;}
+
+/* ── THINKING BLOCK ── */
+.thinking-wrap{
+  background:rgba(64,96,212,.03);
+  border:1px solid rgba(64,96,212,.12);
+  border-radius:12px;padding:10px 13px;
+  transition:border-color .3s;
+}
+.thinking-header{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+}
+.thinking-icon{
+  width:22px;height:22px;border-radius:6px;
+  background:var(--primary);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;flex-shrink:0;
+}
+.thinking-title{font-size:12px;font-weight:700;color:var(--accent);}
+.thinking-status{
+  flex:1;font-size:11.5px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin:0 6px;transition:color .2s;
+}
+.thinking-toggle{font-size:10px;color:var(--muted-2);transition:transform .2s;flex-shrink:0;}
+.thinking-wrap.folded .thinking-toggle{transform:rotate(-90deg);}
+.thinking-steps{margin-top:8px;display:flex;flex-direction:column;gap:4px;
+  overflow:hidden;transition:max-height .3s ease;}
+.thinking-wrap.folded .thinking-steps{max-height:0!important;margin-top:0;}
+.thinking-step{
+  display:flex;align-items:flex-start;gap:7px;
+  padding:3px 6px;border-radius:6px;
+  animation:stepIn .2s ease;
+  font-size:11.5px;color:var(--text-2);line-height:1.5;
+}
+.thinking-step.step-tool{
+  background:rgba(64,96,212,.05);border:1px solid rgba(64,96,212,.1);
+}
+.step-icon{flex-shrink:0;width:15px;text-align:center;font-size:11px;margin-top:1px;}
+.step-text{flex:1;}
+.step-preview{
+  font-family:'SF Mono','Consolas',monospace;font-size:10px;color:var(--muted);
+  background:rgba(0,0,0,.04);border-radius:4px;padding:2px 5px;
+  margin-top:3px;word-break:break-all;
+}
+.thinking-spin{
+  width:13px;height:13px;border-radius:50%;flex-shrink:0;
+  border:2px solid rgba(124,58,237,.2);border-top-color:#7C3AED;
+  animation:spin .7s linear infinite;
+}
+.thinking-spin.done{
+  border:2px solid rgba(16,185,129,.4);border-top-color:transparent;
+  animation:none;
+  background:rgba(16,185,129,.15);
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes stepIn{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
+
+/* ── STREAMING ANSWER ── */
+.answer-streaming{
+  background:#fff;border-radius:var(--r);
+  border:1px solid rgba(64,96,212,.18);
+  box-shadow:var(--shadow-sm);
+  padding:16px 18px;
+  font-size:14px;color:var(--text-2);line-height:1.78;
+  min-height:40px;
+}
+.answer-streaming p{margin-bottom:8px;}
+.answer-streaming p:last-child{margin-bottom:0;}
+.stream-cursor{
+  display:inline-block;width:2px;height:.9em;
+  background:var(--primary);margin-left:2px;vertical-align:middle;
+  animation:blink .65s step-end infinite;border-radius:1px;
+}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* ── ANSWER CARD (非流式) ── */
+.answer-card{
+  background:#fff;border-radius:var(--r);
+  border:1px solid rgba(64,96,212,.18);
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+}
+.answer-header{
+  display:flex;align-items:center;gap:8px;
+  padding:12px 16px 10px;
+  border-bottom:1px solid var(--border-soft);
+}
+.answer-header .icon{
+  width:26px;height:26px;border-radius:7px;
+  background:rgba(64,96,212,.08);
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+}
+.answer-header .title{font-size:13.5px;font-weight:700;color:var(--text);}
+.domain-badge{
+  margin-left:auto;font-size:11px;padding:2px 9px;border-radius:99px;font-weight:600;
+  background:rgba(64,96,212,.09);color:var(--primary);
+}
+.answer-body{padding:14px 16px;color:var(--text-2);font-size:14px;line-height:1.78;word-break:break-word;overflow-wrap:break-word;}
+.answer-body p{margin-bottom:8px;}
+.answer-body p:last-child{margin-bottom:0;}
+.key-points{display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 14px;}
+.kp-item{
+  display:flex;align-items:flex-start;gap:7px;
+  background:rgba(64,96,212,.05);border-radius:9px;
+  padding:8px 11px;font-size:13px;color:var(--text-2);flex:1;min-width:160px;
+}
+.kp-dot{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--primary);
+  flex-shrink:0;margin-top:6px;
+}
+
+/* ── CARDS ROW ── */
+.cards-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:640px){.cards-row{grid-template-columns:1fr;}}
+
+/* ── SCRIPT / CHART CARD ── */
+.script-card,.chart-card{
+  background:#fff;border-radius:var(--r);
+  border:1px solid var(--border-soft);box-shadow:var(--shadow-xs);
+  overflow:hidden;
+}
+.card-header{
+  display:flex;align-items:center;gap:7px;
+  padding:11px 14px 0;font-size:12.5px;font-weight:700;color:var(--text);
+}
+.card-header-icon{font-size:15px;}
+.age-tabs{display:flex;gap:3px;padding:9px 12px;border-bottom:1px solid var(--border-soft);}
+.age-tab{
+  padding:4px 11px;border-radius:99px;font-size:11.5px;cursor:pointer;
+  background:transparent;color:var(--muted);border:none;transition:background .15s,color .15s,box-shadow .15s;font-weight:500;
+}
+.age-tab.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(64,96,212,.28);}
+.age-tab:hover:not(.active){background:rgba(64,96,212,.07);color:var(--primary);}
+.script-body{padding:11px 14px;font-size:13px;color:var(--text-2);line-height:1.7;min-height:72px;}
+.empty-script{color:var(--muted-2);font-style:italic;font-size:12px;}
+.chart-body{padding:10px 12px 13px;}
+.chart-wrap{position:relative;height:118px;}
+.no-chart{display:flex;align-items:center;justify-content:center;height:90px;color:var(--muted-2);font-size:12px;}
+
+/* ── RANK CARD ── */
+.rank-card{
+  background:#fff;border-radius:var(--r);
+  border:1px solid var(--border-soft);box-shadow:var(--shadow-md);
+  overflow:hidden;
+}
+.rank-header{
+  display:flex;align-items:center;gap:8px;
+  padding:14px 18px 10px;
+  border-bottom:1px solid var(--border-soft);
+}
+.rank-header .icon{
+  width:28px;height:28px;border-radius:8px;
+  background:rgba(245,158,11,.12);
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.rank-header .title{font-size:14px;font-weight:700;color:var(--text);}
+.rank-summary{padding:11px 18px;font-size:13.5px;color:var(--text-2);line-height:1.65;
+  border-bottom:1px solid var(--border-soft);}
+.rank-list{padding:6px 0;}
+.rank-item{display:flex;align-items:center;gap:11px;padding:9px 18px;transition:background .12s;cursor:pointer;}
+.rank-item:hover{background:rgba(64,96,212,.04);}
+.rank-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.rank-num.top1{background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;}
+.rank-num.top2{background:linear-gradient(135deg,#94A3B8,#64748B);color:#fff;}
+.rank-num.top3{background:linear-gradient(135deg,#CD7C3E,#A0522D);color:#fff;}
+.rank-num.rest{background:rgba(100,116,139,.1);color:var(--muted);font-size:11px;}
+.rank-info{flex:1;min-width:0;}
+.rank-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rank-meta{display:flex;align-items:center;gap:7px;margin-top:2px;flex-wrap:wrap;}
+.rank-meta-tag{font-size:11px;color:var(--muted);}
+.rank-value{flex-shrink:0;font-size:13px;font-weight:700;color:var(--primary);text-align:right;min-width:56px;}
+.rank-bar-wrap{padding:0 18px 14px;}
+.rank-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.rank-bar-label{font-size:11px;color:var(--muted);width:90px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rank-bar-track{flex:1;height:7px;background:rgba(64,96,212,.07);border-radius:99px;overflow:hidden;}
+.rank-bar-fill{height:100%;border-radius:99px;background:var(--primary);transition:width .5s cubic-bezier(.2,0,.4,1);}
+.rank-bar-val{font-size:11px;color:var(--muted);width:42px;text-align:right;flex-shrink:0;}
+
+/* ── CASES ── */
+.cases-section{margin-top:4px;}
+.cases-title{font-size:13px;font-weight:700;color:var(--text);padding:0 2px 8px;display:flex;align-items:center;gap:6px;}
+.cases-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+@media(max-width:640px){.cases-grid{grid-template-columns:1fr;}}
+.case-card{
+  background:#fff;border-radius:12px;border:1px solid var(--border-soft);
+  box-shadow:var(--shadow-xs);padding:11px 13px;
+  display:flex;flex-direction:column;gap:5px;transition:box-shadow .15s,transform .15s,border-color .15s;cursor:pointer;
+}
+.case-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:rgba(64,96,212,.2);}
+.case-level-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.2px;}
+.lv-h{background:rgba(239,68,68,.09);color:var(--risk-h);}
+.lv-m{background:rgba(245,158,11,.09);color:var(--risk-m);}
+.lv-l{background:rgba(16,185,129,.09);color:var(--risk-l);}
+.case-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;}
+.case-domain{font-size:11px;color:var(--muted);margin-top:1px;}
+.case-snippet{font-size:12px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+
+/* ── TAGS ── */
+.tags-row{display:flex;flex-wrap:wrap;gap:5px;padding:3px 0;}
+.tag-chip{padding:3px 9px;border-radius:99px;font-size:11px;background:rgba(64,96,212,.06);color:var(--primary);border:1px solid rgba(64,96,212,.13);}
+
+/* ── LOADING ── */
+.loading-dots{display:flex;gap:5px;align-items:center;padding:4px 0;}
+.loading-dots span{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--primary);
+  animation:dotPulse 1.2s cubic-bezier(.2,0,.8,1) infinite;
+}
+.loading-dots span:nth-child(2){animation-delay:.2s;}
+.loading-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes dotPulse{
+  0%,100%{transform:translateY(0);opacity:.35;}
+  40%{transform:translateY(-5px);opacity:1;}
+}
+
+/* ── INPUT AREA ── */
+.input-area{
+  padding:12px 0 18px;
+  background:linear-gradient(to top,var(--bg) 65%,transparent 100%);
+  flex-shrink:0;
+}
+.input-row{
+  display:flex;gap:8px;align-items:flex-end;
+  background:#fff;border-radius:14px;
+  border:1.5px solid rgba(64,96,212,.16);
+  box-shadow:var(--shadow-md);
+  padding:10px 10px 10px 16px;
+  transition:border-color .2s,box-shadow .2s;
+}
+.input-row:focus-within{
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px rgba(64,96,212,.11),var(--shadow-md);
+}
+#chatInput{
+  flex:1;border:none;outline:none;resize:none;
+  font-size:14px;font-family:inherit;line-height:1.55;
+  background:transparent;color:var(--text);
+  min-height:22px;max-height:96px;overflow-y:auto;
+}
+#chatInput::placeholder{color:var(--muted-2);}
+.input-controls{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.send-btn{
+  width:36px;height:36px;border-radius:10px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#4060D4,#7C3AED);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;transition:transform .15s,box-shadow .15s;
+  box-shadow:0 4px 14px rgba(64,96,212,.32);
+}
+.send-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(64,96,212,.4);}
+.send-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+
+/* ── WELCOME ── */
+.welcome{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;gap:18px;padding:40px 16px;text-align:center;
+}
+.welcome-icon{
+  width:68px;height:68px;border-radius:22px;
+  background:linear-gradient(135deg,#4060D4,#7C3AED);
+  display:flex;align-items:center;justify-content:center;font-size:30px;
+  box-shadow:0 10px 32px rgba(64,96,212,.3),0 0 0 6px rgba(64,96,212,.08);
+}
+.welcome-title{font-size:21px;font-weight:800;color:var(--text);letter-spacing:-.3px;}
+.welcome-sub{font-size:13.5px;color:var(--muted);max-width:400px;line-height:1.72;}
+.welcome-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;max-width:500px;width:100%;margin-top:4px;}
+.welcome-card{
+  padding:13px 14px;background:#fff;border-radius:12px;
+  border:1px solid var(--border-soft);box-shadow:var(--shadow-xs);
+  cursor:pointer;text-align:left;transition:box-shadow .18s,transform .18s,border-color .18s;
+}
+.welcome-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:rgba(64,96,212,.25);}
+.welcome-card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.welcome-card-sub{font-size:11.5px;color:var(--muted);line-height:1.5;}
+
+/* ── APP LAYOUT ── */
+.app-layout{flex:1;display:flex;align-items:stretch;max-width:1400px;margin:0 auto;width:100%;padding:0 20px;gap:18px;min-height:0;overflow:hidden;}
+
+/* ── 数据面板 ── */
+.data-panel{
+  width:236px;flex-shrink:0;
+  align-self:flex-start;
+  position:sticky;top:0;
+  height:calc(100vh - 58px);
+  display:flex;flex-direction:column;
+  padding:16px 0;
+  overflow:hidden;
+}
+.data-panel::-webkit-scrollbar{width:3px;}
+.data-panel::-webkit-scrollbar-thumb{background:rgba(64,96,212,.15);border-radius:99px;}
+.dp-card{
+  background:rgba(255,255,255,.88);
+  border:1px solid var(--border-soft);
+  border-radius:14px;
+  box-shadow:var(--shadow-xs);
+  overflow:hidden;flex:1;display:flex;flex-direction:column;
+}
+.dp-card-head{
+  display:flex;align-items:center;gap:7px;
+  padding:10px 13px 9px;
+  font-size:12.5px;font-weight:700;color:var(--text);
+  border-bottom:1px solid var(--border-soft);flex-shrink:0;
+}
+.dp-card-head .dp-icon{font-size:14px;}
+
+/* ── 案例侧边栏 ── */
+.dp-case{
+  padding:9px 8px;border-bottom:1px solid var(--border-soft);
+  cursor:pointer;transition:background .12s;border-radius:8px;margin:0 2px;
+}
+.dp-case:last-child{border-bottom:none;}
+.dp-case:hover{background:rgba(64,96,212,.06);}
+.dp-case-name{font-size:12px;font-weight:600;color:var(--text-2);line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.dp-case-meta{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;align-items:center;}
+.dp-case-domain{font-size:10px;padding:1px 6px;border-radius:99px;border:1px solid;white-space:nowrap;}
+.dp-case-lv{font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;}
+.dp-case-lv.hi{background:rgba(239,68,68,.09);color:var(--risk-h);}
+.dp-case-lv.md{background:rgba(245,158,11,.09);color:var(--risk-m);}
+.dp-case-lv.lo{background:rgba(16,185,129,.09);color:var(--risk-l);}
+.dp-filter-btn{
+  font-size:10.5px;padding:3px 9px;border-radius:99px;
+  border:1px solid var(--border);background:#fff;
+  cursor:pointer;color:var(--muted);transition:background .15s,color .15s,border-color .15s;white-space:nowrap;
+}
+.dp-filter-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 2px 8px rgba(64,96,212,.25);}
+.dp-filter-btn:hover:not(.active){border-color:var(--primary);color:var(--primary);}
+.dp-skeleton{height:11px;border-radius:5px;background:linear-gradient(90deg,rgba(64,96,212,.05) 25%,rgba(64,96,212,.11) 50%,rgba(64,96,212,.05) 75%);background-size:400px 100%;animation:dpShimmer 1.4s infinite linear;margin-bottom:6px;}
+.dp-skeleton:last-child{margin-bottom:0;width:65%;}
+@keyframes dpShimmer{from{background-position:-200px 0}to{background-position:200px 0}}
+@media(max-width:860px){.data-panel{display:none;}}
+
+/* ── SUGGESTIONS 精简版 ── */
+.suggestions{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  padding:8px 4px 10px;
+  border-bottom:1px solid var(--border-soft);
+  margin-bottom:0;
+  background:transparent;border-radius:0;border:none;box-shadow:none;
+  flex-shrink:0;
+}
+.sug-label{font-size:11px;color:var(--muted-2);white-space:nowrap;flex-shrink:0;margin-right:2px;}
+.sug-chip{
+  padding:4px 11px;border-radius:8px;font-size:12px;cursor:pointer;
+  background:rgba(255,255,255,.9);color:var(--text-2);
+  border:1px solid var(--border);
+  transition:background .15s,color .15s,border-color .15s;white-space:nowrap;font-weight:500;
+  box-shadow:var(--shadow-xs);
+}
+.sug-chip:hover{background:var(--primary);color:#fff;border-color:var(--primary);transform:none;box-shadow:none;}
+
+/* ── 欢迎气泡 ── */
+.welcome-bubble-wrap{display:flex;gap:10px;align-items:flex-end;padding:4px 0;}
+.welcome-bubble{
+  background:#fff;border-radius:18px;border-bottom-left-radius:5px;
+  border:1px solid var(--border-soft);
+  box-shadow:var(--shadow-sm);
+  padding:16px 18px;
+  max-width:540px;
+  display:flex;flex-direction:column;gap:12px;
+}
+.wb-greeting{font-size:15px;font-weight:700;color:var(--text);line-height:1.5;}
+.wb-desc{font-size:13.5px;color:var(--text-2);line-height:1.65;}
+.wb-stats{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 12px;border-radius:10px;
+  background:rgba(64,96,212,.05);
+  border:1px solid rgba(64,96,212,.1);
+}
+.wb-stat{font-size:12px;color:var(--muted);}
+.wb-stat-num{font-size:14px;font-weight:800;color:var(--primary);margin-right:2px;}
+.wb-dot{color:var(--muted-2);font-size:12px;}
+.wb-hints{display:flex;flex-direction:column;gap:6px;}
+.wb-hint{
+  font-size:13px;color:var(--text-2);padding:8px 12px;
+  background:rgba(64,96,212,.04);border-radius:9px;
+  border:1px solid rgba(64,96,212,.08);
+  cursor:pointer;transition:background .15s,color .15s,border-color .15s;line-height:1.4;
+}
+.wb-hint:hover{background:rgba(64,96,212,.1);border-color:rgba(64,96,212,.2);color:var(--primary);}
+
+/* ── 平台图标 ── */
+.plat-icon{
+  width:16px;height:16px;border-radius:4px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:800;color:#fff;
+  flex-shrink:0;letter-spacing:0;line-height:1;
+}
+.pi-weibo{background:#E11D48;}
+.pi-douyin{background:#161823;}
+.pi-xhs{background:#FF2442;}
+.pi-bili{background:#00A1D6;}
+.pi-baidu{background:#2932E1;}
+.pi-wx{background:#07C160;}
+.pi-default{background:#94A3B8;}
+
+/* ── 侧边栏 body 布局 ── */
+.dp-card-body{padding:8px 10px 10px;display:flex;flex-direction:column;gap:0;flex:1;min-height:0;}
+.dp-filter-row{display:flex;gap:5px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid var(--border-soft);margin-bottom:4px;}
+.dp-case-scroll{overflow-y:auto;flex:1;min-height:0;}
+.dp-case-scroll::-webkit-scrollbar{width:3px;}
+.dp-case-scroll::-webkit-scrollbar-thumb{background:rgba(64,96,212,.15);border-radius:99px;}
+
+/* ── INPUT TOOLBAR ── */
+.input-toolbar{
+  display:flex;align-items:center;gap:6px;
+  padding:0 4px 6px;
+}
+.tool-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:7px;border:1px solid var(--border);
+  background:rgba(255,255,255,.8);color:var(--muted);
+  cursor:pointer;font-size:12px;font-weight:500;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.tool-btn svg{width:14px;height:14px;flex-shrink:0;}
+.tool-btn:hover{border-color:rgba(64,96,212,.3);color:var(--primary);background:#fff;}
+.tool-btn.active-mode{
+  background:rgba(64,96,212,.08);color:var(--primary);
+  border-color:rgba(64,96,212,.25);
+}
+
+/* ── REDUCED MOTION ── */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.1ms!important;
+    scroll-behavior:auto!important;
+  }
+  .stream-cursor{animation:none;opacity:1;}
+  .thinking-spin{animation:none;border-top-color:transparent;opacity:.6;}
+  .dp-skeleton{animation:none;background:rgba(64,96,212,.07);}
+}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a class="logo" href="home.html">
+    <div class="logo-icon">🛡</div>
+    <div>
+      <div class="logo-name">青年心盾</div>
+      <div class="logo-sub">青少年网络价值观引导平台</div>
+    </div>
+  </a>
+  <nav class="header-right" aria-label="主导航">
+    <a class="nav-link" href="home.html">首页</a>
+    <a class="nav-link" href="index.html">风险检测</a>
+    <a class="nav-link" href="cases.html">案例库</a>
+    <a class="nav-link active" href="chat.html">智能问答</a>
+    <span class="badge-ai" aria-hidden="true">AI</span>
+  </nav>
+</header>
+
+<div class="app-layout">
+
+<!-- ── 数据面板 ── -->
+<aside class="data-panel" id="dataPanel">
+  <div class="dp-card">
+    <div class="dp-card-head"><span class="dp-icon">📂</span>典型案例库</div>
+    <div class="dp-card-body">
+      <div id="dpCaseFilter" class="dp-filter-row"></div>
+      <div id="dpCaseList" class="dp-case-scroll">
+        <div class="dp-skeleton"></div><div class="dp-skeleton"></div>
+        <div class="dp-skeleton"></div><div class="dp-skeleton"></div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── 问答主区 ── -->
+<main class="page">
+
+  <!-- 快捷提问条 -->
+  <div class="suggestions">
+    <span class="sug-label">快速提问</span>
+    <button class="sug-chip" onclick="ask('如何帮助有焦虑情绪的青少年？')">青少年焦虑</button>
+    <button class="sug-chip" onclick="ask('青少年网络游戏沉迷怎么引导？')">网络沉迷引导</button>
+    <button class="sug-chip" onclick="ask('孩子出现厌学情绪如何疏导？')">厌学疏导</button>
+    <button class="sug-chip" onclick="ask('如何识别青少年的抑郁倾向？')">抑郁识别</button>
+    <button class="sug-chip" onclick="ask('青少年如何培养心理韧性？')">心理韧性</button>
+    <button class="sug-chip" onclick="ask('如何帮助青少年树立正确历史观？')">历史观引导</button>
+  </div>
+
+  <!-- 聊天区 -->
+  <div class="chat-area" id="chatArea" aria-live="polite" aria-label="对话消息区域" role="log">
+
+    <!-- 欢迎气泡 -->
+    <div id="welcome" class="welcome-bubble-wrap">
+      <div class="avatar ai">AI</div>
+      <div class="welcome-bubble">
+        <div class="wb-greeting">你好！我是<strong>青年心盾</strong>智能助手 👋</div>
+        <div class="wb-desc">专注青少年心理健康与网络价值观引导，基于专业数据库为您提供分析与建议。</div>
+        <div class="wb-stats">
+          <span class="wb-stat"><span class="wb-stat-num">81</span> 典型案例</span>
+          <span class="wb-dot">·</span>
+          <span class="wb-stat"><span class="wb-stat-num">181</span> 引导话术</span>
+          <span class="wb-dot">·</span>
+          <span class="wb-stat"><span class="wb-stat-num">59K+</span> 条语料</span>
+        </div>
+        <div class="wb-hints">
+          <button class="wb-hint" onclick="ask('青少年常见的心理风险有哪些？')">🔍 青少年常见心理风险有哪些？</button>
+          <button class="wb-hint" onclick="ask('不同年龄段青少年的引导策略有何差异？')">📋 不同年龄段的引导策略差异？</button>
+          <button class="wb-hint" onclick="ask('家长和教师如何配合进行心理健康教育？')">🤝 家校如何协作开展心理健康教育？</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 输入区 -->
+  <div class="input-area">
+    <div class="input-toolbar">
+      <button class="tool-btn" id="modeBtn" onclick="toggleMode()" title="切换问答深度">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="8" cy="8" r="6"/>
+          <path d="M8 5v3l1.5 1.5" stroke-linecap="round"/>
+        </svg>
+        <span id="modeTxt">普通</span>
+      </button>
+      <button class="tool-btn" onclick="clearChat()" title="清空本次对话">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M3 4h10M6 4V3h4v1M5.5 4.5l.5 8M10.5 4.5l-.5 8M8 4.5v8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        清空
+      </button>
+    </div>
+    <div class="input-row">
+      <textarea id="chatInput" aria-label="输入您的问题" placeholder="请输入您关于青少年心理健康的问题…" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+      <div class="input-controls">
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="发送 Enter">&#10148;</button>
+      </div>
+    </div>
+  </div>
+
+</main><!-- /.page -->
+</div><!-- /.app-layout -->
+
+<script>
+const API = location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
+let chartInst = null;
+let msgCount = 0;
+let deepMode = false;
+
+// ── 平台图标 ──
+const PLAT_ICON = {
+  '微博':    ['pi-weibo',  '微'],
+  '抖音':    ['pi-douyin', '抖'],
+  '小红书':  ['pi-xhs',    '红'],
+  'B站':     ['pi-bili',   'B'],
+  'bilibili':['pi-bili',   'B'],
+  '百度':    ['pi-baidu',  '百'],
+  '微信公众号':['pi-wx',   '信'],
+  '微信':    ['pi-wx',     '信'],
+};
+function platIcon(platform) {
+  const p = platform || '';
+  const [cls, txt] = PLAT_ICON[p] || ['pi-default', p.slice(0,1) || '?'];
+  return `<span class="plat-icon ${cls}">${txt}</span>`;
+}
+
+// ── 清空会话 ──
+function clearChat() {
+  if (!confirm('清空本次会话记录？')) return;
+  const area = document.getElementById('chatArea');
+  area.innerHTML = `
+    <div id="welcome" class="welcome-bubble-wrap">
+      <div class="avatar ai">AI</div>
+      <div class="welcome-bubble">
+        <div class="wb-greeting">你好！我是<strong>青年心盾</strong>智能助手 👋</div>
+        <div class="wb-desc">专注青少年心理健康与网络价值观引导，基于专业数据库为您提供分析与建议。</div>
+        <div class="wb-stats">
+          <span class="wb-stat"><span class="wb-stat-num">81</span> 典型案例</span>
+          <span class="wb-dot">·</span>
+          <span class="wb-stat"><span class="wb-stat-num">181</span> 引导话术</span>
+          <span class="wb-dot">·</span>
+          <span class="wb-stat"><span class="wb-stat-num">59K+</span> 条语料</span>
+        </div>
+        <div class="wb-hints">
+          <button class="wb-hint" onclick="ask('青少年常见的心理风险有哪些？')">🔍 青少年常见心理风险有哪些？</button>
+          <button class="wb-hint" onclick="ask('不同年龄段青少年的引导策略有何差异？')">📋 不同年龄段的引导策略差异？</button>
+          <button class="wb-hint" onclick="ask('家长和教师如何配合进行心理健康教育？')">🤝 家校如何协作开展心理健康教育？</button>
+        </div>
+      </div>
+    </div>`;
+  msgCount = 0;
+}
+
+// ── 模式切换 ──
+function toggleMode() {
+  deepMode = !deepMode;
+  const btn = document.getElementById('modeBtn');
+  const txt = document.getElementById('modeTxt');
+  if (deepMode) {
+    btn.classList.add('active-mode');
+    txt.textContent = '深度';
+  } else {
+    btn.classList.remove('active-mode');
+    txt.textContent = '普通';
+  }
+}
+
+// ══════════════════════════════════════════
+//  案例侧边栏
+// ══════════════════════════════════════════
+const DCLR = {
+  '制度认同风险':'#3D6FD4','历史认知风险':'#EA580C',
+  '心理韧性风险':'#7C3AED','认知闭合风险':'#0891B2','网络素养风险':'#059669'
+};
+const DSHORT = {
+  '制度认同风险':'制度认同','历史认知风险':'历史认知',
+  '心理韧性风险':'心理韧性','认知闭合风险':'认知闭合','网络素养风险':'网络素养'
+};
+let _allCases = [];
+let _activeFilter = '';
+
+async function loadDataPanel() {
+  try {
+    const data = await fetch(`${API}/cases`).then(r => r.json()).catch(() => null);
+    if (!data || !data.cases) return;
+    _allCases = data.cases;
+    renderCaseFilters();
+    renderCaseList('');
+  } catch(e) { console.warn('案例侧边栏加载失败', e); }
+}
+
+function renderCaseFilters() {
+  const domains = [...new Set(_allCases.map(c => c.risk_domain_l1).filter(Boolean))];
+  const el = document.getElementById('dpCaseFilter');
+  if (!el) return;
+  el.innerHTML = `<button class="dp-filter-btn active" onclick="filterCases('', this)">全部</button>` +
+    domains.map(d =>
+      `<button class="dp-filter-btn" onclick="filterCases('${escHtml(d)}', this)"
+         style="border-color:${hexA(DCLR[d]||'#64748b',.3)};color:${DCLR[d]||'#64748b'}">
+        ${escHtml(DSHORT[d]||d)}
+       </button>`
+    ).join('');
+}
+
+window.filterCases = function(domain, btn) {
+  _activeFilter = domain;
+  document.querySelectorAll('.dp-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCaseList(domain);
+};
+
+function renderCaseList(domain) {
+  const el = document.getElementById('dpCaseList');
+  if (!el) return;
+  const list = domain ? _allCases.filter(c => c.risk_domain_l1 === domain) : _allCases;
+  if (!list.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted-2);padding:8px 0;">暂无案例</div>'; return; }
+
+  const RLV = {
+    'L4':['极高风险','hi'],'L3':['高风险','hi'],
+    'L2':['中度风险','md'],'L1':['轻度风险','lo'],'L0':['','lo'],
+    '极高风险':['极高风险','hi'],'高风险':['高风险','hi'],
+    '中度风险':['中度风险','md'],'轻度风险':['轻度风险','lo'],'低风险':['','lo']
+  };
+  el.innerHTML = list.map(c => {
+    const clr  = DCLR[c.risk_domain_l1] || '#64748b';
+    const [lvTxt, lvCls] = RLV[c.risk_level] || ['', 'lo'];
+    const onclick = c.source_url
+      ? `onclick="window.open('${escHtml(c.source_url || '')}','_blank')"`
+      : `onclick="ask('关于案例「${escHtml(c.case_name||'')}」请给我详细分析')"`;
+    return `<div class="dp-case" ${onclick}>
+      <div class="dp-case-name">${escHtml(c.case_name || '未命名')}</div>
+      <div class="dp-case-meta">
+        ${c.platform ? platIcon(c.platform) : ''}
+        ${c.platform ? `<span style="font-size:10px;color:var(--muted)">${escHtml(c.platform)}</span>` : ''}
+        ${lvTxt ? `<span class="dp-case-lv ${lvCls}">${escHtml(lvTxt)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function hexA(hex, a) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+document.addEventListener('DOMContentLoaded', () => loadDataPanel());
+
+// ── 自动调整文本框高度 ──
+const chatInput = document.getElementById('chatInput');
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
+});
+
+function ask(q) { chatInput.value = q; sendMessage(); }
+
+function scrollToBottom() {
+  const area = document.getElementById('chatArea');
+  area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+}
+
+// ── 追加用户消息 ──
+function appendUserMsg(text) {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const div = document.createElement('div');
+  div.className = 'msg-row user';
+  div.innerHTML = `
+    <div class="bubble user">${escHtml(text)}</div>
+    <div class="avatar user">你</div>`;
+  document.getElementById('chatArea').appendChild(div);
+  scrollToBottom();
+}
+
+// ── 追加 AI 加载占位 ──
+function appendLoadingMsg() {
+  const id = 'msg-' + (++msgCount);
+  const div = document.createElement('div');
+  div.className = 'msg-row'; div.id = id;
+  div.innerHTML = `
+    <div class="avatar ai">AI</div>
+    <div class="bubble ai">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>`;
+  document.getElementById('chatArea').appendChild(div);
+  scrollToBottom();
+  return id;
+}
+
+// ── 将加载占位替换为富内容回复 ──
+function fillReply(id, data) {
+  // 数据查询走专用渲染
+  if (data.type === 'data_query') { fillDataQueryReply(id, data); return; }
+
+  const row = document.getElementById(id);
+  if (!row) return;
+
+  const answer = data.answer || '（无回答）';
+  const keyPoints = data.key_points || [];
+  const domain = data.domain || '';
+  const tip = data.guidance_tip || '';
+  const scripts = data.scripts || {};
+  const cases = data.cases || [];
+  const tags = data.tags || [];
+  const chartData = data.domain_chart || [];
+
+  // Key points HTML
+  let kpHtml = '';
+  if (keyPoints.length) {
+    kpHtml = `<div class="key-points">` +
+      keyPoints.map(p => `<div class="kp-item"><div class="kp-dot"></div><span>${escHtml(p)}</span></div>`).join('') +
+      `</div>`;
+  }
+
+  // Guidance tip HTML
+  let tipHtml = tip
+    ? `<div class="guidance-tip"><strong>💡 引导建议：</strong>${escHtml(tip)}</div>`
+    : '';
+
+  // Tags HTML
+  let tagsHtml = '';
+  if (tags.length) {
+    tagsHtml = `<div class="tags-row">` +
+      tags.map(t => `<span class="tag-chip" title="${escHtml(t.domain)}">${escHtml(t.keyword)}</span>`).join('') +
+      `</div>`;
+  }
+
+  // Scripts card HTML
+  const ageKeys = ['6-12岁', '13-15岁', '16-18岁'];
+  const chartId = 'chart-' + id;
+  const ageTabId = 'tabs-' + id;
+  const scriptBodyId = 'sbody-' + id;
+
+  let scriptTabsHtml = ageKeys.map((a, i) =>
+    `<button class="age-tab ${i === 1 ? 'active' : ''}" onclick="switchAge('${ageTabId}','${scriptBodyId}','${a}',this)">${a}</button>`
+  ).join('');
+
+  function scriptBodyFor(ageLabel) {
+    const s = scripts[ageLabel];
+    if (!s || !s.content) return `<div class="empty-script">暂无该年龄段话术</div>`;
+    return escHtml(s.content) + (s.follow_up ? `<br><small style="color:var(--muted)">${escHtml(s.follow_up)}</small>` : '');
+  }
+
+  // Scripts card HTML —— 有内容才渲染
+  const hasScripts = ageKeys.some(a => scripts[a] && scripts[a].content);
+  const defaultAge = '13-15岁';
+  const scriptHtml = hasScripts ? `
+    <div class="script-card">
+      <div class="card-header"><span class="card-header-icon">📝</span> 引导话术（分龄）</div>
+      <div class="age-tabs" id="${ageTabId}">${scriptTabsHtml}</div>
+      <div class="script-body" id="${scriptBodyId}">${scriptBodyFor(defaultAge)}</div>
+    </div>` : '';
+
+  // Chart card HTML —— 有数据才渲染
+  const chartHtml = chartData.length ? `
+    <div class="chart-card">
+      <div class="card-header"><span class="card-header-icon">📊</span> 关注域分布</div>
+      <div class="chart-body"><div class="chart-wrap"><canvas id="${chartId}"></canvas></div></div>
+    </div>` : '';
+
+  // Cases HTML
+  let casesHtml = '';
+  if (cases.length) {
+    const RISK_LABEL = {
+      'L4':['极高风险','lv-h'],'L3':['高风险','lv-h'],
+      'L2':['中度风险','lv-m'],'L1':['轻度风险','lv-l'],'L0':['','lv-l'],
+      '极高风险':['极高风险','lv-h'],'高风险':['高风险','lv-h'],
+      '中度风险':['中度风险','lv-m'],'轻度风险':['轻度风险','lv-l'],'低风险':['','lv-l']
+    };
+    casesHtml = `<div class="cases-section">
+      <div class="cases-title">📂 相关典型案例</div>
+      <div class="cases-grid">` +
+      cases.map(c => {
+        const rl = RISK_LABEL[c.risk_level] || ['未知', 'lv-l'];
+        const url = c.source_url ? `href="${escHtml(c.source_url)}" target="_blank"` : '';
+        return `<div class="case-card" ${url ? `onclick="window.open('${escHtml(c.source_url)}','_blank')"` : ''}>
+          <div><span class="case-level-badge ${rl[1]}">${rl[0]}</span></div>
+          <div class="case-name">${escHtml(c.case_name || '')}</div>
+          <div class="case-domain">${escHtml(c.risk_domain || '')} · ${escHtml(c.risk_type || '')}</div>
+          <div class="case-snippet">${escHtml(c.representative_text || '暂无摘要')}</div>
+        </div>`;
+      }).join('') +
+      `</div></div>`;
+  }
+
+  row.outerHTML = `
+    <div class="msg-row" id="${id}">
+      <div class="avatar ai">AI</div>
+      <div class="reply-block">
+        <div class="answer-card">
+          <div class="answer-header">
+            <div class="icon">🧠</div>
+            <div class="title">智能分析回复</div>
+            ${domain ? `<div class="domain-badge">${escHtml(domain)}</div>` : ''}
+          </div>
+          <div class="answer-body">${formatAnswer(answer)}</div>
+          ${kpHtml}
+          ${tagsHtml ? `<div style="padding:0 18px 12px;">${tagsHtml}</div>` : ''}
+          ${tipHtml}
+        </div>
+        ${(scriptHtml || chartHtml) ? `<div class="cards-row">${scriptHtml}${chartHtml}</div>` : ''}
+        ${casesHtml}
+      </div>
+    </div>`;
+
+  // Bind script data for tab switching
+  window['__scripts_' + id] = scripts;
+  window['__scriptBodyFn_' + id] = scriptBodyFor;
+
+  // Render chart
+  if (chartData.length) {
+    requestAnimationFrame(() => {
+      const ctx = document.getElementById(chartId);
+      if (!ctx) return;
+      const labels = chartData.map(d => d.domain.replace('风险', ''));
+      const values = chartData.map(d => d.score);
+      const maxVal = Math.max(...values, 1);
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            backgroundColor: labels.map((_, i) => [
+              'rgba(61,111,212,.75)', 'rgba(124,58,237,.65)',
+              'rgba(16,185,129,.65)', 'rgba(245,158,11,.65)',
+              'rgba(239,68,68,.65)'
+            ][i % 5]),
+            borderRadius: 5,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              max: Math.ceil(maxVal * 1.15),
+              grid: { color: 'rgba(0,0,0,.04)' },
+              ticks: { font: { size: 10 }, color: '#94A3B8' }
+            },
+            y: { ticks: { font: { size: 11 }, color: '#334155' }, grid: { display: false } }
+          }
+        }
+      });
+    });
+  }
+
+  scrollToBottom();
+}
+
+// ── 数据查询专用渲染 ──
+function fillDataQueryReply(id, data) {
+  const row = document.getElementById(id);
+  if (!row) return;
+
+  const cases = data.top_cases || [];
+  const orderLabel = data.order_label || '互动量';
+  const orderField = data.order_field || 'total_interaction';
+  const summary = data.summary || '';
+  const platformFilter = data.platform_filter ? `· ${data.platform_filter}` : '';
+
+  const RISK_LABEL = {
+    'L4': ['极高风险', 'lv-h'], 'L3': ['高风险', 'lv-h'],
+    'L2': ['中度风险', 'lv-m'], 'L1': ['轻度风险', 'lv-l'], 'L0': ['低风险', 'lv-l'],
+    '高风险': ['高风险', 'lv-h'], '极高风险': ['极高风险', 'lv-h'],
+    '中度风险': ['中度风险', 'lv-m'], '轻度风险': ['轻度风险', 'lv-l'], '低风险': ['低风险', 'lv-l'],
+  };
+
+  // 获取用于展示的数值
+  function getVal(c) {
+    if (orderField === 'total_interaction') return c.total_interaction || 0;
+    if (orderField === 'avg_risk_score') return c.avg_risk_score || 0;
+    return c.case_priority_score || 0;
+  }
+  const maxVal = Math.max(...cases.map(getVal), 1);
+
+  // 列表条目
+  const listItems = cases.map((c, i) => {
+    const val = getVal(c);
+    const rl = RISK_LABEL[c.risk_level] || ['未知', 'lv-l'];
+    const numClass = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : 'rest';
+    const numIcon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
+    const onclick = c.source_url ? `onclick="window.open('${escHtml(c.source_url)}','_blank')"` : '';
+    return `
+      <div class="rank-item" ${onclick}>
+        <div class="rank-num ${numClass}">${numIcon}</div>
+        <div class="rank-info">
+          <div class="rank-name">${escHtml(c.case_name || '')}</div>
+          <div class="rank-meta">
+            <span class="case-level-badge ${rl[1]}">${rl[0]}</span>
+            ${c.platform ? `<span class="rank-meta-tag">${escHtml(c.platform)}</span>` : ''}
+            ${c.risk_domain_l1 ? `<span class="rank-meta-tag">${escHtml(c.risk_domain_l1)}</span>` : ''}
+          </div>
+        </div>
+        <div class="rank-value">${val.toLocaleString()}</div>
+      </div>`;
+  }).join('');
+
+  // 条形图
+  const barRows = cases.slice(0, 5).map(c => {
+    const val = getVal(c);
+    const pct = maxVal > 0 ? Math.round(val / maxVal * 100) : 0;
+    const name = (c.case_name || '').slice(0, 10) + (c.case_name && c.case_name.length > 10 ? '…' : '');
+    return `
+      <div class="rank-bar-row">
+        <div class="rank-bar-label" title="${escHtml(c.case_name||'')}">${escHtml(name)}</div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
+        <div class="rank-bar-val">${val.toLocaleString()}</div>
+      </div>`;
+  }).join('');
+
+  const noData = cases.length === 0
+    ? `<div class="no-chart" style="padding:20px;">数据库中暂无符合条件的案例</div>`
+    : '';
+
+  row.outerHTML = `
+    <div class="msg-row" id="${id}">
+      <div class="avatar ai">AI</div>
+      <div class="reply-block">
+        <div class="rank-card">
+          <div class="rank-header">
+            <div class="icon">🏆</div>
+            <div class="title">案例排行 · 按${escHtml(orderLabel)}排序 ${escHtml(platformFilter)}</div>
+          </div>
+          <div class="rank-summary">${escHtml(summary)}</div>
+          ${noData}
+          <div class="rank-list">${listItems}</div>
+          ${barRows ? `<div class="rank-bar-wrap">${barRows}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+
+  scrollToBottom();
+}
+
+
+window.switchAge = function(tabContId, bodyId, ageLabel, btn) {
+  // 更新 tab 状态
+  document.getElementById(tabContId).querySelectorAll('.age-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  // 找对应消息 id
+  const msgId = tabContId.replace('tabs-', 'msg-');
+  const fn = window['__scriptBodyFn_' + msgId];
+  if (fn) document.getElementById(bodyId).innerHTML = fn(ageLabel);
+};
+
+// ── 格式化答案文本（支持换行段落）──
+function formatAnswer(text) {
+  if (!text) return '';
+  return text.split(/\n+/).map(p => p.trim()).filter(Boolean)
+    .map(p => `<p style="margin-bottom:8px;">${escHtml(p)}</p>`).join('');
+}
+
+function escHtml(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── 发送消息（流式版） ──
+async function sendMessage() {
+  const q = chatInput.value.trim();
+  if (!q) return;
+  const age = '13-15';
+  const sendBtn = document.getElementById('sendBtn');
+
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  appendUserMsg(q);
+
+  // 创建消息骨架
+  const msgId = 'msg-' + (++msgCount);
+  const thinkId = 'think-' + msgId;
+  const thinkStepsId = 'tsteps-' + msgId;
+  const thinkSpinId  = 'tspin-'  + msgId;
+  const thinkCntId   = 'tcnt-'   + msgId;
+  const thinkStatusId = 'tstat-' + msgId;
+  const answerId = 'ans-' + msgId;
+  const cardsId  = 'cards-' + msgId;
+
+  const msgEl = document.createElement('div');
+  msgEl.id = msgId;
+  msgEl.className = 'msg-row';
+  msgEl.innerHTML = `
+    <div class="avatar ai">AI</div>
+    <div class="reply-block">
+      <div class="thinking-wrap folded" id="${thinkId}">
+        <div class="thinking-header" onclick="toggleThinking('${thinkId}')">
+          <div class="thinking-icon">🧠</div>
+          <span class="thinking-title">思考中</span>
+          <span class="thinking-status" id="${thinkStatusId}">分析中…</span>
+          <div class="thinking-spin" id="${thinkSpinId}"></div>
+          <span class="thinking-toggle">▼</span>
+        </div>
+        <div class="thinking-steps" id="${thinkStepsId}"></div>
+      </div>
+      <div class="answer-streaming" id="${answerId}" style="display:none"></div>
+      <div id="${cardsId}"></div>
+    </div>`;
+  document.getElementById('chatArea').appendChild(msgEl);
+  scrollToBottom();
+
+  let stepCount = 0;
+  let answerText = '';
+  let resultData = null;
+  let thinkingDone = false;
+
+  function addThinkStep(text, isTool, preview) {
+    stepCount++;
+    // header 里滚动显示当前步骤（超 24 字截断）
+    const statusEl = document.getElementById(thinkStatusId);
+    if (statusEl) statusEl.textContent = text.length > 24 ? text.slice(0, 22) + '…' : text;
+    // 步骤记录到折叠列表
+    const stepsEl = document.getElementById(thinkStepsId);
+    const step = document.createElement('div');
+    step.className = 'thinking-step' + (isTool ? ' step-tool' : '');
+    const icon = isTool ? '🔧' : (text.startsWith('✓') ? '✅' : '◎');
+    step.innerHTML = `
+      <span class="step-icon">${icon}</span>
+      <div class="step-text">
+        ${escHtml(text)}
+        ${preview ? `<div class="step-preview">${escHtml(preview)}</div>` : ''}
+      </div>`;
+    stepsEl.appendChild(step);
+    scrollToBottom();
+  }
+
+  function finalizeThinking() {
+    thinkingDone = true;
+    const spinEl = document.getElementById(thinkSpinId);
+    if (spinEl) spinEl.classList.add('done');
+    const titleEl = document.getElementById(thinkId)?.querySelector('.thinking-title');
+    if (titleEl) titleEl.textContent = '已完成';
+    // status 保留最后一步文字，颜色变淡即可
+    const statusEl = document.getElementById(thinkStatusId);
+    if (statusEl) statusEl.style.color = 'var(--muted-2)';
+  }
+
+  function appendChunk(text) {
+    const el = document.getElementById(answerId);
+    if (!el) return;
+    if (el.style.display === 'none') {
+      el.style.display = 'block';
+      el.innerHTML = '<span class="stream-cursor"></span>';
+    }
+    answerText += text;
+    // 更新内容，保留光标在末尾
+    const cursor = el.querySelector('.stream-cursor');
+    if (cursor) {
+      cursor.before(document.createTextNode(text));
+    } else {
+      el.textContent += text;
+    }
+    scrollToBottom();
+  }
+
+  function renderCards(data) {
+    const container = document.getElementById(cardsId);
+    if (!container) return;
+    // 移除光标
+    const cursor = document.getElementById(answerId)?.querySelector('.stream-cursor');
+    if (cursor) cursor.remove();
+
+    // 如果是数据查询类型
+    if (data.type === 'data_query') {
+      // 用已有的 fillDataQueryReply 逻辑重新渲染，但是 answer 文字已经在 answer-streaming 里了
+      // 直接往 cardsId 里追加 rank card
+      const cases = data.top_cases || [];
+      const RISK_LABEL = {
+        'L4':['极高风险','lv-h'],'L3':['高风险','lv-h'],'L2':['中度风险','lv-m'],
+        'L1':['轻度风险','lv-l'],'L0':['低风险','lv-l'],
+        '高风险':['高风险','lv-h'],'极高风险':['极高风险','lv-h'],
+        '中度风险':['中度风险','lv-m'],'轻度风险':['轻度风险','lv-l'],'低风险':['低风险','lv-l'],
+      };
+      function getVal(c) {
+        const f = data.order_field || 'total_interaction';
+        if(f==='total_interaction') return c.total_interaction||0;
+        if(f==='avg_risk_score') return c.avg_risk_score||0;
+        return c.case_priority_score||0;
+      }
+      const maxVal = Math.max(...cases.map(getVal), 1);
+      const listItems = cases.map((c,i) => {
+        const val = getVal(c);
+        const rl = RISK_LABEL[c.risk_level]||['未知','lv-l'];
+        const numClass = i===0?'top1':i===1?'top2':i===2?'top3':'rest';
+        const numIcon  = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
+        const oc = c.source_url ? `onclick="window.open('${escHtml(c.source_url)}','_blank')"` : '';
+        return `<div class="rank-item" ${oc}>
+          <div class="rank-num ${numClass}">${numIcon}</div>
+          <div class="rank-info">
+            <div class="rank-name">${escHtml(c.case_name||'')}</div>
+            <div class="rank-meta">
+              <span class="case-level-badge ${rl[1]}">${rl[0]}</span>
+              ${c.platform?`<span class="rank-meta-tag">${escHtml(c.platform)}</span>`:''}
+              ${c.risk_domain_l1?`<span class="rank-meta-tag">${escHtml(c.risk_domain_l1)}</span>`:''}
+            </div>
+          </div>
+          <div class="rank-value">${Number(val).toLocaleString()}</div>
+        </div>`;
+      }).join('');
+      const barRows = cases.slice(0,5).map(c => {
+        const val = getVal(c);
+        const pct = maxVal>0?Math.round(val/maxVal*100):0;
+        const name = (c.case_name||'').slice(0,10)+(c.case_name&&c.case_name.length>10?'…':'');
+        return `<div class="rank-bar-row">
+          <div class="rank-bar-label" title="${escHtml(c.case_name||'')}">${escHtml(name)}</div>
+          <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
+          <div class="rank-bar-val">${Number(val).toLocaleString()}</div>
+        </div>`;
+      }).join('');
+      const pf = data.platform_filter ? `· ${data.platform_filter}` : '';
+      container.innerHTML = `
+        <div class="rank-card" style="margin-top:10px;">
+          <div class="rank-header">
+            <div class="icon">🏆</div>
+            <div class="title">案例排行 · 按${escHtml(data.order_label||'互动量')}${escHtml(pf)}</div>
+          </div>
+          ${cases.length===0?'<div class="no-chart" style="padding:20px;">暂无数据</div>':''}
+          <div class="rank-list">${listItems}</div>
+          ${barRows?`<div class="rank-bar-wrap">${barRows}</div>`:''}
+        </div>`;
+      return;
+    }
+
+    // 引导问答类型：渲染话术、案例、图表卡片
+    const scripts    = data.scripts    || {};
+    const cases      = data.cases      || [];
+    const tags       = data.tags       || [];
+    const chartData  = data.domain_chart || [];
+    const domain     = data.domain     || '';
+
+    // 关键要点（可能为空，跳过）
+    const kpHtml = (data.key_points||[]).length ? `<div class="key-points">` +
+      (data.key_points||[]).map(p=>`<div class="kp-item"><div class="kp-dot"></div><span>${escHtml(p)}</span></div>`).join('') +
+      `</div>` : '';
+
+    const tagsHtml = tags.length ? `<div style="padding:0 18px 12px;"><div class="tags-row">` +
+      tags.map(t=>`<span class="tag-chip">${escHtml(t.keyword||'')}</span>`).join('') +
+      `</div></div>` : '';
+
+    // 话术 Tab：至少一个年龄段有内容才显示
+    const ageKeys = ['6-12岁','13-15岁','16-18岁'];
+    const tabsId  = 'rtabs-'  + msgId;
+    const sbodyId = 'rsbody-' + msgId;
+    const chartId = 'rchart-' + msgId;
+    const hasScripts = ageKeys.some(a => scripts[a] && scripts[a].content);
+    function scriptBodyFor(al) {
+      const s = scripts[al];
+      if(!s||!s.content) return `<div class="empty-script">暂无该年龄段话术</div>`;
+      return escHtml(s.content) + (s.follow_up?`<br><small style="color:var(--muted)">${escHtml(s.follow_up)}</small>`:'');
+    }
+    const scriptTabs = ageKeys.map((a,i)=>
+      `<button class="age-tab ${i===1?'active':''}" onclick="switchAgeR('${tabsId}','${sbodyId}','${a}',this)">${a}</button>`
+    ).join('');
+    const scriptCardHtml = hasScripts ? `
+      <div class="script-card">
+        <div class="card-header"><span class="card-header-icon">📝</span> 引导话术（分龄）</div>
+        <div class="age-tabs" id="${tabsId}">${scriptTabs}</div>
+        <div class="script-body" id="${sbodyId}">${scriptBodyFor('13-15岁')}</div>
+      </div>` : '';
+    const chartCardHtml = chartData.length ? `
+      <div class="chart-card">
+        <div class="card-header"><span class="card-header-icon">📊</span> 关注域分布</div>
+        <div class="chart-body"><div class="chart-wrap"><canvas id="${chartId}"></canvas></div></div>
+      </div>` : '';
+    const cardsRowHtml = (scriptCardHtml || chartCardHtml) ? `
+      <div class="cards-row" style="margin-top:10px;">${scriptCardHtml}${chartCardHtml}</div>` : '';
+
+    const casesHtml = cases.length ? `<div class="cases-section">
+      <div class="cases-title">📂 相关典型案例</div>
+      <div class="cases-grid">`+
+      cases.map(c=>{
+        const RISK_LABEL={'L4':['极高风险','lv-h'],'L3':['高风险','lv-h'],'L2':['中度风险','lv-m'],
+          'L1':['轻度风险','lv-l'],'L0':['低风险','lv-l'],
+          '高风险':['高风险','lv-h'],'极高风险':['极高风险','lv-h'],
+          '中度风险':['中度风险','lv-m'],'轻度风险':['轻度风险','lv-l'],'低风险':['低风险','lv-l']};
+        const rl=RISK_LABEL[c.risk_level]||['未知','lv-l'];
+        const oc=c.source_url?`onclick="window.open('${escHtml(c.source_url)}','_blank')"`:'' ;
+        return `<div class="case-card" ${oc}>
+          <div><span class="case-level-badge ${rl[1]}">${rl[0]}</span></div>
+          <div class="case-name">${escHtml(c.case_name||'')}</div>
+          <div class="case-domain">${escHtml(c.risk_domain||'')} · ${escHtml(c.risk_type||'')}</div>
+          <div class="case-snippet">${escHtml(c.representative_text||'暂无摘要')}</div>
+        </div>`;
+      }).join('') +
+      `</div></div>` : '';
+
+    container.innerHTML = `
+      ${kpHtml}${tagsHtml}
+      ${cardsRowHtml}
+      ${casesHtml}`;
+
+    // 存话术函数
+    window['__sBodyFn_'+msgId] = scriptBodyFor;
+
+    // 渲染图表
+    if (chartData.length) {
+      requestAnimationFrame(() => {
+        const ctx = document.getElementById(chartId);
+        if (!ctx) return;
+        new Chart(ctx, {
+          type:'bar',
+          data:{labels:chartData.map(d=>d.domain.replace('风险','')),
+                datasets:[{data:chartData.map(d=>d.score),
+                  backgroundColor:['rgba(61,111,212,.75)','rgba(124,58,237,.65)',
+                    'rgba(16,185,129,.65)','rgba(245,158,11,.65)','rgba(239,68,68,.65)'],
+                  borderRadius:5,borderSkipped:false}]},
+          options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:10},color:'#94A3B8'}},
+                    y:{ticks:{font:{size:11},color:'#334155'},grid:{display:false}}}}
+        });
+      });
+    }
+  }
+
+  try {
+    const resp = await fetch(`${API}/chat/stream`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q, age_group: age}),
+    });
+    if (!resp.ok) throw new Error('服务异常 ' + resp.status);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream: true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (!raw || raw === '[DONE]') continue;
+        try {
+          const ev = JSON.parse(raw);
+          if (ev.type === 'heartbeat') continue;
+          if (ev.type === 'thinking')      { addThinkStep(ev.text, false, null); }
+          else if (ev.type === 'thinking_tool') { addThinkStep(ev.text, true, ev.preview||null); }
+          else if (ev.type === 'thinking_done') { finalizeThinking(); }
+          else if (ev.type === 'answer_chunk') { appendChunk(ev.text); }
+          else if (ev.type === 'result')    { resultData = ev.data; renderCards(ev.data); }
+          else if (ev.type === 'error')     {
+            addThinkStep('⚠️ ' + (ev.text||'出错'), false, null);
+          }
+          else if (ev.type === 'done')      { break; }
+        } catch {}
+      }
+    }
+    // 确保思考框最终关闭
+    if (!thinkingDone) finalizeThinking();
+
+  } catch (e) {
+    const eStr = String(e);
+    const errMsg = (eStr.includes('服务异常') || eStr.includes('500') || eStr.includes('502') || eStr.includes('503'))
+      ? '服务暂时不可用，请稍后再试'
+      : (eStr.includes('fetch') || eStr.includes('network') || eStr.includes('NetworkError'))
+      ? '网络连接失败，请检查网络后重试'
+      : '请求出错，请稍后重试';
+    const row = document.getElementById(msgId);
+    if (row) {
+      const replyBlock = row.querySelector('.reply-block');
+      if (replyBlock) replyBlock.innerHTML = `
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.16);border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;">
+          <span style="font-size:18px;flex-shrink:0;line-height:1.4;">⚠️</span>
+          <div>
+            <div style="font-size:13.5px;font-weight:600;color:#DC2626;margin-bottom:6px;">${escHtml(errMsg)}</div>
+            <div style="font-size:12.5px;color:var(--muted);line-height:1.5;">您的问题已保留在输入框，可直接重新发送。</div>
+          </div>
+        </div>`;
+    }
+    if (!chatInput.value.trim()) chatInput.value = q;
+  } finally {
+    sendBtn.disabled = false;
+    chatInput.focus();
+    scrollToBottom();
+  }
+}
+
+// 思考块展开/折叠
+window.toggleThinking = function(wrapId) {
+  const el = document.getElementById(wrapId);
+  if (el) el.classList.toggle('folded');
+};
+
+// 引导话术年龄 Tab（流式版）
+window.switchAgeR = function(tabsId, bodyId, ageLabel, btn) {
+  document.getElementById(tabsId).querySelectorAll('.age-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const msgId = tabsId.replace('rtabs-','');
+  const fn = window['__sBodyFn_'+msgId];
+  if (fn) document.getElementById(bodyId).innerHTML = fn(ageLabel);
+};
+</script>
+</body>
+</html>

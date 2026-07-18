@@ -1,0 +1,1415 @@
+#risk-review-root{
+  --rr-primary:    oklch(48% 0.14 195);
+  --rr-primary-lt: oklch(62% 0.13 195);
+  --rr-bg:         oklch(96% 0.025 195);
+  --rr-surface:    oklch(99.5% 0.008 195);
+  --rr-border:     oklch(87% 0.04 195);
+  --rr-divider:    oklch(92% 0.025 195);
+  --rr-ink:        oklch(15% 0.015 195);
+  --rr-muted:      oklch(40% 0.035 195);
+  --rr-subtle:     oklch(56% 0.025 195);
+  position:fixed;
+  inset:0;
+  z-index:2147483647;
+  pointer-events:none;
+  font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;
+}
+#risk-review-root .rr-fab-wrap{
+  position:fixed;
+  left:var(--rr-x, calc(100vw - 110px));
+  top:var(--rr-y, calc(100vh - 230px));
+  width:92px;
+  height:92px;
+  pointer-events:auto;
+  user-select:none;
+  overflow:visible;
+}
+#risk-review-root .rr-fab{
+  position:absolute;
+  right:0;
+  top:0;
+  width:84px;
+  height:84px;
+  border:0;
+  border-radius:50%;
+  cursor:grab;
+  display:grid;
+  place-items:center;
+  color:#fff;
+  background:
+    radial-gradient(circle at 35% 30%,rgba(255,255,255,.38),transparent 34%),
+    linear-gradient(145deg, oklch(38% 0.15 195), oklch(58% 0.16 200));
+  box-shadow:0 10px 24px rgba(0,80,80,.35),0 0 0 6px rgba(255,255,255,.08);
+}
+#risk-review-root .rr-fab:active{cursor:grabbing}
+#risk-review-root .rr-fab:focus-visible{
+  outline:3px solid #fff;
+  outline-offset:3px;
+}
+#risk-review-root .rr-fab::before{
+  content:"";
+  display:block;
+  width:50px;
+  height:50px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L4 5v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5z' fill='white' fill-opacity='.95'/%3E%3Cpath d='M9 12l2 2 4-4' fill='none' stroke='%230e6e6e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size:contain;
+  background-repeat:no-repeat;
+  background-position:center;
+}
+#risk-review-root .rr-close-mini{
+  position:absolute;
+  left:1px;
+  bottom:4px;
+  width:18px;
+  height:18px;
+  border:1px solid rgba(255,255,255,.42);
+  border-radius:50%;
+  background:rgba(25,29,40,.9);
+  color:#fff;
+  font-size:13px;
+  line-height:15px;
+  cursor:pointer;
+  z-index:3;
+  opacity:0;
+  transition:opacity 0.18s;
+}
+#risk-review-root .rr-fab-wrap:hover .rr-close-mini{
+  opacity:1;
+}
+#risk-review-root .rr-close-mini::after{
+  content:"";
+  position:absolute;
+  inset:-12px;
+}
+#risk-review-root .rr-close-mini:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:3px;
+  opacity:1;
+}
+#risk-review-root .rr-label{
+  position:absolute;
+  right:8px;
+  top:-28px;
+  max-width:160px;
+  padding:4px 9px;
+  border-radius:999px;
+  background:rgba(22,26,36,.82);
+  color:#fff;
+  font-size:12px;
+  white-space:nowrap;
+  opacity:.92;
+}
+#risk-review-root .rr-panel{
+  position:absolute;
+  right:96px;
+  top:var(--rr-panel-offset-y, -170px);
+  width:480px;
+  max-height:min(680px,calc(100vh - 32px));
+  background:var(--rr-bg);
+  color:var(--rr-ink);
+  border:1px solid oklch(87% 0.04 195 / 0.7);
+  border-radius:18px;
+  box-shadow:0 28px 80px oklch(15% 0.015 195 / 0.32);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  opacity:0;
+  pointer-events:none;
+  transform-origin:right center;
+}
+#risk-review-root.rr-open .rr-panel{pointer-events:auto}
+#risk-review-root.rr-open .rr-fab{
+  box-shadow:0 12px 28px rgba(0,80,80,.38),0 0 0 7px oklch(62% 0.13 195 / 0.22);
+}
+#risk-review-root.rr-open .rr-label{display:none}
+#risk-review-root .rr-panel::after{
+  content:"";
+  position:absolute;
+  right:-8px;
+  top:calc(-1 * var(--rr-panel-offset-y, -170px) + 23px);
+  width:14px;
+  height:14px;
+  background:var(--rr-bg);
+  border-right:1px solid oklch(87% 0.04 195 / 0.7);
+  border-top:1px solid oklch(87% 0.04 195 / 0.7);
+  transform:rotate(45deg);
+}
+#risk-review-root .rr-head{
+  height:50px;
+  padding:10px 14px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  background:oklch(99.5% 0.008 195 / 0.93);
+  border-bottom:1px solid var(--rr-divider);
+  cursor:grab;
+}
+#risk-review-root .rr-head:active{cursor:grabbing}
+#risk-review-root .rr-title{font-size:16px;font-weight:900}
+#risk-review-root .rr-url{
+  max-width:340px;
+  margin-top:3px;
+  color:var(--rr-muted);
+  font-size:11.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#risk-review-root .rr-actions{display:flex;gap:6px}
+#risk-review-root .rr-btn{
+  position:relative;
+  width:30px;
+  height:30px;
+  border:1px solid var(--rr-border);
+  border-radius:8px;
+  background:var(--rr-surface);
+  color:#52627c;
+  cursor:pointer;
+  font-weight:900;
+}
+#risk-review-root .rr-btn::after{
+  content:"";
+  position:absolute;
+  inset:-8px;
+}
+#risk-review-root .rr-btn:focus-visible{
+  outline:2px solid #4f6df5;
+  outline-offset:2px;
+}
+#risk-review-root .rr-scroll{
+  overflow:auto;
+  padding:14px;
+}
+#risk-review-root .rr-loading,
+#risk-review-root .rr-error{
+  border:1px solid var(--rr-border);
+  border-radius:12px;
+  background:var(--rr-surface);
+  padding:16px;
+  color:var(--rr-muted);
+  font-size:13.5px;
+  line-height:1.6;
+}
+
+/* ── 分析中步骤条 ── */
+#risk-review-root .rr-analyzing{
+  border:1px solid var(--rr-border);border-radius:12px;background:var(--rr-surface);padding:16px 18px;
+}
+#risk-review-root .rr-analyzing-title{font-size:13px;color:var(--rr-muted);margin-bottom:14px;}
+#risk-review-root .rr-steps{list-style:none;margin:0;padding:0;}
+#risk-review-root .rr-step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--rr-subtle);padding:6px 0;transition:color .3s;}
+#risk-review-root .rr-step-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none;}
+#risk-review-root .rr-step-active{color:var(--rr-primary);font-weight:600;}
+#risk-review-root .rr-step-active .rr-step-dot{animation:rr-step-pulse 1s ease-in-out infinite;}
+#risk-review-root .rr-step-done{color:oklch(58% 0.12 150);}
+@keyframes rr-step-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.65);}}
+@media (prefers-reduced-motion: reduce){
+  #risk-review-root .rr-step-active .rr-step-dot{animation:none;}
+}
+/* ── 检测态：悬浮球脉冲环 + 面板扫描光（rr-scanning 由分析开始/结束驱动）── */
+/* 悬浮球外扩脉冲环，示意“正在检测” */
+#risk-review-root.rr-scanning .rr-fab::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border:2px solid oklch(62% 0.13 195 / 0.55);
+  pointer-events:none;
+  animation:rr-scan-ring 1.6s ease-out infinite;
+}
+@keyframes rr-scan-ring{
+  0%{transform:scale(1);opacity:.7;}
+  100%{transform:scale(1.7);opacity:0;}
+}
+/* 面板自上而下的扫描光带（panel overflow:hidden 会裁掉上下溢出）*/
+#risk-review-root.rr-scanning .rr-panel::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;
+  top:0;
+  height:88px;
+  margin-top:-88px;
+  z-index:4;
+  pointer-events:none;
+  filter:blur(1px);
+  background:linear-gradient(180deg,
+    transparent,
+    oklch(62% 0.13 195 / 0.20) 68%,
+    oklch(62% 0.13 195 / 0.34) 82%,
+    transparent);
+  animation:rr-scan-sweep 2.4s cubic-bezier(.4,0,.35,1) infinite;
+}
+@keyframes rr-scan-sweep{
+  0%{top:0;opacity:0;}
+  8%{opacity:1;}
+  90%{opacity:1;}
+  100%{top:100%;opacity:0;}
+}
+@media (prefers-reduced-motion: reduce){
+  #risk-review-root.rr-scanning .rr-fab::after,
+  #risk-review-root.rr-scanning .rr-panel::before{animation:none;display:none;}
+}
+/* 流式：步骤条容器（done 时高度动画收起）+ 六维逐句 live 行 */
+#risk-review-root #rr-steps-wrap{overflow:hidden;}
+#risk-review-root .rr-live-sent{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px dashed var(--rr-border);}
+#risk-review-root .rr-live-sent:last-child{border-bottom:none;}
+#risk-review-root .rr-live-sent-text{font-size:12px;color:var(--rr-muted);line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* 相关案例：可点击卡片 + 插件内详情页 */
+#risk-review-root .rr-positive-clickable{cursor:pointer;transition:box-shadow .15s,transform .15s;}
+#risk-review-root .rr-positive-clickable:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px);}
+#risk-review-root .rr-detail-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+#risk-review-root .rr-back-btn{border:1px solid var(--rr-border);background:var(--rr-surface);color:var(--rr-primary);
+  font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;}
+#risk-review-root .rr-back-btn:hover{background:oklch(94% 0.02 195);}
+#risk-review-root .rr-detail-title{font-size:13px;font-weight:700;color:var(--rr-muted);}
+#risk-review-root .rr-detail-meta{font-size:12px;color:var(--rr-subtle);margin-top:4px;}
+#risk-review-root .rr-detail-url{font-size:12px;color:var(--rr-subtle);word-break:break-all;line-height:1.5;
+  background:var(--rr-surface);border:1px solid var(--rr-border);border-radius:6px;padding:6px 8px;user-select:all;}
+#risk-review-root .rr-card{
+  border:1px solid var(--rr-border);
+  border-radius:14px;
+  background:var(--rr-surface);
+  padding:14px;
+  margin-bottom:10px;
+  box-shadow:0 6px 16px rgba(74,88,122,.08);
+}
+/* ── 内容预览卡 ── */
+#risk-review-root .rr-preview-top{
+  display:flex;align-items:center;gap:8px;margin-bottom:10px;
+}
+#risk-review-root .rr-plat-badge{
+  font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;
+  background:oklch(90% 0.05 195);color:var(--rr-primary);
+  border:1px solid oklch(82% 0.07 195);
+}
+#risk-review-root .rr-interact{font-size:11px;color:var(--rr-muted);margin-left:auto;}
+
+/* ── 风险评级卡（独立） ── */
+#risk-review-root .rr-risk-card{padding:14px 16px 12px;}
+/* 五档风险色（内部 l0–l4 桶 → 新版 1–5 级五色：绿/黄/橙/红/紫） */
+#risk-review-root .rr-risk-l0{background:rgba(46,158,91,.06);border-color:rgba(46,158,91,.22);}
+#risk-review-root .rr-risk-l1{background:rgba(224,180,0,.08);border-color:rgba(224,180,0,.26);}
+#risk-review-root .rr-risk-l2{background:rgba(230,126,34,.06);border-color:rgba(230,126,34,.22);}
+#risk-review-root .rr-risk-l3{background:rgba(214,69,65,.06);border-color:rgba(214,69,65,.22);}
+#risk-review-root .rr-risk-l4{background:rgba(142,68,173,.07);border-color:rgba(142,68,173,.26);}
+#risk-review-root .rr-risk-top{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
+}
+#risk-review-root .rr-risk-label-wrap{display:flex;align-items:center;gap:8px;}
+#risk-review-root .rr-risk-icon{font-size:20px;line-height:1;}
+#risk-review-root .rr-risk-word{font-size:20px;font-weight:900;}
+#risk-review-root .rr-risk-score{font-size:28px;font-weight:900;line-height:1;}
+#risk-review-root .rr-risk-of{font-size:13px;font-weight:400;color:var(--rr-muted);}
+/* 六维研判前的风险卡占位 */
+#risk-review-root .rr-risk-pending{background:var(--rr-surface);}
+#risk-review-root .rr-risk-pending-word{font-size:15px;font-weight:700;color:var(--rr-subtle);animation:rr-step-pulse 1.2s ease-in-out infinite;}
+#risk-review-root .rr-risk-pending-score{color:var(--rr-subtle);letter-spacing:2px;animation:rr-step-pulse 1.2s ease-in-out infinite;}
+#risk-review-root .rr-dot-pending{border-color:var(--rr-subtle)!important;opacity:.5;}
+@media (prefers-reduced-motion: reduce){
+  #risk-review-root .rr-risk-pending-word,#risk-review-root .rr-risk-pending-score{animation:none;}
+}
+/* 升降档折算公式：弱化于大数字之下，一行说明分数来由 */
+#risk-review-root .rr-risk-breakdown{margin-top:8px;padding-top:8px;border-top:1px dashed var(--rr-border,#e6edf1);font-size:12px;color:var(--rr-muted);letter-spacing:.2px;}
+/* 升降档原因：更弱化的一行，说明为什么加/减分 */
+#risk-review-root .rr-risk-why{margin-top:4px;font-size:11px;color:var(--rr-subtle,#8a97a5);}
+
+/* ── 风险案例头部（原"关联案例"） ── */
+#risk-review-root .rr-cases-head{
+  display:flex;align-items:center;gap:8px;margin:14px 0 10px;
+}
+#risk-review-root .rr-cases-count{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:20px;height:20px;border-radius:999px;
+  background:var(--rr-primary);color:#fff;
+  font-size:11px;font-weight:900;padding:0 6px;
+}
+#risk-review-root .rr-tag-empty{
+  background:oklch(94% 0.015 195);color:var(--rr-subtle);font-weight:600;
+}
+
+/* ── 相关案例（原"中青网正向案例"，独立区块，不用风险色系） ── */
+#risk-review-root .rr-positive-head{
+  display:flex;align-items:center;gap:8px;margin:14px 0 10px;
+}
+#risk-review-root .rr-positive-count{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:20px;height:20px;border-radius:999px;
+  background:var(--rr-primary);color:#fff;
+  font-size:11px;font-weight:900;padding:0 6px;
+}
+#risk-review-root .rr-positive-case{
+  position:relative;
+  display:block;
+  border:1px solid var(--rr-border);
+  border-radius:12px;
+  background:var(--rr-surface);
+  padding:12px 12px 11px 12px;
+  margin-bottom:8px;
+  color:inherit;
+  text-decoration:none;
+}
+#risk-review-root a.rr-positive-case-link{
+  cursor:pointer;
+  transition:box-shadow .18s, border-color .18s;
+}
+#risk-review-root a.rr-positive-case-link:hover{
+  border-color:oklch(78% 0.06 195);
+  box-shadow:0 4px 14px oklch(15% 0.015 195 / 0.08);
+}
+#risk-review-root .rr-positive-top{
+  display:flex;align-items:center;gap:5px;margin-bottom:7px;
+}
+#risk-review-root .rr-positive-badge{
+  border:1px solid oklch(82% 0.07 195);
+  border-radius:999px;
+  background:oklch(92% 0.05 195);
+  color:var(--rr-primary);
+  padding:2px 9px;
+  font-size:10.5px;
+  font-weight:900;
+}
+#risk-review-root .rr-positive-id{
+  margin-left:auto;color:#a2aec2;font-size:10px;font-family:monospace;
+}
+#risk-review-root .rr-positive-name{
+  font-size:14px;font-weight:900;line-height:1.4;color:var(--rr-ink);
+}
+#risk-review-root .rr-positive-reason{
+  margin-top:6px;
+  color:var(--rr-muted);
+  font-size:12.5px;
+  line-height:1.6;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+#risk-review-root .rr-positive-link{
+  display:inline-block;
+  margin-top:8px;
+  color:var(--rr-primary);
+  font-size:11px;
+  font-weight:800;
+}
+
+
+/* ── rr-meta（兼容保留） ── */
+#risk-review-root .rr-meta{
+  display:flex;justify-content:space-between;gap:10px;
+  color:var(--rr-muted);font-size:12px;
+}
+#risk-review-root .rr-name{
+  margin-top:12px;
+  color:var(--rr-ink);
+  font-size:15px;
+  font-weight:900;
+  line-height:1.4;
+}
+#risk-review-root .rr-summary{
+  margin-top:9px;
+  color:#4b5563;
+  font-size:13px;
+  line-height:1.7;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+#risk-review-root .rr-section{
+  position:relative;
+  padding-left:12px;
+  margin:14px 0 10px;
+  color:#62718b;
+  font-size:12.5px;
+  font-weight:900;
+  letter-spacing:.03em;
+}
+#risk-review-root .rr-section::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:1px;
+  width:4px;
+  height:16px;
+  border-radius:4px;
+  background:var(--rr-primary);
+}
+#risk-review-root .rr-tags{display:flex;flex-wrap:wrap;gap:8px}
+/* 潜在意识形态风险类型 */
+#risk-review-root .rr-domain-tags{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+#risk-review-root .rr-dtag{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:7px 11px;border-radius:9px;
+  background:oklch(95% 0.03 195);border:1px solid oklch(88% 0.05 195);
+}
+#risk-review-root .rr-dtag-name{font-size:12.5px;font-weight:800;color:var(--rr-primary)}
+#risk-review-root .rr-dtag-kw{font-size:11.5px;color:var(--rr-muted);line-height:1.5}
+#risk-review-root .rr-tag{
+  display:inline-flex;
+  align-items:center;
+  min-height:30px;
+  padding:5px 12px;
+  border-radius:9px;
+  background:oklch(86% 0.08 195);
+  color:oklch(26% 0.12 195);
+  font-size:12.5px;
+  font-weight:900;
+}
+#risk-review-root .rr-tag.domain{
+  background:oklch(92% 0.05 195);
+  color:var(--rr-primary);
+  border:1px solid var(--rr-primary);
+}
+#risk-review-root .rr-risk{display:none;} /* 由 rr-risk-word 替代 */
+#risk-review-root .rr-bar{position:relative;height:18px}
+#risk-review-root .rr-gradient{
+  position:absolute;
+  left:0;right:0;top:5px;
+  height:8px;
+  border-radius:999px;
+  background:linear-gradient(90deg,#2e9e5b,#e0b400,#e67e22,#d64541,#8e44ad);
+}
+#risk-review-root .rr-dot{
+  position:absolute;
+  top:0;
+  left:6%;
+  width:18px;
+  height:18px;
+  margin-left:-9px;
+  border-radius:50%;
+  background:var(--rr-surface);
+  border:4px solid #e74c3c;
+}
+#risk-review-root .rr-labels{
+  display:flex;
+  justify-content:space-between;
+  margin-top:6px;
+  color:var(--rr-subtle);
+  font-size:11px;
+}
+#risk-review-root .rr-narrative{
+  color:#64748b;
+  font-size:13px;
+  line-height:1.75;
+  display:-webkit-box;
+  -webkit-line-clamp:5;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+/* ── 六维分析 ── */
+#risk-review-root .rr-dim-summary{
+  margin-bottom:14px;padding:9px 11px;border-radius:9px;
+  background:oklch(94% 0.03 195);border:1px solid oklch(88% 0.04 195);
+  color:var(--rr-muted);font-size:12.5px;font-weight:700;
+}
+#risk-review-root .rr-dim-summary b{color:var(--rr-ink);font-size:14px}
+#risk-review-root .rr-dim-sub{
+  margin-top:5px;
+  color:var(--rr-subtle);
+  font-size:11.5px;
+  line-height:1.5;
+  font-weight:600;
+}
+#risk-review-root .rr-dims{display:block}
+
+/* ── 新规则六维卡：雷达 + 逐维条形/命中项 + 逐句证据 ── */
+#risk-review-root .rr-sd-flags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+#risk-review-root .rr-sd-flag{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px}
+#risk-review-root .rr-sd-flag.veto{background:rgba(142,68,173,.12);color:#7d3aa8;border:1px solid rgba(142,68,173,.35)}
+#risk-review-root .rr-sd-flag.major{background:rgba(214,69,65,.1);color:#c0392b;border:1px solid rgba(214,69,65,.3)}
+#risk-review-root .rr-radar{display:flex;justify-content:center;margin:2px 0 10px}
+#risk-review-root .rr-radar svg{max-width:300px;height:auto}
+/* 六维"研判中"进行态 */
+#risk-review-root .rr-six-pending{border-style:dashed}
+#risk-review-root .rr-sixp-hint{font-size:12.5px;color:var(--rr-muted);margin-bottom:12px}
+#risk-review-root .rr-sixp-list{display:flex;flex-direction:column;gap:9px}
+#risk-review-root .rr-sixp-row{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--rr-subtle);animation:rr-sixp-pulse 1.4s ease-in-out infinite}
+#risk-review-root .rr-sixp-dot{width:8px;height:8px;border-radius:50%;background:var(--rr-primary);flex:none}
+@keyframes rr-sixp-pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){#risk-review-root .rr-sixp-row{animation:none;opacity:.85}}
+#risk-review-root .rr-sd-domains{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:var(--rr-muted);margin:-4px 0 8px}
+#risk-review-root .rr-sd-domain{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;background:oklch(90% 0.05 195);color:var(--rr-primary);border:1px solid oklch(82% 0.07 195)}
+#risk-review-root .rr-sd-adj{font-size:12px;color:var(--rr-muted);margin:-2px 0 10px}
+#risk-review-root .rr-sd-dim{
+  margin-bottom:10px;padding:9px 11px;border-radius:10px;
+  background:var(--rr-surface);border:1px solid var(--rr-border);
+}
+#risk-review-root .rr-sd-dim-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:7px}
+#risk-review-root .rr-sd-dim-name{font-size:13.5px;font-weight:800;color:var(--rr-ink)}
+#risk-review-root .rr-sd-dim-score{font-size:13px;font-weight:800}
+#risk-review-root .rr-sd-w{font-size:11px;color:var(--rr-subtle);font-weight:600}
+#risk-review-root .rr-sd-bar{height:6px;border-radius:99px;background:oklch(92% 0.02 195);overflow:hidden;margin-bottom:8px}
+#risk-review-root .rr-sd-bar-fill{height:100%;border-radius:99px;transition:width .5s ease}
+#risk-review-root .rr-sd-chips{display:flex;flex-wrap:wrap;gap:5px}
+/* 命中项完整明细 */
+#risk-review-root .rr-sd-hitlist{display:flex;flex-direction:column;gap:5px;margin-bottom:7px}
+#risk-review-root .rr-sd-hititem{display:flex;gap:7px;font-size:12.5px;line-height:1.45}
+#risk-review-root .rr-sd-hitid{flex:none;font-weight:800;color:#c0392b;min-width:26px}
+#risk-review-root .rr-sd-hittext{flex:1;min-width:0;color:var(--rr-ink)}
+#risk-review-root .rr-sd-none{font-size:12px;color:var(--rr-subtle);margin-bottom:4px}
+#risk-review-root .rr-sd-miss{align-items:center}
+#risk-review-root .rr-sd-miss-label{font-size:11px;color:var(--rr-subtle);margin-right:3px}
+#risk-review-root .rr-sd-chip{
+  font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;cursor:default;
+  background:oklch(94% 0.01 195);color:var(--rr-subtle);border:1px solid var(--rr-border);
+}
+#risk-review-root .rr-sd-chip.hit{background:rgba(214,69,65,.12);color:#c0392b;border-color:rgba(214,69,65,.3)}
+/* 逐句证据 */
+#risk-review-root .rr-ev-list{display:flex;flex-direction:column;gap:9px}
+#risk-review-root .rr-ev{padding:9px 11px;border-radius:9px;background:var(--rr-surface);border:1px solid var(--rr-border);border-left:3px solid var(--rr-primary)}
+#risk-review-root .rr-ev-span{font-size:13px;color:var(--rr-ink);line-height:1.5;margin-bottom:6px}
+#risk-review-root .rr-ev-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#risk-review-root .rr-ev-tag{font-size:11px;font-weight:800;padding:1px 6px;border-radius:5px;background:rgba(214,69,65,.1);color:#c0392b}
+#risk-review-root .rr-ev-note{font-size:12px;color:var(--rr-muted)}
+#risk-review-root .rr-ev-empty{font-size:12.5px;color:var(--rr-muted);padding:6px 2px}
+/* 明细行样式（兼容保留） */
+#risk-review-root .rr-rule-row{display:flex;gap:8px;font-size:12.5px;line-height:1.55;margin-top:8px}
+#risk-review-root .rr-rule-row:first-child{margin-top:0}
+#risk-review-root .rr-rule-k{flex:none;font-weight:800;color:#c0392b}
+#risk-review-root .rr-rule-v{flex:1;min-width:0;color:var(--rr-muted)}
+#risk-review-root .rr-radar-wrap{display:flex;justify-content:center;margin:2px 0 8px}
+#risk-review-root .rr-radar-wrap svg{max-width:320px;height:auto}
+#risk-review-root .rr-dim-row{
+  display:grid;grid-template-columns:auto 1fr auto;
+  align-items:center;gap:8px;
+  padding:9px 0;border-top:1px solid var(--rr-divider);
+}
+#risk-review-root .rr-dim-row:first-of-type{border-top:0}
+#risk-review-root .rr-dim-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+#risk-review-root .rr-dim-rowname{font-size:13px;font-weight:900;color:var(--rr-ink)}
+#risk-review-root .rr-dim-rowscore{font-size:15px;font-weight:900;text-align:right}
+#risk-review-root .rr-dim-rowdesc{grid-column:1 / -1;color:var(--rr-subtle);font-size:11.5px;line-height:1.5;margin-top:3px}
+#risk-review-root .rr-dim-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+#risk-review-root .rr-dim-name{font-size:13px;font-weight:900;color:var(--rr-ink)}
+#risk-review-root .rr-dim-score{font-size:16px;font-weight:900}
+#risk-review-root .rr-dim-of{font-size:11px;color:var(--rr-subtle);font-weight:700}
+#risk-review-root .rr-dim-track{height:7px;border-radius:999px;background:oklch(92% 0.02 195);overflow:hidden}
+#risk-review-root .rr-dim-fill{height:100%;border-radius:999px;transition:width .5s ease}
+#risk-review-root .rr-dim-desc{margin-top:6px;color:var(--rr-subtle);font-size:11.5px;line-height:1.5}
+#risk-review-root .rr-src-note{
+  margin-top:14px;padding:9px 11px;border-radius:9px;
+  background:#fff7df;border:1px solid #f5df98;color:#a86400;
+  font-size:11.5px;line-height:1.55;
+}
+/* ── 命中详情 ── */
+#risk-review-root .rr-hit-block{margin-top:15px}
+#risk-review-root .rr-hit-block:first-child{margin-top:0}
+#risk-review-root .rr-hit-label{
+  position:relative;padding-left:10px;
+  color:var(--rr-muted);font-size:12px;font-weight:900;margin-bottom:10px;
+}
+#risk-review-root .rr-hit-label::before{
+  content:"";position:absolute;left:0;top:1px;
+  width:4px;height:13px;border-radius:4px;background:var(--rr-primary);
+}
+#risk-review-root .rr-hit-chips{display:flex;flex-wrap:wrap;gap:8px}
+#risk-review-root .rr-hit-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 11px;border-radius:10px;
+  background:oklch(92% 0.05 195);color:var(--rr-primary);
+  border:1px solid oklch(82% 0.07 195);
+  font-size:12px;font-weight:800;
+}
+#risk-review-root .rr-hit-chip b{font-weight:900}
+#risk-review-root .rr-hit-cat{color:var(--rr-subtle);font-weight:700;font-size:11px}
+/* 大模型复核结论徽标 */
+#risk-review-root .rr-confirm{font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:2px}
+#risk-review-root .rr-confirm-yes{background:oklch(92% 0.09 150);color:oklch(45% 0.14 150)}
+#risk-review-root .rr-confirm-no{background:oklch(93% 0.10 55);color:oklch(52% 0.17 45)}
+#risk-review-root .rr-confirm-na{background:oklch(92% 0.01 240);color:var(--rr-subtle)}
+/* 大模型判定理由 / 抽取证据 */
+#risk-review-root .rr-hit-reason{
+  padding:9px 12px;border-radius:9px;font-size:12.5px;line-height:1.6;
+  color:var(--rr-primary);background:oklch(96% 0.02 260);
+  border-left:3px solid oklch(70% 0.11 260);
+}
+#risk-review-root .rr-hit-evid{display:grid;gap:6px}
+#risk-review-root .rr-evid-item{
+  padding:7px 11px;border-radius:8px;font-size:12px;line-height:1.55;
+  color:var(--rr-primary);background:var(--rr-surface,#f6f9fb);
+  border:1px dashed oklch(80% 0.04 260);
+}
+/* 逐句判定列表 */
+#risk-review-root .rr-sents{display:grid;gap:10px}
+#risk-review-root .rr-sent{
+  padding:10px 12px;border-radius:10px;background:var(--rr-surface,#f6f9fb);
+  border:1px solid oklch(90% 0.02 240);
+}
+#risk-review-root .rr-sent-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+#risk-review-root .rr-sent-lv{
+  color:#fff;font-size:11px;font-weight:900;padding:1px 8px;border-radius:6px;letter-spacing:.5px;
+}
+#risk-review-root .rr-sent-score{font-size:11px;font-weight:800;color:var(--rr-subtle)}
+#risk-review-root .rr-sent-text{font-size:12.5px;line-height:1.6;color:var(--rr-primary);margin-bottom:6px}
+#risk-review-root .rr-sent-types{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:5px}
+#risk-review-root .rr-sent-type{font-size:11px;font-weight:700;color:var(--rr-primary)}
+#risk-review-root .rr-sent-reason{
+  font-size:11.5px;line-height:1.55;color:var(--rr-subtle);
+  padding-left:9px;border-left:2px solid oklch(75% 0.10 260);
+}
+/* 导出报告按钮 */
+#risk-review-root .rr-export-btn{
+  width:100%;margin-top:4px;padding:11px;border:none;border-radius:10px;cursor:pointer;
+  background:var(--rr-primary,#1f5f7a);color:#fff;font-size:13px;font-weight:800;
+  transition:opacity .15s;
+}
+#risk-review-root .rr-export-btn:hover{opacity:.9}
+#risk-review-root .rr-export-btn:disabled{opacity:.6;cursor:default}
+#risk-review-root .rr-hit-phrases{display:grid;gap:8px}
+#risk-review-root .rr-hit-phrase{
+  display:flex;align-items:flex-start;gap:9px;
+  padding:9px 11px;border-radius:9px;
+  background:var(--rr-surface);border:1px solid var(--rr-border);
+}
+#risk-review-root .rr-hit-ptext{font-size:12.5px;line-height:1.55;color:#4b5563}
+#risk-review-root .rr-mtag{
+  flex-shrink:0;align-self:center;
+  border:1px solid oklch(82% 0.07 250);border-radius:6px;
+  padding:1px 6px;font-size:10px;font-weight:800;
+  color:oklch(48% 0.13 250);background:oklch(94% 0.04 250);
+}
+#risk-review-root .rr-tier{
+  flex-shrink:0;border-radius:6px;padding:2px 8px;
+  font-size:10.5px;font-weight:900;color:#fff;
+}
+#risk-review-root .rr-tier.t2{background:#d4ac0d}
+#risk-review-root .rr-tier.t3{background:#e67e22}
+#risk-review-root .rr-tier.t4{background:#c0392b}
+#risk-review-root .rr-hit-esc{display:grid;gap:5px}
+#risk-review-root .rr-esc-item{font-size:12px;color:var(--rr-muted);line-height:1.55}
+#risk-review-root .rr-hit-empty{color:var(--rr-subtle);font-size:12px}
+#risk-review-root .rr-case{
+  position:relative;
+  border:1px solid var(--rr-border);
+  border-radius:12px;
+  background:var(--rr-surface);
+  padding:12px 12px 10px 12px;
+  margin-bottom:8px;
+  overflow:hidden;
+  transition:box-shadow .18s, border-color .18s;
+}
+#risk-review-root .rr-case:hover{
+  border-color:oklch(78% 0.06 195);
+  box-shadow:0 4px 14px oklch(15% 0.015 195 / 0.08);
+}
+#risk-review-root .rr-band{
+  position:absolute;
+  left:0;top:0;bottom:0;width:3px;
+  border-radius:12px 0 0 12px;
+}
+#risk-review-root .rr-case-top{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  margin-bottom:7px;
+}
+#risk-review-root .rr-lv{
+  border:1px solid;
+  border-radius:999px;
+  padding:2px 8px;
+  font-size:10.5px;
+  font-weight:900;
+}
+#risk-review-root .rr-domain{
+  border:1px solid rgba(255,112,67,.28);
+  border-radius:999px;
+  padding:2px 7px;
+  color:#ff7043;
+  background:rgba(255,112,67,.07);
+  font-size:10.5px;
+  font-weight:800;
+}
+#risk-review-root .rr-id{
+  margin-left:auto;
+  color:#a2aec2;
+  font-size:10px;
+  font-family:monospace;
+}
+#risk-review-root .rr-case-name{
+  font-size:14px;
+  font-weight:900;
+  line-height:1.4;
+  color:var(--rr-ink);
+  padding-left:8px;
+}
+#risk-review-root .rr-case-text{
+  margin-top:6px;
+  padding-left:8px;
+  color:var(--rr-muted);
+  font-size:12.5px;
+  line-height:1.6;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+#risk-review-root .rr-case-foot{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-top:9px;
+  padding-top:8px;
+  padding-left:8px;
+  border-top:1px solid var(--rr-divider);
+}
+#risk-review-root .rr-case-btn{
+  height:24px;
+  border:1px solid oklch(82% 0.07 195);
+  border-radius:7px;
+  background:oklch(95% 0.03 195);
+  color:var(--rr-primary);
+  font-size:11px;font-weight:800;
+  cursor:pointer;padding:0 10px;
+  transition:all .15s;
+  display:inline-flex;align-items:center;gap:4px;
+}
+#risk-review-root .rr-case-btn:hover{
+  background:var(--rr-primary);
+  color:#fff;
+  border-color:var(--rr-primary);
+}
+#risk-review-root .rr-case-detail{
+  border-top:1px solid var(--rr-divider);
+  margin-top:10px;padding-top:0;
+  display:grid;gap:0;
+  max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .38s ease, opacity .3s ease, padding-top .3s ease;
+}
+#risk-review-root .rr-case-detail.rr-cd-open{
+  max-height:1000px;opacity:1;padding-top:12px;
+}
+#risk-review-root .rr-cd-section{margin-bottom:10px;}
+#risk-review-root .rr-cd-lbl{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:800;color:var(--rr-muted);
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:7px;
+}
+#risk-review-root .rr-cd-lbl::before{
+  content:"";flex-shrink:0;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--rr-primary);
+}
+#risk-review-root .rr-cd-val{
+  font-size:12.5px;color:var(--rr-ink);line-height:1.7;
+  background:oklch(97% 0.008 195);border-radius:9px;
+  padding:9px 12px;white-space:pre-wrap;
+}
+/* 引用块：代表文本 */
+#risk-review-root .rr-cd-quote{
+  font-size:12.5px;line-height:1.7;
+  color:var(--rr-muted);font-style:italic;
+  border-left:3px solid oklch(72% 0.1 195);
+  padding:8px 12px;
+  background:oklch(97% 0.012 195);
+  border-radius:0 9px 9px 0;
+}
+/* 传播机制：微弱警示色 */
+#risk-review-root .rr-cd-spread{
+  font-size:12.5px;line-height:1.7;
+  color:oklch(30% 0.08 30);
+  background:oklch(97% 0.015 60);
+  border:1px solid oklch(90% 0.04 60);
+  border-radius:9px;padding:9px 12px;white-space:pre-wrap;
+}
+#risk-review-root .rr-kw-tags{display:flex;flex-wrap:wrap;gap:6px;}
+#risk-review-root .rr-kw-tag{
+  font-size:12px;font-weight:800;padding:4px 11px;border-radius:999px;
+  background:oklch(88% 0.08 195);color:oklch(26% 0.12 195);
+  border:1px solid oklch(80% 0.08 195);
+}
+/* 年龄 Tabs：Segmented Control 风格 */
+#risk-review-root .rr-cd-tabs{
+  display:flex;gap:0;
+  background:oklch(93% 0.02 195);
+  border-radius:10px;padding:3px;
+  margin-bottom:10px;
+}
+#risk-review-root .rr-cd-tab{
+  flex:1;height:28px;border:none;border-radius:8px;
+  background:transparent;color:var(--rr-muted);
+  font-size:11.5px;font-weight:800;cursor:pointer;
+  transition:all .18s;
+}
+#risk-review-root .rr-cd-tab.active{
+  background:#fff;color:var(--rr-primary);
+  box-shadow:0 1px 5px rgba(0,0,0,.12);
+}
+
+  color:var(--rr-primary);
+  font-size:11px;
+  font-weight:800;
+  text-decoration:none;
+  opacity:.75;
+  transition:opacity .15s;
+}
+#risk-review-root .rr-case-link:hover{opacity:1;text-decoration:underline;}
+
+/* FAB 在左侧时：面板改为出现在右边 */
+#risk-review-root.rr-fab-left .rr-panel{
+  left:96px;
+  right:auto;
+  transform-origin:left center;
+}
+#risk-review-root.rr-fab-left .rr-panel::after{
+  left:-8px;
+  right:auto;
+  border-left:1px solid rgba(165,178,210,.5);
+  border-bottom:1px solid rgba(165,178,210,.5);
+  border-right:none;
+  border-top:none;
+}
+/* 关闭按钮移到右侧，避免被裁掉 */
+#risk-review-root.rr-fab-left .rr-close-mini{
+  right:1px;
+  left:auto;
+}
+
+/* ══ 展开后 · 大号浮层卡片 · 三栏布局 ══ */
+#risk-review-root.rr-open .rr-panel{
+  position:fixed;
+  inset:3vh 3vw;
+  width:auto;
+  height:auto;
+  max-width:1400px;
+  max-height:none;
+  margin:auto;
+  border:1px solid var(--rr-border);
+  border-radius:18px;
+  box-shadow:0 30px 90px rgba(10,30,35,.42);
+  transform-origin:center center;
+}
+/* 背后半透明遮罩（纯视觉，位于卡片与悬浮球之下） */
+#risk-review-root.rr-open::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:rgba(12,22,28,.42);
+  pointer-events:none;
+}
+/* 浮层卡片下不需要指向 FAB 的小箭头 */
+#risk-review-root.rr-open .rr-panel::after{display:none;}
+/* 悬浮球始终保留、浮在卡片之上（点它即可收起） */
+#risk-review-root.rr-open .rr-fab{z-index:2;}
+/* 头部：浮层下更从容，不再作为拖拽把手 */
+#risk-review-root.rr-open .rr-head{
+  height:56px;
+  padding:12px 24px;
+  align-items:center;
+  cursor:default;
+}
+#risk-review-root.rr-open .rr-head:active{cursor:default;}
+#risk-review-root.rr-open .rr-url{max-width:56vw;}
+/* body：纵向 flex —— 预警条在上，三栏填满剩余高度 */
+#risk-review-root.rr-open .rr-scroll{
+  flex:1;
+  min-height:0;
+  padding:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+#risk-review-root.rr-open #rr-alert:not(:empty){
+  padding:10px 24px 0;
+}
+/* 两栏栅格 —— 左栏(研判结论+关联案例)略窄，右栏(六维分析)略宽 */
+#risk-review-root .rr-cols{
+  flex:1;
+  min-height:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);
+  grid-template-rows:minmax(0, 1fr);
+}
+#risk-review-root .rr-col{
+  min-height:0;
+  overflow-y:auto;
+  padding:18px 22px;
+  border-right:1px solid var(--rr-divider);
+}
+#risk-review-root .rr-col:last-child{border-right:none;}
+/* 每栏顶部的分区标题 */
+#risk-review-root .rr-col-title{
+  margin:0 0 14px;
+  padding-bottom:10px;
+  font-size:12.5px;
+  font-weight:800;
+  letter-spacing:.04em;
+  color:var(--rr-primary);
+  border-bottom:1px solid var(--rr-divider);
+}
+/* 无六维数据时的中栏占位 */
+#risk-review-root .rr-empty-col{
+  color:var(--rr-muted);
+  font-size:13px;
+  text-align:center;
+  padding:28px 14px;
+}
+
+/* ── 重大风险提示条（强化）—— 紧贴风险评级卡下方，最抓眼 ── */
+#risk-review-root .rr-major-alert{
+  margin:12px 0 4px;
+  padding:12px 14px;
+  border-radius:12px;
+  background:linear-gradient(135deg, oklch(96% 0.06 25), oklch(94% 0.05 350));
+  border:1.5px solid oklch(62% 0.22 25);
+  box-shadow:0 6px 18px oklch(62% 0.22 25 / .18);
+  animation:rrMajorPulse 2.4s ease-in-out infinite;
+}
+#risk-review-root .rr-major-head{
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.12em;
+  color:oklch(48% 0.2 25);
+  margin-bottom:10px;
+  text-transform:uppercase;
+}
+#risk-review-root .rr-major-row{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:8px 0;
+}
+#risk-review-root .rr-major-row + .rr-major-row{
+  border-top:1px dashed oklch(62% 0.22 25 / .3);
+}
+#risk-review-root .rr-major-ico{
+  flex:none;
+  font-size:20px;
+  line-height:1.2;
+}
+#risk-review-root .rr-major-t{
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+#risk-review-root .rr-major-d{
+  font-size:12px;
+  line-height:1.55;
+  color:var(--rr-muted);
+  margin-top:3px;
+}
+#risk-review-root .rr-major-row.veto .rr-major-t{color:oklch(45% 0.2 300);}
+#risk-review-root .rr-major-row.major .rr-major-t{color:oklch(48% 0.22 25);}
+@keyframes rrMajorPulse{
+  0%,100%{box-shadow:0 6px 18px oklch(62% 0.22 25 / .16);}
+  50%{box-shadow:0 6px 24px oklch(62% 0.22 25 / .34);}
+}
+@media (prefers-reduced-motion: reduce){
+  #risk-review-root .rr-major-alert{animation:none;}
+}
+
+/* ── 关联案例（弱化）—— 置于左栏底部的次要信息，压低视觉权重 ── */
+#risk-review-root .rr-related-block{
+  margin-top:20px;
+  padding-top:14px;
+  border-top:1px dashed var(--rr-divider);
+  opacity:.78;
+}
+#risk-review-root .rr-related-block:hover{opacity:1;}
+#risk-review-root .rr-related-title{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.06em;
+  color:var(--rr-subtle);
+  margin-bottom:10px;
+}
+#risk-review-root .rr-related-block .rr-cases-head,
+#risk-review-root .rr-related-block .rr-positive-head{
+  margin-top:12px;
+}
+#risk-review-root .rr-related-block .rr-section{
+  font-size:11.5px;
+  color:var(--rr-subtle);
+}
+
+/* ── 青少年分级处置与引导话术：从案例字段独立抽出 ── */
+#risk-review-root .rr-guide-card{
+  margin-top:14px;
+  border:1px solid var(--rr-border);
+  border-left:4px solid var(--rr-primary);
+  border-radius:12px;
+  background:var(--rr-surface);
+  padding:13px 14px;
+  box-shadow:0 6px 16px rgba(74,88,122,.08);
+}
+#risk-review-root .rr-guide-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+#risk-review-root .rr-guide-title{
+  color:var(--rr-ink);
+  font-size:13px;
+  font-weight:900;
+  line-height:1.45;
+}
+#risk-review-root .rr-guide-meta{
+  margin-top:3px;
+  color:var(--rr-subtle);
+  font-size:11.5px;
+  line-height:1.45;
+}
+#risk-review-root .rr-guide-rows{
+  display:grid;
+  gap:8px;
+}
+#risk-review-root .rr-guide-row{
+  display:grid;
+  grid-template-columns:58px 1fr;
+  gap:9px;
+  padding:9px 10px;
+  border-radius:9px;
+  background:oklch(96% 0.015 195);
+  border:1px solid var(--rr-divider);
+}
+#risk-review-root .rr-guide-age{
+  color:var(--rr-primary);
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+}
+#risk-review-root .rr-guide-text{
+  color:var(--rr-muted);
+  font-size:12px;
+  line-height:1.6;
+}
+/* 分级处置卡：处置策略 / 引导话术分块 */
+#risk-review-root .rr-guide-block{
+  padding:9px 11px;
+  border-radius:9px;
+  background:oklch(96% 0.015 195);
+  border:1px solid var(--rr-divider);
+  margin-top:8px;
+}
+#risk-review-root .rr-guide-block-lbl{
+  color:var(--rr-primary);
+  font-size:11.5px;
+  font-weight:900;
+  margin-bottom:4px;
+}
+#risk-review-root .rr-guide-block-val{
+  color:var(--rr-muted);
+  font-size:12px;
+  line-height:1.6;
+  white-space:pre-wrap;
+}
+
+/* 相关案例详情页（全屏下需自带滚动、内容居中） */
+#risk-review-root.rr-open .rr-detail-view{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:22px 24px;
+}
+#risk-review-root.rr-open .rr-detail-view > *{
+  max-width:820px;
+  margin-left:auto;
+  margin-right:auto;
+}
+/* 全屏下卡片留白略增，读起来更舒展 */
+#risk-review-root.rr-open .rr-card{margin-bottom:14px;}
+
+/* 响应式：窄屏改为单栏纵向滚动 */
+@media (max-width:1180px){
+  #risk-review-root.rr-open .rr-scroll{overflow:auto;display:block;}
+  #risk-review-root .rr-cols{
+    grid-template-columns:1fr;
+    grid-template-rows:auto;
+  }
+  #risk-review-root .rr-col{
+    overflow-y:visible;
+    border-right:none;
+  }
+  #risk-review-root .rr-col-a{
+    border-right:none;
+    border-bottom:1px solid var(--rr-divider);
+  }
+}
+
+/* ── FAB 警告状态 ── */
+#risk-review-root .rr-fab.rr-fab-warn{
+  background:
+    radial-gradient(circle at 35% 30%,rgba(255,255,255,.38),transparent 34%),
+    linear-gradient(145deg,#c0392b,#e74c3c);
+  box-shadow:0 10px 24px rgba(192,57,43,.45),0 0 0 6px rgba(255,255,255,.08);
+  animation:rr-fab-warn-pulse 1.8s ease-in-out infinite;
+}
+@keyframes rr-fab-warn-pulse{
+  0%,100%{box-shadow:0 10px 24px rgba(192,57,43,.45),0 0 0 6px rgba(255,255,255,.08);}
+  50%{box-shadow:0 10px 24px rgba(192,57,43,.6),0 0 0 10px rgba(192,57,43,.15);}
+}
+
+/* ── FAB 按风险等级五色（L0绿 L1黄 L2橙 L3红 L4紫），红/紫高危带脉冲 ── */
+#risk-review-root .rr-fab.rr-fab-l0,
+#risk-review-root .rr-fab.rr-fab-l1,
+#risk-review-root .rr-fab.rr-fab-l2,
+#risk-review-root .rr-fab.rr-fab-l3,
+#risk-review-root .rr-fab.rr-fab-l4{
+  background:
+    radial-gradient(circle at 35% 30%,rgba(255,255,255,.4),transparent 34%),
+    linear-gradient(145deg,var(--rr-fc1),var(--rr-fc2));
+  box-shadow:0 10px 24px rgba(var(--rr-fring),.4),0 0 0 6px rgba(255,255,255,.08);
+}
+#risk-review-root .rr-fab.rr-fab-l0{--rr-fc1:#1f8f4e;--rr-fc2:#37b866;--rr-fring:31,143,78;}
+#risk-review-root .rr-fab.rr-fab-l1{--rr-fc1:#c99a00;--rr-fc2:#e6b800;--rr-fring:201,154,0;}
+#risk-review-root .rr-fab.rr-fab-l2{--rr-fc1:#cf7318;--rr-fc2:#ee9440;--rr-fring:207,115,24;}
+#risk-review-root .rr-fab.rr-fab-l3{--rr-fc1:#c0392b;--rr-fc2:#e05548;--rr-fring:192,57,43;}
+#risk-review-root .rr-fab.rr-fab-l4{--rr-fc1:#7d3aa8;--rr-fc2:#9b59b6;--rr-fring:126,58,168;}
+#risk-review-root .rr-fab.rr-fab-l3,
+#risk-review-root .rr-fab.rr-fab-l4{
+  animation:rr-fab-level-pulse 1.8s ease-in-out infinite;
+}
+@keyframes rr-fab-level-pulse{
+  0%,100%{box-shadow:0 10px 24px rgba(var(--rr-fring),.42),0 0 0 6px rgba(var(--rr-fring),.10);}
+  50%{box-shadow:0 10px 24px rgba(var(--rr-fring),.58),0 0 0 11px rgba(var(--rr-fring),.16);}
+}
+@media (prefers-reduced-motion: reduce){
+  #risk-review-root .rr-fab.rr-fab-l3,
+  #risk-review-root .rr-fab.rr-fab-l4{animation:none;}
+}
+
+/* ── 面板整体警戒状态 ── */
+#risk-review-root .rr-panel-warn-l4{
+  border-color:rgba(142,68,173,.62) !important;
+  box-shadow:0 24px 70px oklch(15% 0.015 195 / 0.3), 0 0 0 2px rgba(142,68,173,.25) !important;
+}
+#risk-review-root .rr-panel-warn-l3{
+  border-color:rgba(214,69,65,.62) !important;
+  box-shadow:0 24px 70px oklch(15% 0.015 195 / 0.3), 0 0 0 2px rgba(214,69,65,.22) !important;
+}
+#risk-review-root .rr-panel-warn-l2{
+  border-color:rgba(230,126,34,.58) !important;
+  box-shadow:0 24px 70px oklch(15% 0.015 195 / 0.3), 0 0 0 2px rgba(230,126,34,.2) !important;
+}
+
+/* ── 中低风险：参考政策和讲话内容 ── */
+#risk-review-root .rr-policy-card{
+  border:1px solid var(--rr-border);
+  border-left:5px solid var(--rr-primary);
+  border-radius:10px;
+  padding:14px;
+  margin-bottom:12px;
+  background:var(--rr-surface);
+  box-shadow:0 6px 18px rgba(74,88,122,.08);
+}
+#risk-review-root .rr-policy-l0{border-left-color:#2e9e5b;}
+#risk-review-root .rr-policy-l1{border-left-color:#e0b400;}
+#risk-review-root .rr-policy-l2{border-left-color:#e67e22;}
+#risk-review-root .rr-policy-top{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  margin-bottom:10px;
+}
+#risk-review-root .rr-policy-dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  flex:none;
+  margin-top:5px;
+  box-shadow:0 0 0 4px rgba(74,88,122,.08);
+}
+#risk-review-root .rr-policy-title{
+  font-size:14px;
+  font-weight:900;
+  color:var(--rr-ink);
+  line-height:1.35;
+}
+#risk-review-root .rr-policy-sub{
+  margin-top:3px;
+  color:var(--rr-muted);
+  font-size:12px;
+  line-height:1.55;
+}
+#risk-review-root .rr-policy-focus{
+  padding:8px 10px;
+  border-radius:8px;
+  background:oklch(95% 0.02 195);
+  color:var(--rr-muted);
+  font-size:12px;
+  line-height:1.55;
+  margin-bottom:10px;
+}
+#risk-review-root .rr-policy-list{
+  display:grid;
+  gap:8px;
+}
+#risk-review-root .rr-policy-item{
+  display:grid;
+  grid-template-columns:86px 1fr;
+  gap:8px;
+  color:var(--rr-muted);
+  font-size:12px;
+  line-height:1.55;
+}
+#risk-review-root .rr-policy-item b{
+  color:var(--rr-primary);
+  font-size:12px;
+}
+
+/* ── 顶部风险提示卡（实色，顶部全宽） ── */
+#risk-review-root .rr-alert{
+  border-radius:10px;
+  padding:10px 12px;
+  margin-bottom:8px;
+  border:none;
+  position:relative;
+  overflow:hidden;
+  animation:rr-ab-in .5s cubic-bezier(.22,.68,0,1.2) both;
+}
+@keyframes rr-ab-in{
+  0%  {opacity:0;transform:translateY(-14px) scale(.97);}
+  65% {transform:translateY(3px) scale(1.01);}
+  100%{opacity:1;transform:translateY(0) scale(1);}
+}
+#risk-review-root .rr-alert-l0{
+  background:linear-gradient(135deg,#2e9e5b,#37b866);
+  box-shadow:0 6px 20px rgba(46,158,91,.32);
+}
+#risk-review-root .rr-alert-l1{
+  background:linear-gradient(135deg,#c99a00,#e0b400);
+  box-shadow:0 6px 20px rgba(224,180,0,.32);
+}
+#risk-review-root .rr-alert-l2{
+  background:linear-gradient(135deg,#cf7318,#e67e22);
+  box-shadow:0 6px 20px rgba(230,126,34,.35);
+  animation:rr-ab-in .5s cubic-bezier(.22,.68,0,1.2) both,
+            rr-glow-l2 2.2s .7s ease-in-out infinite;
+}
+#risk-review-root .rr-alert-l3{
+  background:linear-gradient(135deg,#b8322f,#d64541);
+  box-shadow:0 6px 20px rgba(214,69,65,.38);
+  animation:rr-ab-in .5s cubic-bezier(.22,.68,0,1.2) both,
+            rr-glow-l3 2.2s .7s ease-in-out infinite;
+}
+#risk-review-root .rr-alert-l4{
+  background:linear-gradient(135deg,#7d3aa8,#9b59b6);
+  box-shadow:0 6px 20px rgba(142,68,173,.4);
+  animation:rr-ab-in .5s cubic-bezier(.22,.68,0,1.2) both,
+            rr-glow-l4 2.2s .7s ease-in-out infinite;
+}
+@keyframes rr-glow-l4{
+  0%,100%{box-shadow:0 6px 20px rgba(142,68,173,.4);}
+  50%    {box-shadow:0 8px 28px rgba(142,68,173,.65);}
+}
+@keyframes rr-glow-l3{
+  0%,100%{box-shadow:0 6px 20px rgba(214,69,65,.38);}
+  50%    {box-shadow:0 8px 28px rgba(214,69,65,.6);}
+}
+@keyframes rr-glow-l2{
+  0%,100%{box-shadow:0 6px 20px rgba(230,126,34,.35);}
+  50%    {box-shadow:0 8px 28px rgba(230,126,34,.55);}
+}
+/* 重大意识形态风险预警：使用同一等级色，只强化卡片结构 */
+#risk-review-root .rr-alert-ideology{
+  border:1px solid rgba(255,255,255,.24);
+}
+#risk-review-root .rr-alert-ideology .rr-alert-eye{color:rgba(255,255,255,.85);}
+#risk-review-root .rr-alert-ideology .rr-alert-title{font-size:17.5px;}
+@media (prefers-reduced-motion: reduce){
+  #risk-review-root .rr-alert-ideology{animation:rr-ab-in .5s both !important;}
+}
+#risk-review-root .rr-alert-body{
+  display:flex;align-items:flex-start;gap:8px;
+}
+#risk-review-root .rr-alert-icon{
+  font-size:21px;flex-shrink:0;line-height:1;
+  animation:rr-icon-shake .55s .3s ease-in-out both;
+}
+@keyframes rr-icon-shake{
+  0%,100%{transform:rotate(0deg);}
+  20%{transform:rotate(-14deg);}
+  50%{transform:rotate(12deg);}
+  75%{transform:rotate(-7deg);}
+}
+#risk-review-root .rr-alert-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(255,255,255,.7);flex-shrink:0;
+  animation:rr-dot-pulse 1.4s ease-in-out infinite;
+}
+@keyframes rr-dot-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.5);opacity:1;}
+  50%{box-shadow:0 0 0 6px transparent;opacity:.5;}
+}
+#risk-review-root .rr-alert-content{flex:1;min-width:0;}
+#risk-review-root .rr-alert-eye{
+  font-size:14.5px;font-weight:800;letter-spacing:.3px;
+  text-transform:uppercase;color:rgba(255,255,255,.85);margin-bottom:3px;
+}
+#risk-review-root .rr-alert-title{
+  font-size:17.5px;font-weight:900;line-height:1.3;
+  color:#fff;
+}
+#risk-review-root .rr-alert-detail{
+  font-size:11px;color:rgba(255,255,255,.8);margin-top:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#risk-review-root .rr-alert-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) minmax(0,1fr);
+  gap:6px;
+  margin-top:7px;
+  max-height:128px;
+  overflow:auto;
+  padding-right:2px;
+}
+#risk-review-root .rr-alert-section{
+  padding:7px 8px;
+  border-radius:8px;
+  background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.18);
+}
+#risk-review-root .rr-alert-k{
+  color:rgba(255,255,255,.9);
+  font-size:10.5px;
+  font-weight:900;
+  letter-spacing:.03em;
+  margin-bottom:4px;
+}
+#risk-review-root .rr-alert-v{
+  color:rgba(255,255,255,.84);
+  font-size:11px;
+  line-height:1.45;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+#risk-review-root .rr-major-types{
+  display:grid;
+  gap:4px;
+}
+#risk-review-root .rr-major-type{
+  display:block;
+  color:rgba(255,255,255,.86);
+  font-size:11px;
+  line-height:1.4;
+}
+#risk-review-root .rr-major-type-id{
+  font-weight:900;
+  color:#fff;
+  white-space:nowrap;
+}
+#risk-review-root .rr-major-type-desc{
+  min-width:0;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+#risk-review-root .rr-alert-close{
+  width:20px;height:20px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.3);
+  background:rgba(255,255,255,.15);
+  cursor:pointer;font-size:11px;color:#fff;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .15s;
+}
+#risk-review-root .rr-alert-close:hover{background:rgba(255,255,255,.35);}
+
+@media (max-width:1180px){
+  #risk-review-root .rr-alert-grid{
+    grid-template-columns:1fr;
+    max-height:180px;
+  }
+}

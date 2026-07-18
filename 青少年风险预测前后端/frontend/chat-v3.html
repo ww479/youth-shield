@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>青年心盾 · 智能问答</title>
+<script src="lib/chart.umd.min.js" defer></script>
+<style>
+/* ═══════════════════════════════════════════════
+   TOKENS  —  深暖棕 + 铜金
+═══════════════════════════════════════════════ */
+:root {
+  /* Surfaces */
+  --bg:     #0E0D0B;
+  --sur-1:  #181612;
+  --sur-2:  #222019;
+  --sur-3:  #2E2B24;
+  --sur-4:  #3A362D;
+
+  /* Copper / bronze accent */
+  --copper:       #C97B3A;
+  --copper-light: #E09A56;
+  --copper-dim:   #8B5426;
+  --copper-glow:  rgba(201,123,58,0.15);
+  --copper-rule:  rgba(201,123,58,0.28);
+
+  /* Sage / teal for success & done states */
+  --sage:     #4BAA82;
+  --sage-dim: #33785A;
+  --sage-bg:  rgba(75,170,130,0.12);
+
+  /* Text */
+  --ink:   #F5EEE4;
+  --ink-2: #C9BFB0;
+  --ink-3: #8C7E6F;
+  --ink-4: #574E44;
+
+  /* Borders */
+  --rule:   rgba(245,238,228,0.07);
+  --rule-2: rgba(245,238,228,0.13);
+
+  /* Risk */
+  --risk-h: #E05B4B;
+  --risk-m: #D4953A;
+  --risk-l: #4BAA82;
+
+  /* Type scale */
+  --t-22: 22px;
+  --t-16: 16px;
+  --t-14: 14px;
+  --t-13: 13px;
+  --t-12: 12px;
+  --t-11: 11px;
+
+  /* Radii */
+  --r-sm:   4px;
+  --r-md:   8px;
+  --r-lg:   14px;
+  --r-xl:   20px;
+  --r-full: 999px;
+
+  /* Layout */
+  --chat-width: 800px;
+  --header-h:   52px;
+  --input-zone: 110px;
+
+  /* Z-index */
+  --z-header:  20;
+  --z-input:   20;
+  --z-overlay: 30;
+  --z-drawer:  40;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { height: 100%; }
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+  font-size: var(--t-14);
+  line-height: 1.6;
+  color: var(--ink-2);
+  background: var(--bg);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+button, input, textarea { font: inherit; }
+button { cursor: pointer; border: none; background: none; }
+a { color: inherit; text-decoration: none; }
+*, * { scrollbar-width: thin; scrollbar-color: var(--sur-4) transparent; }
+
+/* ═══════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════ */
+.hdr {
+  height: var(--header-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 8px;
+  background: var(--sur-1);
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+}
+
+.hdr-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+}
+
+.hdr-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-md);
+  background: var(--copper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  color: var(--bg);
+}
+
+.hdr-name {
+  font-size: var(--t-14);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.2px;
+}
+
+.hdr-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.hdr-link {
+  padding: 5px 11px;
+  border-radius: var(--r-md);
+  font-size: var(--t-13);
+  color: var(--ink-3);
+  transition: background 0.12s, color 0.12s;
+}
+.hdr-link:hover { background: var(--sur-3); color: var(--ink); }
+.hdr-link.on { color: var(--copper); font-weight: 600; }
+
+.hdr-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--rule-2);
+  margin: 0 4px;
+}
+
+.hdr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  height: 32px;
+  border-radius: var(--r-md);
+  font-size: var(--t-13);
+  color: var(--ink-3);
+  border: 1px solid var(--rule-2);
+  background: transparent;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.hdr-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.hdr-btn:hover {
+  border-color: var(--copper-rule);
+  color: var(--copper-light);
+  background: var(--copper-glow);
+}
+.hdr-btn.on {
+  background: var(--copper-glow);
+  color: var(--copper);
+  border-color: var(--copper-rule);
+}
+
+/* ═══════════════════════════════════════════════
+   MAIN SCROLL AREA
+═══════════════════════════════════════════════ */
+.chat-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 20px;
+}
+
+.chat-col {
+  max-width: var(--chat-width);
+  margin: 0 auto;
+  padding: 32px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 100%;
+}
+
+/* ═══════════════════════════════════════════════
+   WELCOME STATE  (shown when no messages)
+═══════════════════════════════════════════════ */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  padding: 48px 16px 32px;
+  gap: 28px;
+}
+
+.welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.welcome-icon-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.welcome-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--copper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--bg);
+}
+
+.welcome-icon-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 24px;
+  border: 1.5px solid var(--copper-rule);
+  pointer-events: none;
+}
+
+.welcome-title {
+  font-size: var(--t-22);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
+
+.welcome-desc {
+  font-size: var(--t-14);
+  color: var(--ink-3);
+  max-width: 420px;
+  line-height: 1.7;
+}
+
+/* Stats row */
+.welcome-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.welcome-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.welcome-stat-num {
+  font-size: var(--t-22);
+  font-weight: 800;
+  color: var(--copper);
+  line-height: 1;
+}
+
+.welcome-stat-label {
+  font-size: var(--t-12);
+  color: var(--ink-3);
+}
+
+.welcome-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--rule-2);
+}
+
+/* Prompt cards */
+.welcome-prompts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 640px;
+}
+
+@media (max-width: 560px) {
+  .welcome-prompts { grid-template-columns: 1fr; max-width: 380px; }
+}
+
+.prompt-card {
+  background: var(--sur-1);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prompt-card:hover {
+  background: var(--sur-2);
+  border-color: var(--copper-rule);
+}
+
+.prompt-icon { font-size: 18px; line-height: 1; }
+
+.prompt-text {
+  font-size: var(--t-13);
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+/* ═══════════════════════════════════════════════
+   MESSAGES
+═══════════════════════════════════════════════ */
+.msg-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.msg-row.user { flex-direction: row-reverse; }
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.avatar.ai {
+  background: var(--copper);
+  color: var(--bg);
+}
+
+.avatar.user {
+  background: var(--sur-3);
+  color: var(--ink-3);
+  border: 1px solid var(--rule-2);
+  font-size: 9px;
+}
+
+.bubble {
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  font-size: var(--t-14);
+  line-height: 1.7;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.bubble.ai {
+  max-width: 78%;
+  background: var(--sur-1);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  border-top-left-radius: var(--r-sm);
+}
+
+.bubble.user {
+  max-width: 72%;
+  background: var(--copper);
+  color: var(--bg);
+  font-weight: 500;
+  border-top-right-radius: var(--r-sm);
+}
+
+/* ── Loading dots ── */
+.loading-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.loading-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--copper);
+  animation: dotPulse 1.2s cubic-bezier(.2,0,.8,1) infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: .2s; }
+.loading-dots span:nth-child(3) { animation-delay: .4s; }
+
+@keyframes dotPulse {
+  0%,100% { transform:translateY(0); opacity:.3; }
+  40%      { transform:translateY(-5px); opacity:1; }
+}
+
+/* ── Reply block ── */
+.reply-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Thinking panel ── */
+.thinking-wrap {
+  background: var(--copper-glow);
+  border: 1px solid var(--copper-rule);
+  border-radius: var(--r-lg);
+  padding: 10px 14px;
+  transition: border-color 0.2s;
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.thinking-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-sm);
+  background: var(--copper);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.thinking-title { font-size: var(--t-12); font-weight: 700; color: var(--copper); }
+.thinking-status {
+  flex: 1;
+  font-size: var(--t-12);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 4px;
+  transition: color 0.15s;
+}
+
+.thinking-toggle { font-size: 10px; color: var(--ink-4); transition: transform 0.2s; flex-shrink: 0; }
+.thinking-wrap.folded .thinking-toggle { transform: rotate(-90deg); }
+
+.thinking-steps {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+  transition: max-height 0.28s ease;
+}
+.thinking-wrap.folded .thinking-steps { max-height: 0!important; margin-top: 0; }
+
+.thinking-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 3px 5px;
+  border-radius: var(--r-sm);
+  font-size: var(--t-12);
+  color: var(--ink-3);
+  line-height: 1.5;
+  animation: stepIn .18s ease;
+}
+.thinking-step.step-tool {
+  background: var(--copper-glow);
+  border: 1px solid var(--copper-rule);
+}
+.step-icon { flex-shrink: 0; width: 14px; text-align: center; font-size: 10px; margin-top: 1px; }
+.step-text { flex: 1; color: var(--ink-2); }
+.step-preview {
+  font-family: 'SF Mono','Consolas',monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+  background: var(--sur-2);
+  border-radius: var(--r-sm);
+  padding: 2px 5px;
+  margin-top: 3px;
+  word-break: break-all;
+}
+
+.thinking-spin {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(201,123,58,.2);
+  border-top-color: var(--copper);
+  animation: spin .7s linear infinite;
+}
+.thinking-spin.done {
+  border: 2px solid rgba(75,170,130,.4);
+  border-top-color: transparent;
+  animation: none;
+  background: rgba(75,170,130,.18);
+}
+
+@keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes stepIn  { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+
+/* ── Streaming answer ── */
+.answer-streaming {
+  background: var(--sur-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  font-size: var(--t-14);
+  color: var(--ink-2);
+  line-height: 1.78;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.answer-streaming p { margin-bottom: 8px; }
+.answer-streaming p:last-child { margin-bottom: 0; }
+
+.stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: .9em;
+  background: var(--copper);
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: blink .65s step-end infinite;
+  border-radius: 1px;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* ── Answer card ── */
+.answer-card {
+  background: var(--sur-1);
+  border: 1px solid var(--rule-2);
+  border-top: 2px solid var(--copper);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.answer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.answer-header .icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  background: var(--copper-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.answer-header .title { font-size: var(--t-13); font-weight: 700; color: var(--ink); }
+
+.domain-badge {
+  margin-left: auto;
+  font-size: var(--t-11);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  font-weight: 600;
+  background: var(--copper-glow);
+  color: var(--copper-light);
+  border: 1px solid var(--copper-rule);
+}
+
+.answer-body {
+  padding: 13px 15px;
+  color: var(--ink-2);
+  font-size: var(--t-14);
+  line-height: 1.78;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.answer-body p { margin-bottom: 8px; }
+.answer-body p:last-child { margin-bottom: 0; }
+
+/* ── Key points ── */
+.key-points {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 15px 13px;
+}
+
+.kp-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--sur-2);
+  border-radius: var(--r-md);
+  padding: 7px 11px;
+  font-size: var(--t-13);
+  color: var(--ink-2);
+}
+
+.kp-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--copper);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+/* ── Tags ── */
+.tags-row { display:flex; flex-wrap:wrap; gap:5px; padding:3px 0; }
+.tag-chip {
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  font-size: var(--t-11);
+  background: var(--copper-glow);
+  color: var(--copper-light);
+  border: 1px solid var(--copper-rule);
+}
+
+.guidance-tip {
+  padding: 8px 15px 12px;
+  font-size: var(--t-13);
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+/* ── Cards row ── */
+.cards-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media(max-width:560px){ .cards-row { grid-template-columns:1fr; } }
+
+.script-card, .chart-card {
+  background: var(--sur-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px 0;
+  font-size: var(--t-12);
+  font-weight: 700;
+  color: var(--ink);
+}
+.card-header-icon { font-size: 13px; }
+
+.age-tabs {
+  display: flex;
+  gap: 3px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.age-tab {
+  padding: 4px 10px;
+  min-height: 28px;
+  border-radius: var(--r-full);
+  font-size: var(--t-11);
+  font-weight: 500;
+  background: transparent;
+  color: var(--ink-3);
+  border: none;
+  transition: background .13s, color .13s;
+}
+.age-tab.active { background: var(--copper); color: var(--bg); }
+.age-tab:hover:not(.active) { background: var(--sur-3); color: var(--ink); }
+
+.script-body {
+  padding: 10px 12px;
+  font-size: var(--t-12);
+  color: var(--ink-2);
+  line-height: 1.7;
+  min-height: 68px;
+}
+
+.empty-script { color: var(--ink-4); font-style: italic; font-size: var(--t-12); }
+.chart-body { padding: 8px 10px 12px; }
+.chart-wrap { position: relative; height: 110px; }
+.no-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  color: var(--ink-4);
+  font-size: var(--t-12);
+}
+
+/* ── Cases section ── */
+.cases-section { margin-top: 2px; }
+
+.cases-title {
+  font-size: var(--t-12);
+  font-weight: 700;
+  color: var(--ink-3);
+  padding: 0 0 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cases-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 7px;
+}
+
+.case-card {
+  background: var(--sur-1);
+  border-radius: var(--r-md);
+  border: 1px solid var(--rule);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color .13s, background .13s;
+}
+.case-card:hover { border-color: var(--copper-rule); background: var(--sur-2); }
+
+.case-level-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--r-full);
+  letter-spacing: .2px;
+}
+.lv-h { background: rgba(224,91,75,.14); color: var(--risk-h); }
+.lv-m { background: rgba(212,149,58,.14); color: var(--risk-m); }
+.lv-l { background: rgba(75,170,130,.14); color: var(--risk-l); }
+
+.case-name  { font-size: var(--t-13); font-weight: 600; color: var(--ink); line-height: 1.4; }
+.case-domain{ font-size: var(--t-11); color: var(--ink-3); margin-top: 1px; }
+.case-snippet {
+  font-size: var(--t-12);
+  color: var(--ink-3);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Rank card ── */
+.rank-card {
+  background: var(--sur-1);
+  border: 1px solid var(--rule-2);
+  border-top: 2px solid var(--copper-dim);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.rank-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px 9px;
+  border-bottom: 1px solid var(--rule);
+}
+.rank-header .icon {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  background: var(--copper-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.rank-header .title { font-size: var(--t-13); font-weight: 700; color: var(--ink); }
+.rank-summary { padding: 9px 16px; font-size: var(--t-13); color: var(--ink-2); line-height: 1.65; border-bottom: 1px solid var(--rule); }
+.rank-list { padding: 4px 0; }
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  transition: background .1s;
+  cursor: pointer;
+}
+.rank-item:hover { background: var(--sur-2); }
+.rank-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.rank-num.top1 { background: var(--copper); color: var(--bg); }
+.rank-num.top2 { background: var(--sur-4); color: var(--ink-2); }
+.rank-num.top3 { background: var(--sur-3); color: var(--ink-3); }
+.rank-num.rest { background: var(--sur-2); color: var(--ink-4); font-size: 10px; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: var(--t-13); font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-meta { display: flex; align-items: center; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
+.rank-meta-tag { font-size: var(--t-11); color: var(--ink-3); }
+.rank-value { flex-shrink: 0; font-size: var(--t-13); font-weight: 700; color: var(--copper-light); text-align: right; min-width: 52px; }
+.rank-bar-wrap { padding: 0 16px 12px; }
+.rank-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.rank-bar-label { font-size: var(--t-11); color: var(--ink-3); width: 88px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-bar-track { flex: 1; height: 5px; background: var(--sur-3); border-radius: var(--r-full); overflow: hidden; }
+.rank-bar-fill { height: 100%; border-radius: var(--r-full); background: var(--copper-dim); transition: width .5s cubic-bezier(.2,0,.4,1); }
+.rank-bar-val { font-size: var(--t-11); color: var(--ink-3); width: 40px; text-align: right; flex-shrink: 0; }
+
+/* ── Platform icons ── */
+.plat-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.pi-weibo  { background: #E11D48; }
+.pi-douyin { background: #222; }
+.pi-xhs    { background: #FF2442; }
+.pi-bili   { background: #00A1D6; }
+.pi-baidu  { background: #2932E1; }
+.pi-wx     { background: #07C160; }
+.pi-default{ background: var(--sur-4); }
+
+/* ── Error state ── */
+.msg-error {
+  background: rgba(224,91,75,.1);
+  border: 1px solid rgba(224,91,75,.28);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.msg-error-icon { font-size: 16px; flex-shrink: 0; line-height: 1.4; }
+.msg-error-text { font-size: var(--t-13); font-weight: 600; color: var(--risk-h); margin-bottom: 4px; }
+.msg-error-hint { font-size: var(--t-12); color: var(--ink-3); }
+
+/* ═══════════════════════════════════════════════
+   INPUT ZONE  (fixed bottom)
+═══════════════════════════════════════════════ */
+.input-zone {
+  flex-shrink: 0;
+  background: linear-gradient(to top, var(--bg) 60%, transparent 100%);
+  padding: 0 20px 20px;
+  z-index: var(--z-input);
+}
+
+.input-inner {
+  max-width: var(--chat-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* ── Chip bar ── */
+.chips-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+  -webkit-overflow-scrolling: touch;
+}
+.chips-bar::-webkit-scrollbar { display: none; }
+
+.chip-label { font-size: var(--t-11); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+
+.sug-chip {
+  padding: 5px 13px;
+  min-height: 30px;
+  border-radius: var(--r-full);
+  font-size: var(--t-12);
+  font-weight: 500;
+  background: var(--sur-2);
+  color: var(--ink-2);
+  border: 1px solid var(--rule-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.sug-chip:hover { background: var(--copper); color: var(--bg); border-color: transparent; }
+
+/* ── Input bar ── */
+.input-bar {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  background: var(--sur-2);
+  border-radius: var(--r-xl);
+  border: 1.5px solid var(--rule-2);
+  padding: 10px 10px 10px 18px;
+  transition: border-color .18s, box-shadow .18s;
+}
+.input-bar:focus-within {
+  border-color: var(--copper-dim);
+  box-shadow: 0 0 0 3px var(--copper-glow);
+}
+
+#chatInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: var(--t-14);
+  font-family: inherit;
+  line-height: 1.55;
+  background: transparent;
+  color: var(--ink);
+  min-height: 22px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+#chatInput::placeholder { color: var(--ink-4); }
+
+.input-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--copper);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: transform .13s, background .13s;
+}
+.send-btn:hover:not(:disabled) { background: var(--copper-light); transform: translateY(-1px); }
+.send-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+/* ═══════════════════════════════════════════════
+   CASE DRAWER
+═══════════════════════════════════════════════ */
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: var(--z-overlay);
+}
+.drawer-overlay.open { display: block; }
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 320px;
+  height: 100%;
+  background: var(--sur-1);
+  border-left: 1px solid var(--rule-2);
+  z-index: var(--z-drawer);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .25s cubic-bezier(.2,0,.3,1);
+  will-change: transform;
+}
+.drawer.open { transform: none; }
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+.drawer-head-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--copper); flex-shrink: 0; }
+.drawer-head-title { font-size: var(--t-13); font-weight: 700; color: var(--ink); flex: 1; }
+
+.drawer-close {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--ink-3);
+  transition: background .12s, color .12s;
+}
+.drawer-close:hover { background: var(--sur-3); color: var(--ink); }
+
+.drawer-body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.filter-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+
+.dp-filter-btn {
+  font-size: var(--t-11);
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--rule-2);
+  background: transparent;
+  color: var(--ink-3);
+  transition: background .12s, color .12s, border-color .12s;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.dp-filter-btn.active { background: var(--copper); color: var(--bg); border-color: transparent; font-weight: 600; }
+.dp-filter-btn:hover:not(.active) { border-color: var(--copper-rule); color: var(--copper); background: var(--copper-glow); }
+
+.case-scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.dp-case {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  border-radius: var(--r-md);
+  margin: 0 2px;
+  transition: background .1s;
+}
+.dp-case:last-child { border-bottom: none; }
+.dp-case:hover { background: var(--sur-2); }
+.dp-case-name {
+  font-size: var(--t-12);
+  font-weight: 600;
+  color: var(--ink-2);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dp-case-meta { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; align-items: center; }
+.dp-case-domain { font-size: 10px; padding: 1px 6px; border-radius: var(--r-full); border: 1px solid; white-space: nowrap; }
+.dp-case-lv { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: var(--r-full); }
+.dp-case-lv.hi { background: rgba(224,91,75,.14); color: var(--risk-h); }
+.dp-case-lv.md { background: rgba(212,149,58,.14); color: var(--risk-m); }
+.dp-case-lv.lo { background: rgba(75,170,130,.14); color: var(--risk-l); }
+
+/* ── Skeleton ── */
+.dp-skeleton {
+  height: 10px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--sur-2) 25%, var(--sur-3) 50%, var(--sur-2) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+  margin-bottom: 8px;
+}
+.dp-skeleton:last-child { width: 60%; margin-bottom: 0; }
+@keyframes shimmer { from { background-position: -200px 0; } to { background-position: 200px 0; } }
+
+/* ═══════════════════════════════════════════════
+   REDUCED MOTION
+═══════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .1ms !important;
+  }
+  .stream-cursor { animation: none; opacity: 1; }
+  .thinking-spin { animation: none; border-top-color: transparent; opacity: .6; }
+  .dp-skeleton   { animation: none; background: var(--sur-2); }
+  .drawer { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .drawer { width: 100%; }
+  :root { --chat-width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="hdr">
+  <a class="hdr-brand" href="home.html" aria-label="青年心盾首页">
+    <div class="hdr-mark" aria-hidden="true">🛡</div>
+    <span class="hdr-name">青年心盾</span>
+  </a>
+
+  <nav class="hdr-nav" aria-label="主导航">
+    <a class="hdr-link" href="home.html">首页</a>
+    <a class="hdr-link" href="index.html">风险检测</a>
+    <a class="hdr-link" href="cases.html">案例库</a>
+    <a class="hdr-link on"  href="chat.html">智能问答</a>
+  </nav>
+
+  <div class="hdr-sep" aria-hidden="true"></div>
+
+  <button class="hdr-btn" onclick="openDrawer()" aria-label="打开典型案例库">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <rect x="2" y="3" width="12" height="10" rx="2"/>
+      <path d="M5 7h6M5 10h4" stroke-linecap="round"/>
+    </svg>
+    案例库
+  </button>
+
+  <button class="hdr-btn" id="modeBtn" onclick="toggleMode()" aria-pressed="false" title="切换问答深度">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="8" cy="8" r="6"/>
+      <path d="M8 5v3l1.5 1.5" stroke-linecap="round"/>
+    </svg>
+    <span id="modeTxt">普通</span>
+  </button>
+
+  <button class="hdr-btn" onclick="clearChat()" aria-label="清空本次对话">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M3 4h10M6 4V3h4v1M5.5 4.5l.5 8M10.5 4.5l-.5 8M8 4.5v8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    清空
+  </button>
+</header>
+
+<!-- ── CHAT SCROLL ── -->
+<div class="chat-scroll" id="chatScroll">
+  <div class="chat-col" id="chatCol">
+
+    <!-- Welcome state -->
+    <div class="welcome" id="welcome">
+      <div class="welcome-hero">
+        <div class="welcome-icon-wrap">
+          <div class="welcome-icon" aria-hidden="true">🛡</div>
+          <div class="welcome-icon-ring" aria-hidden="true"></div>
+        </div>
+        <div>
+          <div class="welcome-title">青年心盾智能助手</div>
+          <div class="welcome-desc">专注青少年心理健康与网络价值观引导，基于专业数据库为您提供分析与建议</div>
+        </div>
+      </div>
+
+      <div class="welcome-stats" aria-label="数据库概况">
+        <div class="welcome-stat">
+          <span class="welcome-stat-num">81</span>
+          <span class="welcome-stat-label">典型案例</span>
+        </div>
+        <div class="welcome-stat-divider" aria-hidden="true"></div>
+        <div class="welcome-stat">
+          <span class="welcome-stat-num">181</span>
+          <span class="welcome-stat-label">引导话术</span>
+        </div>
+        <div class="welcome-stat-divider" aria-hidden="true"></div>
+        <div class="welcome-stat">
+          <span class="welcome-stat-num">59K+</span>
+          <span class="welcome-stat-label">条语料</span>
+        </div>
+      </div>
+
+      <div class="welcome-prompts" role="group" aria-label="推荐问题">
+        <button class="prompt-card" onclick="ask('青少年常见的心理风险有哪些？')">
+          <div class="prompt-icon">🔍</div>
+          <div class="prompt-text">青少年常见的心理风险有哪些？</div>
+        </button>
+        <button class="prompt-card" onclick="ask('不同年龄段青少年的引导策略有何差异？')">
+          <div class="prompt-icon">📋</div>
+          <div class="prompt-text">不同年龄段青少年的引导策略？</div>
+        </button>
+        <button class="prompt-card" onclick="ask('家长和教师如何配合进行心理健康教育？')">
+          <div class="prompt-icon">🤝</div>
+          <div class="prompt-text">家校如何协作开展心理健康教育？</div>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── INPUT ZONE ── -->
+<div class="input-zone">
+  <div class="input-inner">
+    <div class="chips-bar" role="toolbar" aria-label="快捷提问">
+      <span class="chip-label" aria-hidden="true">快速提问</span>
+      <button class="sug-chip" onclick="ask('如何帮助有焦虑情绪的青少年？')">青少年焦虑</button>
+      <button class="sug-chip" onclick="ask('青少年网络游戏沉迷怎么引导？')">网络沉迷引导</button>
+      <button class="sug-chip" onclick="ask('孩子出现厌学情绪如何疏导？')">厌学疏导</button>
+      <button class="sug-chip" onclick="ask('如何识别青少年的抑郁倾向？')">抑郁识别</button>
+      <button class="sug-chip" onclick="ask('青少年如何培养心理韧性？')">心理韧性</button>
+      <button class="sug-chip" onclick="ask('如何帮助青少年树立正确历史观？')">历史观引导</button>
+    </div>
+
+    <div class="input-bar">
+      <textarea id="chatInput" aria-label="输入您的问题" placeholder="请输入您关于青少年心理健康的问题…" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+      <div class="input-actions">
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="发送（Enter）">&#10148;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CASE DRAWER ── -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()" aria-hidden="true"></div>
+
+<aside class="drawer" id="caseDrawer" aria-label="典型案例库">
+  <div class="drawer-head">
+    <span class="drawer-head-dot" aria-hidden="true"></span>
+    <span class="drawer-head-title">典型案例库</span>
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="关闭案例库">×</button>
+  </div>
+  <div class="drawer-body">
+    <div id="dpCaseFilter" class="filter-row"></div>
+    <div id="dpCaseList" class="case-scroll" aria-label="案例列表">
+      <div class="dp-skeleton"></div>
+      <div class="dp-skeleton"></div>
+      <div class="dp-skeleton"></div>
+      <div class="dp-skeleton"></div>
+    </div>
+  </div>
+</aside>
+
+<script>
+const API = location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
+let msgCount = 0;
+let deepMode = false;
+
+// ── Drawer ──
+function openDrawer() {
+  document.getElementById('caseDrawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('caseDrawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+
+// ── Mode toggle ──
+function toggleMode() {
+  deepMode = !deepMode;
+  const btn = document.getElementById('modeBtn');
+  btn.classList.toggle('on', deepMode);
+  btn.setAttribute('aria-pressed', deepMode);
+  document.getElementById('modeTxt').textContent = deepMode ? '深度' : '普通';
+}
+
+// ── Clear chat ──
+function clearChat() {
+  if (!confirm('清空本次会话记录？')) return;
+  const col = document.getElementById('chatCol');
+  col.innerHTML = `
+    <div class="welcome" id="welcome">
+      <div class="welcome-hero">
+        <div class="welcome-icon-wrap">
+          <div class="welcome-icon" aria-hidden="true">🛡</div>
+          <div class="welcome-icon-ring" aria-hidden="true"></div>
+        </div>
+        <div>
+          <div class="welcome-title">青年心盾智能助手</div>
+          <div class="welcome-desc">专注青少年心理健康与网络价值观引导，基于专业数据库为您提供分析与建议</div>
+        </div>
+      </div>
+      <div class="welcome-stats" aria-label="数据库概况">
+        <div class="welcome-stat"><span class="welcome-stat-num">81</span><span class="welcome-stat-label">典型案例</span></div>
+        <div class="welcome-stat-divider" aria-hidden="true"></div>
+        <div class="welcome-stat"><span class="welcome-stat-num">181</span><span class="welcome-stat-label">引导话术</span></div>
+        <div class="welcome-stat-divider" aria-hidden="true"></div>
+        <div class="welcome-stat"><span class="welcome-stat-num">59K+</span><span class="welcome-stat-label">条语料</span></div>
+      </div>
+      <div class="welcome-prompts" role="group" aria-label="推荐问题">
+        <button class="prompt-card" onclick="ask('青少年常见的心理风险有哪些？')">
+          <div class="prompt-icon">🔍</div>
+          <div class="prompt-text">青少年常见的心理风险有哪些？</div>
+        </button>
+        <button class="prompt-card" onclick="ask('不同年龄段青少年的引导策略有何差异？')">
+          <div class="prompt-icon">📋</div>
+          <div class="prompt-text">不同年龄段青少年的引导策略？</div>
+        </button>
+        <button class="prompt-card" onclick="ask('家长和教师如何配合进行心理健康教育？')">
+          <div class="prompt-icon">🤝</div>
+          <div class="prompt-text">家校如何协作开展心理健康教育？</div>
+        </button>
+      </div>
+    </div>`;
+  msgCount = 0;
+}
+
+// ── Platform icons ──
+const PLAT_ICON = {
+  '微博':['pi-weibo','微'], '抖音':['pi-douyin','抖'], '小红书':['pi-xhs','红'],
+  'B站':['pi-bili','B'], 'bilibili':['pi-bili','B'], '百度':['pi-baidu','百'],
+  '微信公众号':['pi-wx','信'], '微信':['pi-wx','信'],
+};
+function platIcon(p) {
+  const [cls, txt] = PLAT_ICON[p||''] || ['pi-default', (p||'').slice(0,1)||'?'];
+  return `<span class="plat-icon ${cls}">${txt}</span>`;
+}
+
+// ── Case panel ──
+const DCLR = {
+  '制度认同风险':'#3D6FD4','历史认知风险':'#EA580C',
+  '心理韧性风险':'#7C3AED','认知闭合风险':'#0891B2','网络素养风险':'#059669'
+};
+const DSHORT = {
+  '制度认同风险':'制度认同','历史认知风险':'历史认知',
+  '心理韧性风险':'心理韧性','认知闭合风险':'认知闭合','网络素养风险':'网络素养'
+};
+let _allCases = [];
+
+async function loadDataPanel() {
+  try {
+    const data = await fetch(`${API}/cases`).then(r=>r.json()).catch(()=>null);
+    if (!data?.cases) return;
+    _allCases = data.cases;
+    renderCaseFilters();
+    renderCaseList('');
+  } catch(e) { console.warn('案例面板加载失败',e); }
+}
+
+function renderCaseFilters() {
+  const domains = [...new Set(_allCases.map(c=>c.risk_domain_l1).filter(Boolean))];
+  const el = document.getElementById('dpCaseFilter');
+  if (!el) return;
+  el.innerHTML = `<button class="dp-filter-btn active" onclick="filterCases('',this)">全部</button>` +
+    domains.map(d =>
+      `<button class="dp-filter-btn" onclick="filterCases('${escHtml(d)}',this)"
+         style="border-color:${hexA(DCLR[d]||'#64748b',.3)};color:${DCLR[d]||'#64748b'}">
+        ${escHtml(DSHORT[d]||d)}
+       </button>`).join('');
+}
+
+window.filterCases = function(domain, btn) {
+  document.querySelectorAll('.dp-filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCaseList(domain);
+};
+
+function renderCaseList(domain) {
+  const el = document.getElementById('dpCaseList');
+  if (!el) return;
+  const list = domain ? _allCases.filter(c=>c.risk_domain_l1===domain) : _allCases;
+  if (!list.length) { el.innerHTML='<div style="font-size:12px;color:var(--ink-4);padding:8px 4px;">暂无案例</div>'; return; }
+  const RLV = {
+    'L4':['极高风险','hi'],'L3':['高风险','hi'],'L2':['中度风险','md'],
+    'L1':['轻度风险','lo'],'L0':['','lo'],
+    '极高风险':['极高风险','hi'],'高风险':['高风险','hi'],
+    '中度风险':['中度风险','md'],'轻度风险':['轻度风险','lo'],'低风险':['','lo']
+  };
+  el.innerHTML = list.map(c => {
+    const [lvTxt,lvCls] = RLV[c.risk_level]||['','lo'];
+    const oc = c.source_url
+      ? `onclick="window.open('${escHtml(c.source_url)}','_blank')"`
+      : `onclick="ask('关于案例「${escHtml(c.case_name||'')}」请给我详细分析');closeDrawer()"`;
+    return `<div class="dp-case" ${oc}>
+      <div class="dp-case-name">${escHtml(c.case_name||'未命名')}</div>
+      <div class="dp-case-meta">
+        ${c.platform?platIcon(c.platform):''}
+        ${c.platform?`<span style="font-size:10px;color:var(--ink-4)">${escHtml(c.platform)}</span>`:''}
+        ${lvTxt?`<span class="dp-case-lv ${lvCls}">${escHtml(lvTxt)}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function hexA(hex,a) {
+  const h=hex.replace('#','');
+  return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;
+}
+
+document.addEventListener('DOMContentLoaded', ()=>loadDataPanel());
+
+// ── Input auto-resize ──
+const chatInput = document.getElementById('chatInput');
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
+});
+
+function ask(q) { chatInput.value = q; sendMessage(); }
+
+function scrollToBottom() {
+  const el = document.getElementById('chatScroll');
+  el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+}
+
+// ── Append user message ──
+function appendUserMsg(text) {
+  document.getElementById('welcome')?.remove();
+  const div = document.createElement('div');
+  div.className = 'msg-row user';
+  div.innerHTML = `
+    <div class="bubble user">${escHtml(text)}</div>
+    <div class="avatar user" aria-hidden="true">你</div>`;
+  document.getElementById('chatCol').appendChild(div);
+  scrollToBottom();
+}
+
+// ══════════════════════════════════════════
+//  RICH REPLY RENDERING
+// ══════════════════════════════════════════
+const RISK_LABEL = {
+  'L4':['极高风险','lv-h'],'L3':['高风险','lv-h'],'L2':['中度风险','lv-m'],
+  'L1':['轻度风险','lv-l'],'L0':['','lv-l'],
+  '极高风险':['极高风险','lv-h'],'高风险':['高风险','lv-h'],
+  '中度风险':['中度风险','lv-m'],'轻度风险':['轻度风险','lv-l'],'低风险':['','lv-l']
+};
+
+function buildCaseCards(cases) {
+  if (!cases.length) return '';
+  return `<div class="cases-section">
+    <div class="cases-title">📂 相关典型案例</div>
+    <div class="cases-grid">` +
+    cases.map(c => {
+      const rl = RISK_LABEL[c.risk_level]||['未知','lv-l'];
+      const oc = c.source_url?`onclick="window.open('${escHtml(c.source_url)}','_blank')"`:'';
+      return `<div class="case-card" ${oc}>
+        <div><span class="case-level-badge ${rl[1]}">${rl[0]}</span></div>
+        <div class="case-name">${escHtml(c.case_name||'')}</div>
+        <div class="case-domain">${escHtml(c.risk_domain||'')} · ${escHtml(c.risk_type||'')}</div>
+        <div class="case-snippet">${escHtml(c.representative_text||'暂无摘要')}</div>
+      </div>`;
+    }).join('') + `</div></div>`;
+}
+
+function buildRankCard(data) {
+  const cases = data.top_cases||[];
+  const pf = data.platform_filter?`· ${data.platform_filter}`:'';
+  function getVal(c) {
+    const f=data.order_field||'total_interaction';
+    return f==='total_interaction'?c.total_interaction||0:f==='avg_risk_score'?c.avg_risk_score||0:c.case_priority_score||0;
+  }
+  const maxVal = Math.max(...cases.map(getVal),1);
+  const listItems = cases.map((c,i)=>{
+    const val=getVal(c);
+    const rl=RISK_LABEL[c.risk_level]||['未知','lv-l'];
+    const nc=['top1','top2','top3'][i]||'rest';
+    const ni=['🥇','🥈','🥉'][i]||`${i+1}`;
+    const oc=c.source_url?`onclick="window.open('${escHtml(c.source_url)}','_blank')"` :'';
+    return `<div class="rank-item" ${oc}>
+      <div class="rank-num ${nc}">${ni}</div>
+      <div class="rank-info">
+        <div class="rank-name">${escHtml(c.case_name||'')}</div>
+        <div class="rank-meta">
+          <span class="case-level-badge ${rl[1]}">${rl[0]}</span>
+          ${c.platform?`<span class="rank-meta-tag">${escHtml(c.platform)}</span>`:''}
+          ${c.risk_domain_l1?`<span class="rank-meta-tag">${escHtml(c.risk_domain_l1)}</span>`:''}
+        </div>
+      </div>
+      <div class="rank-value">${Number(val).toLocaleString()}</div>
+    </div>`;
+  }).join('');
+  const barRows = cases.slice(0,5).map(c=>{
+    const val=getVal(c), pct=maxVal>0?Math.round(val/maxVal*100):0;
+    const name=(c.case_name||'').slice(0,10)+((c.case_name||'').length>10?'…':'');
+    return `<div class="rank-bar-row">
+      <div class="rank-bar-label" title="${escHtml(c.case_name||'')}">${escHtml(name)}</div>
+      <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
+      <div class="rank-bar-val">${Number(val).toLocaleString()}</div>
+    </div>`;
+  }).join('');
+  return `<div class="rank-card">
+    <div class="rank-header"><div class="icon">🏆</div><div class="title">案例排行 · 按${escHtml(data.order_label||'互动量')}${escHtml(pf)}</div></div>
+    <div class="rank-summary">${escHtml(data.summary||'')}</div>
+    ${cases.length===0?'<div class="no-chart" style="padding:20px;">暂无数据</div>':''}
+    <div class="rank-list">${listItems}</div>
+    ${barRows?`<div class="rank-bar-wrap">${barRows}</div>`:''}
+  </div>`;
+}
+
+function buildScriptChart(data, msgId) {
+  const scripts=data.scripts||{}, chartData=data.domain_chart||[];
+  const ageKeys=['6-12岁','13-15岁','16-18岁'];
+  const tabsId='rtabs-'+msgId, sbodyId='rsbody-'+msgId, chartId='rchart-'+msgId;
+  const hasScripts=ageKeys.some(a=>scripts[a]?.content);
+
+  function scriptBodyFor(al) {
+    const s=scripts[al];
+    if(!s?.content) return `<div class="empty-script">暂无该年龄段话术</div>`;
+    return escHtml(s.content)+(s.follow_up?`<br><small style="color:var(--ink-3)">${escHtml(s.follow_up)}</small>`:'');
+  }
+  window['__sBodyFn_'+msgId]=scriptBodyFor;
+
+  const scriptCardHtml=hasScripts?`
+    <div class="script-card">
+      <div class="card-header"><span class="card-header-icon">📝</span> 引导话术（分龄）</div>
+      <div class="age-tabs" id="${tabsId}">` +
+      ageKeys.map((a,i)=>`<button class="age-tab ${i===1?'active':''}" onclick="switchAgeR('${tabsId}','${sbodyId}','${a}',this)">${a}</button>`).join('')+
+      `</div><div class="script-body" id="${sbodyId}">${scriptBodyFor('13-15岁')}</div></div>`:'';
+
+  const chartCardHtml=chartData.length?`
+    <div class="chart-card">
+      <div class="card-header"><span class="card-header-icon">📊</span> 关注域分布</div>
+      <div class="chart-body"><div class="chart-wrap"><canvas id="${chartId}"></canvas></div></div>
+    </div>`:'';
+
+  if (chartData.length) {
+    requestAnimationFrame(()=>{
+      const ctx=document.getElementById(chartId);
+      if(!ctx)return;
+      new Chart(ctx,{
+        type:'bar',
+        data:{
+          labels:chartData.map(d=>d.domain.replace('风险','')),
+          datasets:[{data:chartData.map(d=>d.score),
+            backgroundColor:['rgba(201,123,58,.7)','rgba(75,170,130,.7)','rgba(200,80,80,.65)','rgba(80,140,200,.65)','rgba(180,140,60,.65)'],
+            borderRadius:3,borderSkipped:false}]
+        },
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{font:{size:9},color:'rgba(255,255,255,.35)'}},
+            y:{ticks:{font:{size:10},color:'rgba(255,255,255,.5)'},grid:{display:false}}
+          }
+        }
+      });
+    });
+  }
+  return (scriptCardHtml||chartCardHtml)?`<div class="cards-row">${scriptCardHtml}${chartCardHtml}</div>`:'';
+}
+
+// ── Stream send ──
+async function sendMessage() {
+  const q = chatInput.value.trim();
+  if (!q) return;
+  const sendBtn = document.getElementById('sendBtn');
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  sendBtn.disabled = true;
+  appendUserMsg(q);
+
+  const msgId = 'msg-' + (++msgCount);
+  const thinkId  = 'think-'  + msgId;
+  const tstepsId = 'tsteps-' + msgId;
+  const tspinId  = 'tspin-'  + msgId;
+  const tstatId  = 'tstat-'  + msgId;
+  const ansId    = 'ans-'    + msgId;
+  const cardsId  = 'cards-'  + msgId;
+
+  const msgEl = document.createElement('div');
+  msgEl.id = msgId;
+  msgEl.className = 'msg-row';
+  msgEl.innerHTML = `
+    <div class="avatar ai" aria-hidden="true">AI</div>
+    <div class="reply-block">
+      <div class="thinking-wrap folded" id="${thinkId}">
+        <div class="thinking-header" onclick="toggleThinking('${thinkId}')">
+          <div class="thinking-icon">🧠</div>
+          <span class="thinking-title">思考中</span>
+          <span class="thinking-status" id="${tstatId}">分析中…</span>
+          <div class="thinking-spin" id="${tspinId}"></div>
+          <span class="thinking-toggle">▼</span>
+        </div>
+        <div class="thinking-steps" id="${tstepsId}"></div>
+      </div>
+      <div class="answer-streaming" id="${ansId}" style="display:none"></div>
+      <div id="${cardsId}"></div>
+    </div>`;
+  document.getElementById('chatCol').appendChild(msgEl);
+  scrollToBottom();
+
+  let thinkingDone = false;
+  let answerText = '';
+
+  function addStep(text, isTool, preview) {
+    const el = document.getElementById(tstatId);
+    if (el) el.textContent = text.length>24?text.slice(0,22)+'…':text;
+    const stepsEl = document.getElementById(tstepsId);
+    const step = document.createElement('div');
+    step.className = 'thinking-step' + (isTool?' step-tool':'');
+    const icon = isTool?'🔧':(text.startsWith('✓')?'✅':'◎');
+    step.innerHTML = `
+      <span class="step-icon">${icon}</span>
+      <div class="step-text">${escHtml(text)}${preview?`<div class="step-preview">${escHtml(preview)}</div>`:''}</div>`;
+    stepsEl.appendChild(step);
+    scrollToBottom();
+  }
+
+  function finalizeThinking() {
+    thinkingDone = true;
+    document.getElementById(tspinId)?.classList.add('done');
+    const titleEl = document.getElementById(thinkId)?.querySelector('.thinking-title');
+    if (titleEl) titleEl.textContent = '已完成';
+    const statEl = document.getElementById(tstatId);
+    if (statEl) statEl.style.color = 'var(--ink-4)';
+  }
+
+  function appendChunk(text) {
+    const el = document.getElementById(ansId);
+    if (!el) return;
+    if (el.style.display==='none') { el.style.display='block'; el.innerHTML='<span class="stream-cursor"></span>'; }
+    answerText += text;
+    const cur = el.querySelector('.stream-cursor');
+    if (cur) cur.before(document.createTextNode(text));
+    else el.textContent += text;
+    scrollToBottom();
+  }
+
+  function renderCards(data) {
+    const container = document.getElementById(cardsId);
+    if (!container) return;
+    document.getElementById(ansId)?.querySelector('.stream-cursor')?.remove();
+
+    if (data.type==='data_query') {
+      container.innerHTML = buildRankCard(data);
+      return;
+    }
+
+    const kpHtml = (data.key_points||[]).length
+      ? `<div class="key-points">`+
+        (data.key_points||[]).map(p=>`<div class="kp-item"><div class="kp-dot"></div><span>${escHtml(p)}</span></div>`).join('')+
+        `</div>`:'' ;
+
+    const tagsHtml = (data.tags||[]).length
+      ? `<div style="padding:0 15px 10px;"><div class="tags-row">`+
+        (data.tags||[]).map(t=>`<span class="tag-chip">${escHtml(t.keyword||'')}</span>`).join('')+
+        `</div></div>`:'' ;
+
+    container.innerHTML =
+      kpHtml +
+      tagsHtml +
+      buildScriptChart(data, msgId) +
+      buildCaseCards(data.cases||[]);
+  }
+
+  try {
+    const resp = await fetch(`${API}/chat/stream`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ question: q, age_group: '13-15' }),
+    });
+    if (!resp.ok) throw new Error('服务异常 ' + resp.status);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (!raw||raw==='[DONE]') continue;
+        try {
+          const ev = JSON.parse(raw);
+          if (ev.type==='heartbeat')      continue;
+          if (ev.type==='thinking')       addStep(ev.text, false, null);
+          else if(ev.type==='thinking_tool') addStep(ev.text, true, ev.preview||null);
+          else if(ev.type==='thinking_done') finalizeThinking();
+          else if(ev.type==='answer_chunk')  appendChunk(ev.text);
+          else if(ev.type==='result')        renderCards(ev.data);
+          else if(ev.type==='error')         addStep('⚠️ '+(ev.text||'出错'),false,null);
+        } catch{}
+      }
+    }
+    if (!thinkingDone) finalizeThinking();
+
+  } catch(e) {
+    const eStr = String(e);
+    const errMsg = (eStr.includes('服务异常')||eStr.includes('50'))
+      ? '服务暂时不可用，请稍后再试'
+      : (eStr.includes('fetch')||eStr.includes('NetworkError'))
+      ? '网络连接失败，请检查网络后重试'
+      : '请求出错，请稍后重试';
+    const row = document.getElementById(msgId);
+    if (row) {
+      row.querySelector('.reply-block').innerHTML = `
+        <div class="msg-error">
+          <span class="msg-error-icon">⚠️</span>
+          <div>
+            <div class="msg-error-text">${escHtml(errMsg)}</div>
+            <div class="msg-error-hint">您的问题已保留在输入框，可直接重新发送。</div>
+          </div>
+        </div>`;
+    }
+    if (!chatInput.value.trim()) chatInput.value = q;
+  } finally {
+    sendBtn.disabled = false;
+    chatInput.focus();
+    scrollToBottom();
+  }
+}
+
+window.toggleThinking = function(id) {
+  document.getElementById(id)?.classList.toggle('folded');
+};
+
+window.switchAgeR = function(tabsId, bodyId, ageLabel, btn) {
+  document.getElementById(tabsId).querySelectorAll('.age-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const msgId = tabsId.replace('rtabs-','');
+  const fn = window['__sBodyFn_'+msgId];
+  if (fn) document.getElementById(bodyId).innerHTML = fn(ageLabel);
+};
+
+function escHtml(s) {
+  if (typeof s!=='string') return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function formatAnswer(text) {
+  if (!text) return '';
+  return text.split(/\n+/).map(p=>p.trim()).filter(Boolean)
+    .map(p=>`<p style="margin-bottom:8px;">${escHtml(p)}</p>`).join('');
+}
+</script>
+</body>
+</html>

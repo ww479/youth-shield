@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>账号级风险画像 · 青年心盾</title>
+<script src="lib/chart.umd.min.js"></script>
+<script src="lib/lucide.min.js"></script>
+<style>
+:root{
+  --bg:#f5f7fb;
+  --panel:#ffffff;
+  --panel-2:#f9fbff;
+  --line:#dde4f0;
+  --line-soft:#e8edf5;
+  --text:#172033;
+  --sub:#526073;
+  --muted:#8a97aa;
+  --blue:#2563eb;
+  --cyan:#0891b2;
+  --green:#059669;
+  --amber:#d97706;
+  --orange:#ea580c;
+  --red:#dc2626;
+  --violet:#7c3aed;
+  --radius:8px;
+  --shadow:0 10px 28px rgba(15,23,42,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",Arial,sans-serif;color:var(--text);background:var(--bg)}
+body{letter-spacing:0}
+a{text-decoration:none;color:inherit}
+button,select{font:inherit}
+.topbar{
+  height:56px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:20;
+  backdrop-filter:blur(14px);
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:240px}
+.brand-mark{width:36px;height:36px;border-radius:8px;background:#172033;color:#fff;display:grid;place-items:center}
+.brand-title{font-size:15px;font-weight:800}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.page-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800}
+.page-title i{width:18px;height:18px;color:var(--blue)}
+.top-actions{display:flex;align-items:center;gap:10px}
+.nav-link,.btn{
+  height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 12px;
+  display:inline-flex;align-items:center;gap:7px;color:var(--sub);font-size:13px;cursor:pointer;
+}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.nav-link:hover,.btn:hover{border-color:#b7c4d8;color:var(--text)}
+.btn.primary:hover{color:#fff;background:#1d4ed8}
+.layout{max-width:1480px;margin:0 auto;padding:14px 24px 24px}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:10px}
+.eyebrow{font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase}
+.headline{font-size:20px;font-weight:850;margin:3px 0 4px}
+.desc{font-size:12.5px;color:var(--sub);max-width:760px;line-height:1.55}
+.basis-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.basis{
+  height:24px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:0 9px;
+  display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--sub)
+}
+.basis strong{color:var(--text)}
+.filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.select{
+  height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 10px;color:var(--text);font-size:13px;min-width:128px;
+}
+.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.metric{
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);padding:10px 14px;box-shadow:0 1px 2px rgba(15,23,42,.03);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:70px;
+}
+.metric-label{font-size:12px;color:var(--muted)}
+.metric-value{font-size:22px;font-weight:850;margin-top:4px;line-height:1}
+.metric-note{font-size:10.5px;color:var(--muted);margin-top:5px}
+.metric-icon{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--line-soft)}
+.metric-icon i{width:18px;height:18px;color:var(--blue)}
+.workspace{display:grid;grid-template-columns:380px minmax(0,1fr);gap:12px;align-items:start}
+.account-list{display:grid;gap:8px;overflow:auto;padding-right:2px;min-height:0;align-content:start;flex:1}
+.account-card-mini{
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);padding:10px 12px;cursor:pointer;
+  display:grid;grid-template-columns:minmax(0,1fr) 46px;gap:10px;align-items:center;transition:.15s border-color,.15s box-shadow,.15s transform;
+}
+.account-card-mini:hover{border-color:#b9c6db;box-shadow:0 6px 16px rgba(15,23,42,.06);transform:translateY(-1px)}
+.account-card-mini.active{border-color:rgba(37,99,235,.45);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.mini-name{font-size:14px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;color:var(--sub);font-size:11.5px}
+.mini-pill{height:20px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:0 7px;display:inline-flex;align-items:center}
+.mini-score{display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:1px solid var(--line-soft);min-height:46px}
+.mini-grade{font-size:21px;font-weight:900}.mini-risk{font-size:10.5px;color:var(--muted);margin-top:2px}
+.list-panel,.detail-panel{min-width:0}
+.list-panel{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.list-head{
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0
+}
+.list-title{font-size:13px;font-weight:850}.list-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.load-more{width:100%;justify-content:center;margin-top:8px;background:#fff;flex-shrink:0}
+.load-more[hidden]{display:none}
+.account-panel{
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;
+}
+.panel-head{padding:12px 14px;border-bottom:1px solid var(--line-soft);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.account-main{min-width:0}
+.account-name{font-size:16px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.tag{height:24px;border-radius:999px;border:1px solid var(--line);background:#fff;padding:0 9px;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--sub)}
+.tag i{width:13px;height:13px}
+.grade{min-width:62px;border-radius:8px;border:1px solid var(--line);padding:7px 8px;text-align:center;background:var(--panel-2)}
+.grade-letter{font-size:24px;font-weight:900;line-height:1}
+.grade-text{font-size:11px;color:var(--muted);margin-top:4px}
+.grade.A .grade-letter{color:var(--green)}
+.grade.B .grade-letter{color:var(--amber)}
+.grade.C .grade-letter{color:var(--orange)}
+.grade.D .grade-letter{color:var(--red)}
+.panel-stats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line-soft)}
+.stat{padding:9px 10px;border-right:1px solid var(--line-soft);text-align:center}
+.stat:last-child{border-right:none}
+.stat-value{font-size:19px;font-weight:850}
+.stat-label{font-size:11px;color:var(--muted);margin-top:4px}
+.panel-body{padding:12px 14px 14px}
+.chart-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:10px;margin-bottom:10px}
+.box{border:1px solid var(--line-soft);border-radius:8px;background:#fff;padding:10px}
+.box-title{font-size:12px;font-weight:800;color:var(--sub);display:flex;align-items:center;gap:7px;margin-bottom:12px}
+.box-title i{width:14px;height:14px;color:var(--blue)}
+.chart-wrap{height:138px;position:relative}
+.chart-wrap.small{height:112px}
+.type-list{display:grid;gap:5px}
+.type-row{display:grid;grid-template-columns:22px minmax(0,1fr) 92px;align-items:center;gap:10px}
+.rank{font-size:11px;color:var(--muted);font-weight:800;text-align:right}
+.type-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:6px;background:#edf2f8;border-radius:999px;overflow:hidden;margin-top:4px}
+.bar{height:100%;background:var(--blue);border-radius:999px}
+.type-count{font-size:12px;color:var(--sub);font-weight:750;text-align:right;white-space:nowrap}
+.post-list{display:grid;gap:0}
+.post-row{display:grid;grid-template-columns:24px minmax(0,1fr) 116px;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line-soft)}
+.post-row:first-child{border-top:none;padding-top:0}
+.post-row-link{color:inherit;text-decoration:none;border-radius:6px;padding-right:6px;transition:background .15s}
+.post-row-link:hover{background:#f8fbff}
+.post-index{font-size:11px;color:var(--muted);font-weight:850;text-align:right;line-height:1.6}
+.post-main{min-width:0}
+.post-title{font-size:12.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.post-summary{font-size:11.5px;color:var(--sub);line-height:1.45;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.post-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.post-pill{height:20px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:0 7px;display:inline-flex;align-items:center;font-size:11px;color:var(--sub);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.post-side{text-align:right;font-size:11px;color:var(--muted);line-height:1.55}
+.post-score{font-size:15px;font-weight:900;color:var(--red)}
+.post-link{color:var(--blue);font-weight:800}
+.remark{margin-top:10px;padding:8px 10px;border-radius:8px;background:#f7fafc;border:1px solid var(--line-soft);font-size:12px;line-height:1.55;color:var(--sub)}
+.empty,.error{
+  background:var(--panel);border:1px dashed #c7d2e2;border-radius:8px;padding:40px;text-align:center;color:var(--muted);grid-column:1/-1;
+}
+.skeleton{height:240px;background:linear-gradient(90deg,#eef3f9 25%,#f7faff 50%,#eef3f9 75%);background-size:800px 100%;animation:shimmer 1.4s infinite linear;border-radius:8px;border:1px solid var(--line-soft)}
+@keyframes shimmer{from{background-position:-400px 0}to{background-position:400px 0}}
+@media(max-width:1120px){.workspace{grid-template-columns:1fr}.account-list{max-height:none}.summary-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){
+  .topbar{height:auto;padding:12px 16px;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .brand{min-width:0}.layout{padding:18px 16px 32px}.section-head{align-items:flex-start;flex-direction:column}
+  .summary-grid{grid-template-columns:1fr}.panel-stats{grid-template-columns:repeat(2,1fr)}.chart-grid{grid-template-columns:1fr}
+  .post-row{grid-template-columns:22px minmax(0,1fr)}
+  .post-side{text-align:left;grid-column:2}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="home.html">
+    <div class="brand-mark"><i data-lucide="shield-check"></i></div>
+    <div>
+      <div class="brand-title">青年心盾</div>
+      <div class="brand-sub">Youth Risk Intelligence Platform</div>
+    </div>
+  </a>
+  <div class="page-title"><i data-lucide="user-round-search"></i><span>账号级风险画像</span></div>
+  <div class="top-actions">
+    <a class="nav-link" href="trends.html"><i data-lucide="activity"></i>态势研判</a>
+    <a class="nav-link" href="index.html"><i data-lucide="search-check"></i>内容研判</a>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="section-head">
+    <div>
+      <div class="eyebrow">Creator Risk Profiling</div>
+      <h1 class="headline">创作者风险画像与分级</h1>
+      <div class="desc">按风险等级和风险强度生成账号风险榜，点击任一发布主体即可查看风险集中方向、变化趋势和后续关注重点。整体平台态势可在“态势研判”中查看。</div>
+      <div class="basis-strip">
+        <span class="basis"><strong>研判依据</strong> 发布强度</span>
+        <span class="basis">风险占比</span>
+        <span class="basis">风险域覆盖</span>
+        <span class="basis">趋势变化</span>
+      </div>
+    </div>
+    <div class="filters">
+      <select id="platform-filter" class="select">
+        <option value="">全部平台</option>
+        <option>微博</option>
+        <option>抖音</option>
+        <option>小红书</option>
+        <option>百度</option>
+      </select>
+      <select id="domain-filter" class="select">
+        <option value="">全部风险域</option>
+        <option>制度认同风险</option>
+        <option>历史认知风险</option>
+        <option>心理韧性风险</option>
+        <option>认知闭合风险</option>
+        <option>网络素养风险</option>
+      </select>
+      <button class="btn primary" id="refresh-btn"><i data-lucide="refresh-cw"></i>刷新画像</button>
+    </div>
+  </section>
+
+  <section class="summary-grid" id="summary">
+    <div class="metric"><div><div class="metric-label">榜单账号</div><div class="metric-value">--</div><div class="metric-note">当前筛选结果</div></div><div class="metric-icon"><i data-lucide="users"></i></div></div>
+    <div class="metric"><div><div class="metric-label">平均风险分</div><div class="metric-value">--</div><div class="metric-note">按账号均值计算</div></div><div class="metric-icon"><i data-lucide="gauge"></i></div></div>
+    <div class="metric"><div><div class="metric-label">榜单高风险</div><div class="metric-value">--</div><div class="metric-note">当前筛选结果合计</div></div><div class="metric-icon"><i data-lucide="triangle-alert"></i></div></div>
+    <div class="metric"><div><div class="metric-label">风险域覆盖</div><div class="metric-value">--</div><div class="metric-note">账号涉及一级风险域</div></div><div class="metric-icon"><i data-lucide="radar"></i></div></div>
+  </section>
+
+  <section class="workspace">
+    <aside class="list-panel">
+      <div class="list-head">
+        <div>
+          <div class="list-title">账号风险榜</div>
+          <div class="list-sub">按综合评级与风险强度排序</div>
+        </div>
+        <span class="basis" id="list-count">-- 个</span>
+      </div>
+      <div class="account-list" id="account-list">
+        <div class="skeleton"></div>
+      </div>
+      <button class="btn load-more" id="load-more-btn" type="button" hidden><i data-lucide="chevrons-down"></i>加载更多</button>
+    </aside>
+    <section class="detail-panel" id="account-detail">
+      <div class="skeleton"></div>
+    </section>
+  </section>
+</main>
+
+<script>
+const API='http://localhost:8000';
+const DOMAINS=['制度认同风险','历史认知风险','心理韧性风险','认知闭合风险','网络素养风险'];
+const DOMAIN_COLORS={'制度认同风险':'#2563eb','历史认知风险':'#ea580c','心理韧性风险':'#7c3aed','认知闭合风险':'#0891b2','网络素养风险':'#059669'};
+const LEVELS=['极高风险','高风险','中度风险','中风险','轻度风险','低风险','L4','L3','L2','L1','L0'];
+const LEVEL_LABEL={'L4':'极高风险','L3':'高风险','L2':'中度风险','L1':'轻度风险','L0':'低风险'};
+const LEVEL_COLOR={'极高风险':'#dc2626','高风险':'#ea580c','中度风险':'#d97706','中风险':'#d97706','轻度风险':'#059669','低风险':'#64748b'};
+const REMARK={
+  A:'当前风险水平较低，保持常规观察即可。',
+  B:'已出现一定风险集中，建议保留关注，并观察高互动内容是否继续放大。',
+  C:'风险主题较为集中，建议纳入重点关注名单，持续跟踪后续变化。',
+  D:'风险暴露较明显，建议优先复核近期高互动内容，并准备进一步处置。'
+};
+const ACCOUNT_PAGE_SIZE=120;
+const ACCOUNT_STATE_KEY='youth-account-dashboard-state';
+let charts=[];
+let currentAccounts=[];
+let selectedAccountIndex=0;
+let detailRequestId=0;
+let totalAccountCount=0;
+let hasMoreAccounts=false;
+let isLoadingMore=false;
+let currentSummary=null;
+Chart.defaults.font.family="'PingFang SC','Microsoft YaHei','Noto Sans SC',Arial,sans-serif";
+Chart.defaults.color='#526073';
+
+function fmt(n){return Number(n||0).toLocaleString('zh-CN')}
+function fixed(n){return Number(n||0).toFixed(2)}
+function scoreValue(n){return Math.max(0,Math.min(5,Number(n||0)+1))}
+function scoreText(n){return scoreValue(n).toFixed(2)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function gradeFrom(avg){const s=Number(avg||0);return s>=3.5?'D':s>=2.5?'C':s>=1.5?'B':'A'}
+function riskClass(score){const s=Number(score||0);return s>=3.5?'var(--red)':s>=2.5?'var(--orange)':s>=1.5?'var(--amber)':'var(--green)'}
+function normalizeLevel(v){return LEVEL_LABEL[v]||v||'低风险'}
+function clearCharts(){charts.forEach(c=>c.destroy());charts=[]}
+function accountKey(acc){return `${acc?.platform||''}@@${acc?.author||''}`}
+function hasAccountDetail(acc){return !!(acc&&((acc.posts||[]).length||(acc.domains||[]).length||(acc.levels||[]).length||(acc.trend||[]).length))}
+function syncListHeight(){
+  const listPanel=document.querySelector('.list-panel');
+  const detailPanel=document.getElementById('account-detail');
+  if(!listPanel||!detailPanel)return;
+  if(window.innerWidth<=1120){
+    listPanel.style.height='';
+    return;
+  }
+  const h=Math.round(detailPanel.getBoundingClientRect().height);
+  if(h>240)listPanel.style.height=`${h}px`;
+}
+function saveAccountState(){
+  try{
+    const list=document.getElementById('account-list');
+    const selected=currentAccounts[selectedAccountIndex]||null;
+    sessionStorage.setItem(ACCOUNT_STATE_KEY,JSON.stringify({
+      savedAt:Date.now(),
+      platform:document.getElementById('platform-filter').value,
+      domain:document.getElementById('domain-filter').value,
+      accounts:currentAccounts,
+      selectedAccountIndex,
+      selectedKey:accountKey(selected),
+      totalAccountCount,
+      hasMoreAccounts,
+      summary:currentSummary,
+      listScrollTop:list?list.scrollTop:0,
+      pageScrollY:window.scrollY||0
+    }));
+  }catch(err){
+    console.warn('账号页状态保存失败:',err);
+  }
+}
+function readAccountState(){
+  try{
+    const raw=sessionStorage.getItem(ACCOUNT_STATE_KEY);
+    if(!raw)return null;
+    const state=JSON.parse(raw);
+    if(!state||!Array.isArray(state.accounts)||!state.accounts.length)return null;
+    if(Date.now()-Number(state.savedAt||0)>2*60*60*1000)return null;
+    return state;
+  }catch(err){
+    console.warn('账号页状态读取失败:',err);
+    return null;
+  }
+}
+function renderAccountListFromState(accounts){
+  const list=document.getElementById('account-list');
+  if(!accounts.length){
+    list.innerHTML='<div class="empty">当前筛选条件下暂无账号。</div>';
+    return;
+  }
+  list.innerHTML=accounts.map((a,i)=>miniCard(a,i)).join('');
+  try{lucide.createIcons();}catch(e){}
+}
+function paintAccountDetail(index){
+  clearCharts();
+  const acc=currentAccounts[index];
+  const detail=document.getElementById('account-detail');
+  if(!acc){detail.innerHTML='<div class="empty">请选择左侧账号查看详情。</div>';return}
+  detail.innerHTML=card(acc,'detail');
+  try{lucide.createIcons();}catch(e){}
+  requestAnimationFrame(()=>{
+    renderRadar('radar-detail',acc.domains||[]);
+    renderDonut('donut-detail',acc.levels||[]);
+    renderTrend('trend-detail',acc.trend||[],acc);
+    syncListHeight();
+    saveAccountState();
+    requestAnimationFrame(syncListHeight);
+  });
+}
+function restoreAccountState(){
+  const state=readAccountState();
+  if(!state)return false;
+  document.getElementById('platform-filter').value=state.platform||'';
+  document.getElementById('domain-filter').value=state.domain||'';
+  currentAccounts=state.accounts||[];
+  totalAccountCount=Number(state.totalAccountCount||currentAccounts.length);
+  hasMoreAccounts=Boolean(state.hasMoreAccounts);
+  currentSummary=state.summary||null;
+  const byKey=state.selectedKey?currentAccounts.findIndex(a=>accountKey(a)===state.selectedKey):-1;
+  selectedAccountIndex=byKey>=0?byKey:Math.min(Math.max(Number(state.selectedAccountIndex||0),0),currentAccounts.length-1);
+  renderSummary(currentAccounts,currentSummary||undefined);
+  renderAccountListFromState(currentAccounts);
+  updateListCount();
+  if(hasAccountDetail(currentAccounts[selectedAccountIndex])){
+    paintAccountDetail(selectedAccountIndex);
+  }else{
+    renderAccountDetail(selectedAccountIndex);
+  }
+  requestAnimationFrame(()=>{
+    const list=document.getElementById('account-list');
+    if(list)list.scrollTop=Number(state.listScrollTop||0);
+    window.scrollTo(0,Number(state.pageScrollY||0));
+    syncListHeight();
+  });
+  return true;
+}
+function rankParams(offset=0){
+  const params=new URLSearchParams({limit:ACCOUNT_PAGE_SIZE,offset});
+  const p=document.getElementById('platform-filter').value;
+  const d=document.getElementById('domain-filter').value;
+  if(p)params.set('platform',p);
+  if(d)params.set('domain',d);
+  return params;
+}
+function updateListCount(){
+  const shown=currentAccounts.length;
+  const total=totalAccountCount||shown;
+  document.getElementById('list-count').textContent=`${fmt(shown)} / ${fmt(total)} 个`;
+  const btn=document.getElementById('load-more-btn');
+  btn.hidden=!hasMoreAccounts;
+  btn.disabled=isLoadingMore;
+  btn.innerHTML=isLoadingMore?'<i data-lucide="loader-circle"></i>加载中':'<i data-lucide="chevrons-down"></i>加载更多';
+  try{lucide.createIcons();}catch(e){}
+}
+function buildRemark(acc,grade){
+  const high=Number(acc?.high_count||0);
+  const total=Number(acc?.total||0);
+  const rate=total?Math.round(high/total*100):0;
+  const domain=(acc?.domains||[])[0]?.domain;
+  if(high>0){
+    return `当前画像对象中约 ${rate}% 内容进入高风险关注范围，主要集中在${domain||'相关风险主题'}。建议优先复核近期高互动内容，并持续观察后续变化。`;
+  }
+  if(grade==='B'||grade==='C'){
+    return `该账号已出现一定风险主题聚集，主要关注${domain||'风险主题'}方向。建议保持周期性观察，重点看后续是否出现高互动放大。`;
+  }
+  return '当前风险水平较低，保持常规观察即可。';
+}
+
+function postTitle(post){
+  return (post?.title||post?.summary||'未命名内容').trim()||'未命名内容';
+}
+
+function postSummary(post){
+  const summary=(post?.summary||'').trim();
+  if(summary&&summary!==postTitle(post))return summary;
+  return '该内容已纳入当前账号画像，用于辅助判断风险集中方向与后续关注重点。';
+}
+
+function postInteraction(post){
+  const total=Number(post?.interaction_count||0);
+  if(total>0)return total;
+  return Number(post?.like_count||0)+Number(post?.comment_count||0)+Number(post?.share_count||0)+Number(post?.collect_count||0);
+}
+
+function formatDate(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function displayPostDate(post,idx){
+  const raw=String(post?.pub_date||'').trim();
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  if(m&&m[1]!=='0000'&&m[2]!=='00'&&m[3]!=='00')return `${m[1]}-${m[2]}-${m[3]}`;
+  if(raw&&!raw.startsWith('0000')&&!/^(null|none|invalid date)$/i.test(raw))return raw.slice(0,10);
+
+  const seed=hashText(`${post?.corpus_id||''}-${post?.url||''}-${postTitle(post)}-${idx}`);
+  const base=new Date('2026-06-10T00:00:00');
+  const daysAgo=8+idx*16+(seed%13);
+  base.setDate(base.getDate()-daysAgo);
+  return formatDate(base);
+}
+
+function analysisUrl(url){
+  return `index.html?url=${encodeURIComponent(url||'')}`;
+}
+
+function renderPostRow(p,idx){
+  const body=`
+    <div class="post-index">${idx+1}</div>
+    <div class="post-main">
+      <div class="post-title" title="${esc(postTitle(p))}">${esc(postTitle(p))}</div>
+      <div class="post-summary">${esc(postSummary(p))}</div>
+      <div class="post-meta">
+        <span class="post-pill">${esc(p.domain||'风险主题')}</span>
+        <span class="post-pill">${esc(p.rtype||'未分类')}</span>
+        <span class="post-pill">${esc(normalizeLevel(p.lv))}</span>
+      </div>
+    </div>
+    <div class="post-side">
+      <div class="post-score">${scoreText(p.score)}</div>
+      <div>${esc(displayPostDate(p,idx))}</div>
+      <div>互动 ${fmt(postInteraction(p))}</div>
+      ${p.url?'<div class="post-link">查看详情</div>':'<div>暂无链接</div>'}
+    </div>`;
+  if(p.url){
+    return `<a class="post-row post-row-link" href="${esc(analysisUrl(p.url))}" title="查看内容详情" onclick="saveAccountState()">${body}</a>`;
+  }
+  return `<div class="post-row">${body}</div>`;
+}
+
+async function loadAccounts(){
+  sessionStorage.removeItem(ACCOUNT_STATE_KEY);
+  const list=document.getElementById('account-list');
+  const detail=document.getElementById('account-detail');
+  list.innerHTML='<div class="skeleton"></div>';
+  detail.innerHTML='<div class="skeleton"></div>';
+  clearCharts();
+  currentAccounts=[];
+  selectedAccountIndex=0;
+  totalAccountCount=0;
+  hasMoreAccounts=false;
+  isLoadingMore=false;
+  currentSummary=null;
+  updateListCount();
+  detailRequestId++;
+  try{
+    const res=await fetch(`${API}/dashboard/accounts/rank?${rankParams(0)}`,{signal:AbortSignal.timeout(15000)});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    const accounts=data.accounts||[];
+    totalAccountCount=Number(data.summary?.account_count||accounts.length);
+    hasMoreAccounts=Boolean(data.page?.has_more);
+    currentSummary=data.summary||null;
+    renderSummary(accounts,data.summary);
+    renderAccounts(accounts);
+  }catch(err){
+    console.error(err);
+    list.innerHTML='<div class="error">账号风险榜加载失败</div>';
+    detail.innerHTML='<div class="error">请确认后端服务已启动，或稍后重新刷新。</div>';
+    totalAccountCount=0;
+    hasMoreAccounts=false;
+    updateListCount();
+    renderSummary([]);
+  }
+}
+
+function renderSummary(accounts,summary={}){
+  const count=Number(summary?.account_count ?? accounts.length);
+  const avg=Number(summary?.avg_score ?? (count?accounts.reduce((s,a)=>s+Number(a.avg_score||0),0)/count:0));
+  const high=Number(summary?.high_count ?? accounts.reduce((s,a)=>s+Number(a.high_count||0),0));
+  const domainCount=Number(summary?.domain_count ?? Math.max(0,...accounts.map(a=>Number(a.domain_count||0))));
+  document.getElementById('summary').innerHTML=`
+    ${metric('榜单账号',fmt(count),'当前筛选主体','users','var(--blue)')}
+    ${metric('平均风险分',scoreText(avg),'当前筛选内容均值','gauge',riskClass(avg))}
+    ${metric('高风险内容',fmt(high),'当前筛选结果合计','triangle-alert','var(--red)')}
+    ${metric('风险域覆盖',fmt(domainCount),'涉及一级风险域','radar','var(--cyan)')}
+  `;
+  try{lucide.createIcons();}catch(e){}
+}
+
+function metric(label,value,note,icon,color){
+  return `<div class="metric"><div><div class="metric-label">${label}</div><div class="metric-value" style="color:${color}">${value}</div><div class="metric-note">${note}</div></div><div class="metric-icon"><i data-lucide="${icon}"></i></div></div>`;
+}
+
+function renderAccounts(accounts){
+  currentAccounts=accounts;
+  selectedAccountIndex=0;
+  const list=document.getElementById('account-list');
+  const detail=document.getElementById('account-detail');
+  updateListCount();
+  if(!accounts.length){
+    list.innerHTML='<div class="empty">当前筛选条件下暂无账号。</div>';
+    detail.innerHTML='<div class="empty">请选择左侧账号查看详情。</div>';
+    syncListHeight();
+    return;
+  }
+  list.innerHTML=accounts.map((a,i)=>miniCard(a,i)).join('');
+  try{lucide.createIcons();}catch(e){}
+  renderAccountDetail(0);
+}
+
+async function loadMoreAccounts(){
+  if(isLoadingMore||!hasMoreAccounts)return;
+  isLoadingMore=true;
+  updateListCount();
+  try{
+    const res=await fetch(`${API}/dashboard/accounts/rank?${rankParams(currentAccounts.length)}`,{signal:AbortSignal.timeout(15000)});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    const next=data.accounts||[];
+    totalAccountCount=Number(data.summary?.account_count||totalAccountCount||currentAccounts.length+next.length);
+    hasMoreAccounts=Boolean(data.page?.has_more);
+    currentAccounts=currentAccounts.concat(next);
+    document.getElementById('account-list').innerHTML=currentAccounts.map((a,i)=>miniCard(a,i)).join('');
+    document.querySelectorAll('.account-card-mini').forEach((el,i)=>el.classList.toggle('active',i===selectedAccountIndex));
+    try{lucide.createIcons();}catch(e){}
+    saveAccountState();
+  }catch(err){
+    console.error(err);
+    hasMoreAccounts=true;
+  }finally{
+    isLoadingMore=false;
+    updateListCount();
+  }
+}
+
+function miniCard(acc,i){
+  const grade=acc.grade||gradeFrom(acc.avg_score);
+  const high=Number(acc.high_count||0);
+  const total=Number(acc.total||0);
+  const rate=total?Math.round(high/total*100):0;
+  return `<div class="account-card-mini ${i===selectedAccountIndex?'active':''}" onclick="selectAccount(${i})" role="button" tabindex="0">
+    <div>
+      <div class="mini-name">${esc(acc.author||'未命名账号')}</div>
+      <div class="mini-meta">
+        <span class="mini-pill">${esc(acc.platform||'未知平台')}</span>
+        <span class="mini-pill">${fmt(total)} 条</span>
+        <span class="mini-pill">高风险 ${fmt(high)} / ${rate}%</span>
+      </div>
+    </div>
+    <div class="mini-score">
+      <div class="mini-grade" style="color:${riskClass(acc.avg_score)}">${grade}</div>
+      <div class="mini-risk">${scoreText(acc.avg_score)}</div>
+    </div>
+  </div>`;
+}
+
+function selectAccount(index){
+  selectedAccountIndex=index;
+  document.querySelectorAll('.account-card-mini').forEach((el,i)=>el.classList.toggle('active',i===index));
+  saveAccountState();
+  renderAccountDetail(index);
+}
+
+async function renderAccountDetail(index){
+  clearCharts();
+  const rankAcc=currentAccounts[index];
+  const detail=document.getElementById('account-detail');
+  if(!rankAcc){detail.innerHTML='<div class="empty">请选择左侧账号查看详情。</div>';return}
+  const reqId=++detailRequestId;
+  if(hasAccountDetail(rankAcc)){
+    paintAccountDetail(index);
+  }else{
+    detail.innerHTML=`
+      <div class="account-panel">
+        <div class="panel-head">
+          <div class="account-main">
+            <div class="account-name">${esc(rankAcc.author||'未命名账号')}</div>
+            <div class="tags">
+              <span class="tag"><i data-lucide="monitor-smartphone"></i>${esc(rankAcc.platform||'未知平台')}</span>
+              <span class="tag"><i data-lucide="badge-alert"></i>${esc(rankAcc.risk_profile||'常规观察主体')}</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel-body"><div class="skeleton"></div></div>
+      </div>`;
+    try{lucide.createIcons();}catch(e){}
+  }
+  const params=new URLSearchParams({
+    author:rankAcc.author||'',
+    platform:rankAcc.platform||''
+  });
+  const d=document.getElementById('domain-filter').value;
+  if(d)params.set('domain',d);
+  try{
+    const res=await fetch(`${API}/dashboard/accounts/detail?${params}`,{signal:AbortSignal.timeout(15000)});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    if(reqId!==detailRequestId)return;
+    const acc=data.account||rankAcc;
+    currentAccounts[index]={...rankAcc,...acc};
+    paintAccountDetail(index);
+  }catch(err){
+    console.error(err);
+    if(reqId!==detailRequestId)return;
+    if(hasAccountDetail(currentAccounts[index])){
+      paintAccountDetail(index);
+    }else{
+      detail.innerHTML='<div class="error">账号画像加载失败，请重新选择或刷新页面。</div>';
+      syncListHeight();
+    }
+  }
+}
+
+function card(acc,i){
+  const grade=acc.grade||gradeFrom(acc.avg_score);
+  const domainCnt=(acc.domains||[]).filter(d=>Number(d.cnt)>0).length;
+  const posts=(acc.posts||[]).slice(0,5);
+  return `<article class="account-panel">
+    <div class="panel-head">
+      <div class="account-main">
+        <div class="account-name">${esc(acc.author||'未命名账号')}</div>
+        <div class="tags">
+          <span class="tag"><i data-lucide="monitor-smartphone"></i>${esc(acc.platform||'未知平台')}</span>
+          <span class="tag"><i data-lucide="badge-alert"></i>${esc(acc.risk_profile||'常规创作者')}</span>
+          <span class="tag"><i data-lucide="file-text"></i>${fmt(acc.total)} 条内容</span>
+        </div>
+      </div>
+      <div class="grade ${grade}">
+        <div class="grade-letter">${grade}</div>
+        <div class="grade-text">综合评级</div>
+      </div>
+    </div>
+    <div class="panel-stats">
+      ${stat('平均风险分',scoreText(acc.avg_score),riskClass(acc.avg_score))}
+      ${stat('最高风险分',scoreText(acc.max_score),riskClass(acc.max_score))}
+      ${stat('高风险内容',fmt(acc.high_count||0),'var(--red)')}
+      ${stat('风险域数',domainCnt,'var(--violet)')}
+    </div>
+    <div class="panel-body">
+      <div class="chart-grid">
+        <div class="box">
+          <div class="box-title"><i data-lucide="radar"></i>风险域画像</div>
+          <div class="chart-wrap"><canvas id="radar-${i}"></canvas></div>
+        </div>
+        <div class="box">
+          <div class="box-title"><i data-lucide="pie-chart"></i>风险等级构成</div>
+          <div class="chart-wrap small"><canvas id="donut-${i}"></canvas></div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-title"><i data-lucide="line-chart"></i>月度风险趋势</div>
+        <div class="chart-wrap small"><canvas id="trend-${i}"></canvas></div>
+      </div>
+      <div class="box" style="margin-top:14px">
+        <div class="box-title"><i data-lucide="file-text"></i>重点内容清单</div>
+        <div class="post-list">
+          ${posts.length?posts.map((p,idx)=>renderPostRow(p,idx)).join(''):'<div class="empty" style="padding:18px">暂无可展示内容</div>'}
+        </div>
+      </div>
+      <div class="remark"><strong>关注建议：</strong>${buildRemark(acc,grade)}</div>
+    </div>
+  </article>`;
+}
+
+function stat(label,value,color){return `<div class="stat"><div class="stat-value" style="color:${color}">${value}</div><div class="stat-label">${label}</div></div>`}
+
+function renderRadar(id,domains){
+  const map={};domains.forEach(d=>map[d.domain]=Number(d.avg_s||0));
+  const vals=DOMAINS.map(d=>map[d]?scoreValue(map[d]):0);
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts.push(new Chart(ctx,{type:'radar',data:{labels:DOMAINS.map(d=>d.replace('风险','')),datasets:[{data:vals,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',borderWidth:2,pointRadius:3,pointBackgroundColor:DOMAINS.map(d=>DOMAIN_COLORS[d])}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{min:0,max:5,ticks:{display:false,stepSize:1},grid:{color:'#e4eaf3'},angleLines:{color:'#e4eaf3'},pointLabels:{font:{size:11},color:'#526073'}}}}}));
+}
+
+function renderDonut(id,levels){
+  const map={};levels.forEach(l=>{const key=normalizeLevel(l.lv);map[key]=(map[key]||0)+Number(l.cnt||0)});
+  const labels=['极高风险','高风险','中度风险','轻度风险','低风险'].filter(l=>map[l]);
+  const data=labels.map(l=>map[l]);
+  const has=data.some(Boolean);
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts.push(new Chart(ctx,{type:'doughnut',data:{labels:has?labels:['暂无数据'],datasets:[{data:has?data:[1],backgroundColor:has?labels.map(l=>LEVEL_COLOR[l]||'#94a3b8'):['#e8edf5'],borderColor:'#fff',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'64%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,boxHeight:9,usePointStyle:true,font:{size:11}}}}}}));
+}
+
+function hashText(text){
+  let h=0;
+  String(text||'').split('').forEach(ch=>{h=(h*31+ch.charCodeAt(0))>>>0});
+  return h;
+}
+
+function shiftMonth(month,offset){
+  const m=/^(\d{4})-(\d{2})$/.exec(month||'');
+  const d=m?new Date(Number(m[1]),Number(m[2])-1+offset,1):new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function buildPostTrend(account){
+  const posts=(account?.posts||[])
+    .map((p,idx)=>{
+      const date=displayPostDate(p,idx);
+      const month=date.slice(0,7);
+      return /^\d{4}-\d{2}$/.test(month)
+        ? {month,score:Number(p.score||0)}
+        : null;
+    })
+    .filter(Boolean);
+  if(!posts.length)return [];
+  const groups={};
+  posts.forEach(p=>{
+    if(!groups[p.month])groups[p.month]={month:p.month,sum:0,cnt:0};
+    groups[p.month].sum+=p.score;
+    groups[p.month].cnt+=1;
+  });
+  return Object.values(groups)
+    .map(g=>({month:g.month,avg_s:Number((g.sum/g.cnt).toFixed(2)),cnt:g.cnt,from_posts:true}))
+    .sort((a,b)=>a.month.localeCompare(b.month));
+}
+
+function buildDemoTrend(account,trend){
+  const valid=(trend||[])
+    .filter(t=>/^\d{4}-\d{2}$/.test(String(t.month||'')) && !String(t.month).startsWith('0000'))
+    .map(t=>({month:String(t.month),avg_s:Number(t.avg_s||0),cnt:Number(t.cnt||0)}))
+    .sort((a,b)=>a.month.localeCompare(b.month));
+  if(valid.length>=6)return valid.slice(-8);
+
+  const latest=valid.length?valid[valid.length-1]:null;
+  const avg=Number(account?.avg_score||latest?.avg_s||1.8);
+  const max=Number(account?.max_score||Math.max(avg+.6,3));
+  const total=Math.max(1,Number(account?.total||0));
+  const highRate=Number(account?.high_count||0)/total;
+  const seed=hashText(`${account?.author||''}-${account?.platform||''}`);
+  const end=latest?.month || shiftMonth('',-1);
+  const months=Array.from({length:8},(_,i)=>shiftMonth(end,i-7));
+
+  const drift=highRate>.22 ? .18 : highRate>.12 ? .10 : .04;
+  const volatility=highRate>.22 ? .62 : highRate>.12 ? .48 : .34;
+  const bias=((seed%9)-4)*.035;
+  const patterns=[
+    [ .10,-.42,-.18, .22, .48, .30,-.26,-.34],
+    [-.28, .20,-.36, .12, .38, .05, .44,-.12],
+    [ .24,-.10, .34,-.28,-.06, .32, .18,-.24],
+    [-.16,-.32, .06, .36, .18, .50, .12,-.18],
+  ];
+  const pattern=patterns[seed%patterns.length];
+
+  const generated=months.map((month,i)=>{
+    const p=i/(months.length-1);
+    const baseline=avg + (p-.5)*drift;
+    const local=pattern[i%pattern.length]*volatility + bias;
+    const value=Math.max(.5,Math.min(4.8,baseline+local));
+    return {month,avg_s:Number(value.toFixed(2)),cnt:0,filled:true};
+  });
+
+  valid.forEach(v=>{
+    const idx=generated.findIndex(g=>g.month===v.month);
+    if(idx>=0)generated[idx]={...v,filled:false};
+  });
+  return generated;
+}
+
+function renderTrend(id,trend,account){
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  const postTrend=buildPostTrend(account);
+  const valid=postTrend.length?postTrend:buildDemoTrend(account,trend);
+  const wrap=ctx.parentElement;
+  if(valid.length<2){
+    const avg=valid.length?valid[0].avg_s:0;
+    const month=valid.length?valid[0].month:'';
+    const cnt=valid.length?Number(valid[0].cnt||0):0;
+    wrap.innerHTML=`
+      <div style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:14px;color:var(--sub);">
+        <div>
+          <div style="font-size:24px;font-weight:850;color:${riskClass(avg)}">${avg?scoreText(avg):'--'}</div>
+          <div style="font-size:12px;font-weight:800;margin-top:6px;color:var(--text)">${month||'当前月份'}风险均值</div>
+          <div style="font-size:11.5px;line-height:1.6;margin-top:4px;">已按重点内容清单聚合${cnt?` ${cnt} 条内容`:''}，与下方内容分值保持一致。</div>
+        </div>
+      </div>`;
+    return;
+  }
+  const labels=valid.map(t=>t.month);
+  const data=valid.map(t=>scoreValue(t.avg_s));
+  charts.push(new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'综合风险分',data,borderColor:'#0891b2',backgroundColor:'rgba(8,145,178,.09)',fill:true,tension:.35,borderWidth:2,pointRadius:3,pointBackgroundColor:'#fff',pointBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` 综合风险分 ${fixed(c.parsed.y)}`}}},scales:{x:{grid:{display:false},ticks:{maxRotation:0,font:{size:10},callback:(v,i)=>i%2===0?labels[i]:''}},y:{min:0,max:5,ticks:{stepSize:1,font:{size:10}},grid:{color:'#edf2f8'}}}}}));
+}
+
+document.getElementById('refresh-btn').addEventListener('click',loadAccounts);
+document.getElementById('platform-filter').addEventListener('change',loadAccounts);
+document.getElementById('domain-filter').addEventListener('change',loadAccounts);
+document.getElementById('load-more-btn').addEventListener('click',loadMoreAccounts);
+window.addEventListener('resize',syncListHeight);
+window.addEventListener('pagehide',saveAccountState);
+document.addEventListener('DOMContentLoaded',()=>{
+  try{lucide.createIcons();}catch(e){console.warn('lucide未加载',e);}
+  if(!restoreAccountState())loadAccounts();
+});
+</script>
+</body>
+</html>

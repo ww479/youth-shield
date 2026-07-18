@@ -1,0 +1,32 @@
+# ── Web 框架 ──
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+
+# ── LLM 客户端 ──
+anthropic
+openai
+httpx
+
+# ── 数据库 ──
+mysql-connector-python
+psycopg2-binary==2.9.9
+
+# ── NLP / 向量检索 ──
+jieba
+numpy
+scikit-learn
+sentence-transformers>=3.0.0
+chromadb>=0.5.0
+
+# ── 抓取 / 解析 ──
+requests
+beautifulsoup4
+lxml
+playwright
+
+# ── 文档处理 ──
+openpyxl==3.1.2
+python-docx
+PyYAML

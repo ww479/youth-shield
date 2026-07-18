@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>青年心盾 · 青少年网络空间价值观审查与正向引导平台</title>
+<style>
+/* ── 全局 ── */
+:root {
+  --bg: #EEF2FF;
+  --card-bg: rgba(255,255,255,0.92);
+  --border: rgba(99,120,210,0.14);
+  --primary: #3D6FD4;
+  --primary-2: #6B9DFF;
+  --accent: #7C3AED;
+  --text: #0F172A;
+  --text-2: #334155;
+  --muted: #64748B;
+  --muted-2: #94A3B8;
+  --tag-red: #9B2335;
+  --risk-red: #DC2626;
+  --r: 20px;
+  --r-sm: 12px;
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.05), 0 1px 2px rgba(15,23,42,.04);
+  --shadow-md: 0 4px 16px rgba(15,23,42,.08), 0 2px 6px rgba(15,23,42,.05);
+  --shadow-lg: 0 16px 48px rgba(15,23,42,.12), 0 4px 14px rgba(15,23,42,.06);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: 'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;
+  background:
+    radial-gradient(ellipse 900px 560px at 12% -4%, rgba(61,111,212,.1) 0%, transparent 58%),
+    radial-gradient(ellipse 700px 480px at 88% 105%, rgba(124,58,237,.08) 0%, transparent 58%),
+    #EEF2FF;
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  padding: 14px 48px;
+  display: flex; align-items:center; justify-content:space-between;
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(200,215,245,0.35);
+  box-shadow: 0 1px 0 rgba(255,255,255,.8), 0 2px 10px rgba(15,23,42,.04);
+  position: sticky; top:0; z-index:100;
+}
+.logo { display:flex; align-items:center; gap:12px; }
+.logo-icon {
+  width:34px; height:34px; border-radius:10px;
+  background: linear-gradient(135deg,#3D6FD4,#7C3AED);
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; color:#fff;
+  box-shadow: 0 4px 12px rgba(61,111,212,.32), inset 0 1px 0 rgba(255,255,255,.2);
+}
+.logo-name { font-size:15px; font-weight:700; color:var(--text); letter-spacing:-.2px; }
+.logo-sub  { font-size:11px; color:var(--muted-2); margin-top:1px; }
+.hdr-tags  { display:flex; gap:8px; }
+.htag {
+  font-size:11px; padding:4px 12px; border-radius:20px;
+  background:rgba(61,111,212,.07); color:var(--primary);
+  border:1px solid rgba(61,111,212,.16);
+  font-weight:500;
+}
+
+/* ── HERO INPUT ── */
+.hero {
+  display:flex; flex-direction:column; align-items:center;
+  padding: 56px 40px 44px;
+  text-align:center;
+}
+.hero-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:11px; font-weight:600; color:var(--primary);
+  background:rgba(61,111,212,.08); border:1px solid rgba(61,111,212,.18);
+  padding:5px 14px; border-radius:20px; margin-bottom:18px;
+  letter-spacing:.4px;
+  animation: fadeup .5s ease both;
+}
+.hero-badge-dot { width:6px; height:6px; border-radius:50%; background:var(--primary); }
+.hero-title {
+  font-size:38px; font-weight:800; color:var(--text);
+  letter-spacing:-1px; line-height:1.2; margin-bottom:12px;
+  animation: fadeup .6s .08s ease both;
+}
+.hero-title em { font-style:normal; color:var(--primary); }
+.hero-sub {
+  font-size:14px; color:var(--muted); margin-bottom:32px; line-height:1.7;
+  animation: fadeup .6s .16s ease both;
+}
+@keyframes fadeup { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:translateY(0)} }
+
+.search-wrap {
+  display:flex; align-items:center;
+  width:100%; max-width:740px;
+  background:#fff;
+  border:1.5px solid rgba(61,111,212,.2);
+  border-radius:50px;
+  padding: 7px 7px 7px 24px;
+  box-shadow: 0 4px 24px rgba(61,111,212,.1), 0 1px 4px rgba(15,23,42,.05);
+  animation: fadeup .6s .22s ease both;
+  transition: border-color .25s, box-shadow .25s;
+}
+.search-wrap:focus-within {
+  border-color:var(--primary);
+  box-shadow: 0 4px 32px rgba(61,111,212,.18), 0 1px 4px rgba(15,23,42,.06);
+}
+.demo-hints {
+  display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
+  margin-top:18px; max-width:740px;
+  animation: fadeup .6s .32s ease both;
+}
+.demo-hint-label {
+  font-size:11px; color:var(--muted-2); width:100%; text-align:center; margin-bottom:2px;
+}
+.demo-chip {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 12px; border-radius:20px; cursor:pointer;
+  font-size:12px; color:var(--primary);
+  background:rgba(61,111,212,.06); border:1px solid rgba(61,111,212,.15);
+  transition:all .18s; text-decoration:none;
+}
+.demo-chip:hover { background:rgba(61,111,212,.12); border-color:rgba(61,111,212,.3); }
+.demo-chip .chip-tag {
+  font-size:10px; padding:1px 6px; border-radius:10px; font-weight:600;
+}
+.chip-high { background:rgba(235,87,87,.12); color:#EB5757; }
+.chip-mid  { background:rgba(242,153,74,.12); color:#F2994A; }
+.chip-low  { background:rgba(39,174,96,.12);  color:#27AE60; }
+
+@keyframes spin{ to{transform:rotate(360deg)} }
+.search-input {
+  flex:1; border:none; outline:none; background:none;
+  font-size:14px; color:var(--text);
+}
+.search-input::placeholder { color:#B0C2D8; }
+.age-sel {
+  font-size:12px; padding:7px 14px; border-radius:20px;
+  background:rgba(61,111,212,.06);
+  border:1px solid rgba(61,111,212,.14);
+  color:var(--primary); outline:none; cursor:pointer;
+  margin-right:6px; font-weight:500;
+}
+.age-sel option { background:#fff; color:var(--text); }
+.btn-go {
+  padding:11px 28px; border-radius:44px; border:none; cursor:pointer;
+  background: linear-gradient(135deg,#3D6FD4 0%,#7C3AED 100%);
+  color:#fff; font-size:14px; font-weight:600;
+  box-shadow: 0 4px 16px rgba(61,111,212,.35), inset 0 1px 0 rgba(255,255,255,.15);
+  transition: transform .18s, box-shadow .18s;
+  white-space:nowrap; letter-spacing:.2px;
+}
+.btn-go:hover { transform:translateY(-1px) scale(1.02); box-shadow:0 8px 24px rgba(61,111,212,.4); }
+.btn-go:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+/* 统计行 */
+.hero-stats {
+  display:flex; gap:20px; margin-top:28px;
+  animation: fadeup .6s .32s ease both;
+}
+.hstat {
+  display:flex; flex-direction:column; align-items:center;
+  padding:10px 20px; background:rgba(255,255,255,.7);
+  border:1px solid rgba(61,111,212,.12); border-radius:14px;
+  backdrop-filter:blur(8px); min-width:80px;
+  box-shadow: var(--shadow-sm);
+}
+.hstat-n { font-size:18px; font-weight:800; color:var(--text); line-height:1; }
+.hstat-l { font-size:10px; color:var(--muted); margin-top:4px; font-weight:500; letter-spacing:.3px; }
+
+
+/* ── RESULTS ── */
+#results { display:block; padding:0 40px 80px; }
+
+/* ── 骨架占位 ── */
+@keyframes skel-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+.skel {
+  border-radius: 6px;
+  background: linear-gradient(90deg,
+    rgba(200,212,235,.45) 25%,
+    rgba(225,232,248,.7)  50%,
+    rgba(200,212,235,.45) 75%);
+  background-size: 1200px 100%;
+  animation: skel-shimmer 1.5s infinite linear;
+}
+.skel-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 18px 20px 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.skel-card .sk-band { width: 4px; height: 100%; border-radius: 2px; }
+.skel-card .sk-title { height: 15px; width: 60%; border-radius: 4px; }
+.skel-card .sk-line  { height: 11px; border-radius: 4px; }
+.skel-card .sk-short { height: 11px; width: 45%; border-radius: 4px; }
+
+/* ── 主视觉区：左右分栏 ── */
+.results-layout {
+  display:grid;
+  grid-template-columns: auto 1fr;
+  gap:28px;
+  max-width:1400px;
+  margin:0 auto;
+  padding:16px 32px 60px;
+  align-items:start;
+}
+.demo-stage {
+  display:flex; align-items:center; justify-content:flex-start;
+  gap:0; position:relative;
+  padding: 10px 0 10px;
+}
+
+/* 手机 */
+.phone-outer {
+  width:256px; flex-shrink:0;
+  position:relative; z-index:1;
+  animation: slide-left .8s cubic-bezier(.22,.68,0,1.2) both;
+}
+@keyframes slide-left { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:translateX(0)} }
+.phone-body {
+  width:256px; height:520px;
+  background:linear-gradient(170deg,#2a2a2e 0%,#1a1a1d 100%);
+  border-radius:40px;
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.35),
+    0 8px 24px rgba(0,0,0,.2),
+    inset 0 0 0 1.5px rgba(255,255,255,.08),
+    inset 0 1px 0 rgba(255,255,255,.12);
+  position:relative; overflow:hidden;
+  padding:12px;
+}
+/* 刘海 */
+.phone-notch {
+  position:absolute; top:12px; left:50%; transform:translateX(-50%);
+  width:90px; height:22px;
+  background:#1a1a1d;
+  border-radius:0 0 16px 16px;
+  z-index:20;
+}
+/* 屏幕 */
+.phone-screen {
+  width:100%; height:100%;
+  border-radius:28px; overflow:hidden;
+  background:#111; position:relative;
+}
+/* 视频背景 */
+.video-bg {
+  position:absolute; inset:0;
+  background: linear-gradient(
+    170deg,
+    #2C2318 0%, #3D3025 20%,
+    #4A3D2E 45%, #3A3028 70%,
+    #2A2520 100%
+  );
+}
+/* 视频中的人物+背景（CSS模拟） */
+.video-scene {
+  position:absolute; inset:0; overflow:hidden;
+}
+.scene-bg {
+  position:absolute; bottom:0; left:0; right:0; top:30%;
+  background: linear-gradient(180deg,
+    rgba(180,160,130,.08) 0%,
+    rgba(160,140,110,.12) 50%,
+    rgba(100,90,70,.15) 100%);
+}
+/* 豪宅窗户光 */
+.scene-window {
+  position:absolute; top:30%; left:5%; width:40%; height:28%;
+  background: linear-gradient(135deg, rgba(220,210,180,.15), rgba(200,190,160,.08));
+  border-radius:2px;
+}
+.scene-window2 {
+  position:absolute; top:30%; left:52%; width:35%; height:28%;
+  background: linear-gradient(135deg, rgba(220,210,180,.12), rgba(200,190,160,.06));
+  border-radius:2px;
+}
+/* 人物剪影 */
+.scene-person {
+  position:absolute; bottom:20%; left:50%; transform:translateX(-50%);
+  width:48px; height:90px;
+  /* 上身/头 */
+  background: linear-gradient(180deg, #2A2420 0%, #1E1A16 100%);
+  border-radius:8px 8px 0 0;
+  box-shadow: 0 -18px 0 10px #2A2420;
+}
+.scene-person::before {
+  content:''; position:absolute;
+  top:-28px; left:50%; transform:translateX(-50%);
+  width:20px; height:24px;
+  background:#3A3020; border-radius:50%;
+}
+/* 平台UI层 */
+.platform-ui {
+  position:absolute; inset:0; z-index:10;
+}
+/* 状态栏 */
+.p-statusbar {
+  position:absolute; top:0; left:0; right:0; height:28px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 12px; padding-top:6px;
+  background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,transparent 100%);
+}
+.p-statusbar span { font-size:9px; color:rgba(255,255,255,.7); }
+/* 右侧按钮 */
+.p-actions {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+}
+.p-btn {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  color:rgba(255,255,255,.9);
+}
+.p-btn-icon { font-size:18px; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
+.p-btn-num  { font-size:8px; color:rgba(255,255,255,.75); }
+/* 底部信息 */
+.p-caption {
+  position:absolute; bottom:22px; left:10px; right:54px;
+}
+.p-author { font-size:9px; color:rgba(255,255,255,.9); font-weight:600; margin-bottom:3px; }
+.p-text   { font-size:8px; color:rgba(255,255,255,.7); line-height:1.5; }
+/* 进度条 */
+.p-progress {
+  position:absolute; bottom:8px; left:0; right:0; height:2px;
+  background:rgba(255,255,255,.2);
+}
+.p-progress-fill {
+  height:100%; background:rgba(255,255,255,.75); width:38%;
+  position:relative;
+}
+.p-progress-fill::after {
+  content:''; position:absolute; right:-3px; top:50%; transform:translateY(-50%);
+  width:6px; height:6px; border-radius:50%; background:#fff;
+}
+/* 平台角标 */
+.p-platform {
+  position:absolute; top:32px; left:10px;
+  font-size:8px; font-weight:700; color:rgba(255,255,255,.9);
+  background:rgba(0,0,0,.4); padding:2px 6px; border-radius:4px;
+}
+
+/* 分析卡片 */
+.analysis-card {
+  width:304px; flex-shrink:0;
+  background: rgba(255,255,255,0.94);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(61,111,212,.14);
+  border-radius:var(--r);
+  padding:22px 20px;
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,1);
+  position:relative; z-index:5;
+  margin-left:-40px;
+  align-self:center;
+  animation: slide-right .8s .15s cubic-bezier(.22,.68,0,1.2) both;
+}
+@keyframes slide-right { from{opacity:0;transform:translateX(32px)} to{opacity:1;transform:translateX(0)} }
+.analysis-card::before {
+  content:''; position:absolute; top:0; left:24px; right:24px; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,1),transparent);
+}
+
+.card-main-title {
+  font-size:15px; font-weight:800; color:var(--text);
+  text-align:center; margin-bottom:4px; letter-spacing:-.2px;
+}
+.card-sub-title {
+  font-size:11.5px; color:var(--primary);
+  text-align:center; margin-bottom:16px;
+  padding:0 8px;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+  opacity:.85;
+}
+.card-divider {
+  height:1px; background:rgba(61,111,212,.08); margin:14px 0;
+}
+.card-section-title {
+  font-size:10px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.8px;
+  margin-bottom:10px;
+  display:flex; align-items:center; gap:5px;
+}
+.card-section-title::before {
+  content:''; display:block; width:3px; height:11px; border-radius:2px;
+  background:linear-gradient(to bottom,var(--primary),var(--accent));
+  flex-shrink:0;
+}
+
+/* 语义标签：横排芯片 */
+.tag-list { display:flex; flex-wrap:wrap; gap:6px; }
+.sem-tag {
+  display:inline-flex; align-items:center; gap:5px;
+  background:linear-gradient(135deg,#9B2335,#B83545);
+  color:#fff; font-weight:600; font-size:11.5px;
+  padding:5px 12px; border-radius:8px;
+  box-shadow: 0 2px 8px rgba(155,35,53,.28), inset 0 1px 0 rgba(255,255,255,.12);
+  animation:tag-pop .35s ease both;
+}
+.tag-domain {
+  display:inline-block; font-size:10px; color:var(--muted);
+  background:rgba(61,111,212,.06); border:1px solid rgba(61,111,212,.12);
+  padding:3px 8px; border-radius:6px;
+  animation:tag-pop .35s ease both;
+}
+@keyframes tag-pop { from{opacity:0;transform:scale(.85)} to{opacity:1;transform:scale(1)} }
+
+/* 风险评级 */
+.risk-word {
+  font-size:24px; font-weight:800;
+  text-align:center; margin-bottom:12px; letter-spacing:-.5px;
+}
+.risk-bar-wrap { position:relative; }
+.risk-bar {
+  height:8px; border-radius:99px;
+  background:linear-gradient(90deg,#10B981 0%,#F59E0B 40%,#F97316 70%,#DC2626 100%);
+  position:relative;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+.risk-indicator {
+  position:absolute; top:50%; transform:translate(-50%,-50%);
+  width:16px; height:16px; border-radius:50%;
+  background:#fff; border:2.5px solid #DC2626;
+  box-shadow: 0 2px 8px rgba(220,38,38,.35), 0 0 0 3px rgba(220,38,38,.12);
+  transition:left 1s cubic-bezier(.22,.68,0,1.2);
+}
+.risk-labels {
+  display:flex; justify-content:space-between;
+  margin-top:7px; font-size:9px; color:var(--muted-2); font-weight:500;
+}
+
+/* 叙事分析 */
+.narrative-body {
+  font-size:12px; line-height:1.9; color:var(--text-2);
+  text-align:justify;
+}
+.hl { color:var(--risk-red); font-weight:600; }
+
+/* ── 次要数据区 ── */
+.secondary {
+  max-width:1100px; margin:0 auto;
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  gap:16px;
+  animation:fadeup .6s .4s ease both;
+}
+.sec-card {
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:var(--r); padding:18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.sec-title {
+  font-size:10px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.9px;
+  margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.sec-title::before {
+  content:''; display:block; width:3px; height:12px; border-radius:2px;
+  background:linear-gradient(to bottom,var(--primary),var(--accent));
+}
+
+/* 话术卡 */
+.age-tabs2 { display:flex; gap:6px; margin-bottom:12px; }
+.atab2 {
+  flex:1; text-align:center; padding:5px; font-size:11px;
+  border-radius:8px; cursor:pointer; border:1px solid rgba(180,200,220,.3);
+  color:var(--muted); transition:all .2s; background:#fff;
+}
+.atab2.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+.script-item2 {
+  font-size:12px; line-height:1.75; color:#4A5568;
+  background:#F8F9FC; border-radius:10px; padding:10px 12px; margin-bottom:8px;
+}
+.script-type2 {
+  font-size:10px; font-weight:700; color:var(--primary);
+  letter-spacing:.8px; text-transform:uppercase; margin-bottom:5px;
+}
+.script-follow2 {
+  margin-top:6px; padding-top:6px; border-top:1px solid rgba(180,200,220,.2);
+  font-size:10px; color:var(--muted);
+}
+.script-follow2::before { content:'→ '; color:var(--primary); }
+
+/* 案例卡 */
+.case-item2 {
+  padding:11px 13px; border-radius:10px;
+  background:#F6F8FD; margin-bottom:8px;
+  border-left:3px solid var(--primary);
+  border:1px solid rgba(61,111,212,.1);
+  border-left:3px solid var(--primary);
+}
+.case-item2-name { font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.case-item2-meta { font-size:10px; color:var(--muted-2); }
+.case-item2-desc { font-size:11px; color:var(--muted); margin-top:6px; line-height:1.65; }
+.lv-dot {
+  display:inline-block; padding:1px 7px; border-radius:6px;
+  font-size:10px; font-weight:700; margin-left:6px;
+}
+.lv-L4{background:rgba(220,38,38,.09);color:#DC2626;}
+.lv-L3{background:rgba(249,115,22,.09);color:#EA580C;}
+.lv-L2{background:rgba(234,179,8,.09);color:#A16207;}
+.lv-L1,.lv-L0{background:rgba(16,185,129,.09);color:#059669;}
+
+/* 统计卡 */
+.stat2-row { display:flex; gap:10px; margin-bottom:14px; }
+.stat2 {
+  flex:1; text-align:center; padding:12px 8px;
+  background:#F8F9FC; border-radius:10px;
+  border:1px solid rgba(180,200,220,.2);
+}
+.stat2-num { font-size:20px; font-weight:800; color:var(--text); }
+.stat2-lbl { font-size:10px; color:var(--muted); margin-top:2px; }
+.plat-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:11px; }
+.plat-lbl { width:40px; color:var(--muted); flex-shrink:0; }
+.plat-track2 { flex:1; height:5px; background:rgba(180,200,220,.25); border-radius:3px; overflow:hidden; }
+.plat-fill2 { height:100%; background:linear-gradient(90deg,var(--primary),#6C5CE7); border-radius:3px;
+  transition:width 1.1s cubic-bezier(.22,.68,0,1.2); }
+.plat-cnt2 { width:30px; text-align:right; color:var(--text); font-size:10px; }
+
+/* 手机内嵌视频 */
+.phone-iframe {
+  position:absolute; inset:0; width:100%; height:100%;
+  border:none; z-index:2;
+}
+.phone-thumb {
+  position:absolute; inset:0;
+  background-size:cover; background-position:center;
+  z-index:2;
+}
+.phone-thumb-overlay {
+  position:absolute; inset:0; z-index:3;
+  background:linear-gradient(180deg,rgba(0,0,0,.1) 0%,rgba(0,0,0,.5) 100%);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px;
+}
+.phone-play-btn {
+  width:44px; height:44px; border-radius:50%;
+  background:rgba(255,255,255,.85);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+  text-decoration:none; color:#333;
+  transition:transform .2s, background .2s;
+}
+.phone-play-btn:hover { transform:scale(1.1); background:#fff; }
+.phone-play-label {
+  font-size:10px; color:rgba(255,255,255,.9);
+  text-shadow:0 1px 3px rgba(0,0,0,.5);
+}
+@keyframes spin2 { to{transform:rotate(360deg)} }
+/* 手机文章阅读视图 */
+.phone-article {
+  position:absolute; inset:0; z-index:3;
+  background:#fff; overflow-y:auto;
+  display:flex; flex-direction:column;
+  scrollbar-width:none;
+}
+.phone-article::-webkit-scrollbar { display:none; }
+.pa-topbar {
+  position:sticky; top:0;
+  background:rgba(255,255,255,.95); backdrop-filter:blur(8px);
+  padding:8px 12px 6px;
+  border-bottom:1px solid rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:space-between;
+  z-index:10; flex-shrink:0;
+}
+.pa-topbar-title {
+  font-size:11px; color:#666;
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  max-width:160px;
+}
+.pa-topbar-link {
+  font-size:10px; color:#3A7FD4; text-decoration:none;
+  flex-shrink:0; margin-left:6px;
+}
+.pa-body { padding:14px 14px 24px; flex:1; }
+.pa-source {
+  font-size:10px; color:#999; margin-bottom:8px;
+  display:flex; align-items:center; gap:6px;
+}
+.pa-source-dot {
+  width:4px; height:4px; border-radius:50%; background:#ccc;
+}
+.pa-title {
+  font-size:14px; font-weight:700; color:#1a1a1a;
+  line-height:1.5; margin-bottom:12px;
+}
+.pa-divider {
+  height:1px; background:rgba(0,0,0,.06); margin:10px 0;
+}
+.pa-text {
+  font-size:11.5px; color:#444; line-height:1.85;
+}
+.pa-text p { margin-bottom:8px; }
+.pa-fade {
+  position:absolute; bottom:0; left:0; right:0; height:50px;
+  background:linear-gradient(transparent,#fff);
+  pointer-events:none; z-index:5;
+}
+/* ── 关联案例区（右栏）── */
+.cases-section { padding:10px 0 0; }
+.cases-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:18px;
+}
+.cases-title {
+  font-size:15px; font-weight:700; color:var(--text);
+  display:flex; align-items:center; gap:10px; letter-spacing:-.2px;
+}
+.cases-title::before {
+  content:''; display:block; width:3px; height:16px; border-radius:2px;
+  background:linear-gradient(to bottom,var(--primary),var(--accent));
+}
+.cases-domain-tag {
+  font-size:11px; padding:3px 10px; border-radius:8px; font-weight:500;
+  background:rgba(61,111,212,.07); color:var(--primary);
+  border:1px solid rgba(61,111,212,.14);
+}
+.cases-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:10px;
+}
+.c-card {
+  background:var(--card-bg); border-radius:12px; overflow:hidden; cursor:pointer;
+  border:1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition:transform .2s ease, box-shadow .2s ease;
+  animation:card-in .45s ease both;
+}
+@keyframes card-in { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.c-card:hover { transform:translateY(-3px); box-shadow: var(--shadow-md); }
+.c-band { height:3px; width:100%; }
+.c-body { padding:12px 14px; }
+.c-top { display:flex; align-items:center; gap:5px; margin-bottom:7px; flex-wrap:wrap; }
+.c-lv {
+  font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px;
+  border-width:1px; border-style:solid; flex-shrink:0;
+}
+.c-plat {
+  font-size:10px; padding:2px 7px; border-radius:6px; font-weight:500;
+  background:rgba(61,111,212,.07); color:var(--primary);
+  border:1px solid rgba(61,111,212,.12);
+}
+.c-id { font-size:10px; color:var(--muted-2); margin-left:auto; font-family:monospace; }
+.c-name {
+  font-size:12.5px; font-weight:700; color:var(--text); line-height:1.45;
+  margin-bottom:6px; letter-spacing:-.1px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.c-snippet {
+  font-size:11px; color:var(--muted); line-height:1.6;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+  margin-bottom:8px;
+}
+.c-footer {
+  display:flex; align-items:center; gap:8px;
+  padding-top:8px; border-top:1px solid rgba(61,111,212,.07);
+  font-size:10.5px; color:var(--muted-2);
+}
+.c-footer b { color:var(--text); font-weight:600; }
+.c-arrow { margin-left:auto; color:var(--primary); font-size:12px; font-weight:600; }
+/* 案例抽屉 */
+#c-mask {
+  position:fixed; inset:0; background:rgba(15,23,42,.22);
+  z-index:200; display:none; backdrop-filter:blur(3px);
+}
+#c-drawer {
+  position:fixed; top:0; right:-500px; width:480px; height:100vh;
+  background:#fff; z-index:201; overflow:hidden; display:flex; flex-direction:column;
+  box-shadow: -8px 0 40px rgba(15,23,42,.14), -1px 0 0 rgba(61,111,212,.08);
+  transition:right .3s cubic-bezier(.22,.68,0,1.2);
+}
+#c-drawer.open { right:0; }
+.cd-header {
+  padding:20px 24px; border-bottom:1px solid var(--border); flex-shrink:0;
+  display:flex; align-items:flex-start; gap:10px;
+  background:rgba(238,242,255,.5);
+}
+.cd-title { font-size:15px; font-weight:700; color:var(--text); line-height:1.4; letter-spacing:-.2px; }
+.cd-meta { font-size:11px; color:var(--muted); margin-top:4px; font-weight:500; }
+.cd-close {
+  width:30px; height:30px; border:none; background:rgba(61,111,212,.08);
+  border-radius:8px; cursor:pointer; font-size:14px; color:var(--muted);
+  display:flex; align-items:center; justify-content:center;
+  margin-left:auto; flex-shrink:0; transition:background .2s;
+}
+.cd-close:hover { background:rgba(61,111,212,.16); color:var(--text); }
+.cd-body { flex:1; overflow-y:auto; padding:20px 24px; }
+.cd-body::-webkit-scrollbar { width:4px; }
+.cd-body::-webkit-scrollbar-thumb { background:rgba(61,111,212,.2); border-radius:2px; }
+.cd-section { margin-bottom:20px; }
+.cd-lbl {
+  font-size:10px; font-weight:700; color:var(--muted-2);
+  letter-spacing:.9px; text-transform:uppercase; margin-bottom:8px;
+}
+.cd-text {
+  font-size:12.5px; color:var(--text-2); line-height:1.85;
+  background:#F6F8FD; border-radius:10px; padding:12px 15px;
+  border:1px solid rgba(61,111,212,.08);
+}
+.cd-tags { display:flex; flex-wrap:wrap; gap:7px; }
+.cd-tag {
+  font-size:11px; padding:4px 11px; border-radius:8px; font-weight:500;
+  background:rgba(61,111,212,.07); color:var(--primary);
+  border:1px solid rgba(61,111,212,.12);
+}
+.cd-age-tabs { display:flex; gap:6px; margin-bottom:10px; }
+.cd-atab {
+  flex:1; text-align:center; padding:7px; font-size:11px; font-weight:500;
+  border-radius:8px; cursor:pointer;
+  border:1px solid var(--border); color:var(--muted);
+  background:#fff; transition:all .2s;
+}
+.cd-atab.active { background:var(--primary); color:#fff; border-color:var(--primary); box-shadow:0 2px 8px rgba(61,111,212,.25); }
+/* 打字光标 */
+.typing-cursor {
+  display:inline-block; width:2px; color:var(--primary);
+  animation:cursor-blink .8s step-end infinite;
+  font-weight:300; margin-left:1px;
+}
+@keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── 响应 ── */
+@media(max-width:1100px) {
+  .results-layout { grid-template-columns:1fr; }
+  .demo-stage { justify-content:center; }
+}
+@media(max-width:760px) {
+  .demo-stage { flex-direction:column; }
+  .analysis-card { margin-left:0; margin-top:-30px; align-self:flex-end; }
+}
+
+/* ── 风险预警横幅 ── */
+#risk-alert-banner{
+  position:fixed;
+  top:56px; left:0; right:0;
+  z-index:90;
+  transform:translateY(-130%);
+  transition:transform .55s cubic-bezier(.22,.68,0,1.2);
+  pointer-events:none;
+}
+#risk-alert-banner.rab-visible{
+  transform:translateY(0);
+  pointer-events:auto;
+}
+.rab-inner{
+  margin:10px 40px;
+  border-radius:16px;
+  padding:14px 20px;
+  display:flex;align-items:center;gap:14px;
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 10px 40px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.12);
+  backdrop-filter:blur(18px);
+  position:relative;overflow:hidden;
+}
+.rab-inner.rab-lv4{background:linear-gradient(135deg,rgba(192,57,43,.94),rgba(220,60,40,.9));}
+.rab-inner.rab-lv3{background:linear-gradient(135deg,rgba(180,80,10,.94),rgba(220,120,15,.9));}
+.rab-inner.rab-lv2{background:linear-gradient(135deg,rgba(148,102,0,.94),rgba(185,135,10,.9));}
+/* 扫光 */
+.rab-inner::after{
+  content:'';position:absolute;top:0;left:-60%;width:50%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+  animation:rab-sweep 3s 0.6s ease-in-out infinite;
+}
+@keyframes rab-sweep{0%{left:-60%}100%{left:120%}}
+/* 脉冲点 */
+.rab-dot{
+  width:11px;height:11px;border-radius:50%;background:#fff;
+  flex-shrink:0;
+  animation:rab-pulse 1.6s ease-in-out infinite;
+}
+@keyframes rab-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.55);opacity:1;}
+  50%{box-shadow:0 0 0 9px rgba(255,255,255,0);opacity:.75;}
+}
+/* 警告图标晃动 */
+.rab-icon{
+  font-size:22px;flex-shrink:0;
+  animation:rab-shake .55s .25s ease-in-out both;
+}
+@keyframes rab-shake{
+  0%,100%{transform:rotate(0deg);}
+  20%{transform:rotate(-12deg);}
+  50%{transform:rotate(11deg);}
+  75%{transform:rotate(-6deg);}
+}
+.rab-content{flex:1;min-width:0;}
+.rab-eyebrow{font-size:10.5px;font-weight:800;color:rgba(255,255,255,.7);letter-spacing:.7px;text-transform:uppercase;margin-bottom:3px;}
+.rab-title{font-size:14px;font-weight:800;color:#fff;line-height:1.4;}
+.rab-detail{
+  font-size:12px;color:rgba(255,255,255,.8);margin-top:5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:560px;
+}
+.rab-score-wrap{text-align:center;flex-shrink:0;}
+.rab-score{font-size:30px;font-weight:900;color:#fff;line-height:1;}
+.rab-score-sub{font-size:10px;color:rgba(255,255,255,.6);margin-top:2px;}
+.rab-close{
+  width:28px;height:28px;border-radius:8px;border:none;
+  background:rgba(255,255,255,.15);color:#fff;cursor:pointer;
+  font-size:13px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .18s;
+}
+.rab-close:hover{background:rgba(255,255,255,.28);}
+/* 预警横幅可点击区域 */
+.rab-clickable{cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;gap:14px;}
+.rab-clickable:hover .rab-title{text-decoration:underline;text-underline-offset:3px;}
+/* 案例卡片高亮动画 */
+@keyframes case-highlight{
+  0%,100%{box-shadow:var(--shadow-sm);}
+  30%{box-shadow:0 0 0 3px rgba(220,38,38,.5),var(--shadow-lg);}
+  60%{box-shadow:0 0 0 6px rgba(220,38,38,.2),var(--shadow-lg);}
+}
+.c-card.highlighted{animation:case-highlight 1.2s ease;}
+@media(max-width:760px){
+  .rab-inner{margin:8px 12px;}
+  .rab-detail{display:none;}
+  .rab-score-wrap{display:none;}
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    <div>
+      <div class="logo-name">青年心盾</div>
+      <div class="logo-sub">Youth Ideology Risk Detection · v1.0</div>
+    </div>
+  </div>
+  <div class="hdr-tags">
+    <a href="account.html" style="font-size:12px;font-weight:500;color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.6);transition:all .18s;" onmouseover="this.style.color='var(--primary)';this.style.borderColor='rgba(61,111,212,.3)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">← 返回账号画像</a>
+    <span class="htag" id="h-status" style="color:#27AE60;border-color:rgba(39,174,96,.2);background:rgba(39,174,96,.06)">● 运行中</span>
+    <span class="htag" id="btnClearCache" onclick="clearCache()" style="cursor:pointer;color:var(--muted);border-color:var(--border);" onmouseover="this.style.color='#E67E22';this.style.borderColor='rgba(230,126,34,.3)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">清除缓存</span>
+  </div>
+</header>
+
+<!-- 风险预警横幅（动态注入内容，分析结果达到 L2+ 时滑入） -->
+<div id="risk-alert-banner">
+  <div class="rab-inner" id="rab-inner"></div>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+<div class="hero-title">青年心盾：青少年网络空间<em>价值观审查</em>与正向引导平台</div>
+  <div class="hero-sub">自动识别内容风险等级，匹配年龄适配的价值观引导话术</div>
+  <!-- 搜索框（需要展示时删除 style="display:none"） -->
+  <div class="search-wrap">
+    <input class="search-input" id="urlInput" type="text"
+      placeholder="粘贴内容链接，支持微博 / 小红书 / 抖音 / 百度 / B站…" />
+    <button class="btn-go" id="btnGo" onclick="startAnalysis()">开始分析</button>
+  </div>
+
+</div>
+
+
+<!-- Results -->
+<div id="results">
+
+  <div class="results-layout">
+  <!-- 左：手机 + 分析卡 -->
+  <div class="demo-stage">
+
+    <!-- 手机 -->
+    <div class="phone-outer">
+      <div class="phone-body">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <!-- 视频内容层（动态替换）-->
+          <div id="phone-content">
+            <div class="video-bg"></div>
+            <div class="video-scene">
+              <div class="scene-bg"></div>
+              <div class="scene-window"></div>
+              <div class="scene-window2"></div>
+              <div class="scene-person"></div>
+            </div>
+          </div>
+          <!-- 平台UI -->
+          <div class="platform-ui">
+            <div class="p-statusbar">
+              <span id="p-time">9:41</span>
+              <span>● ● ●</span>
+            </div>
+            <div class="p-platform" id="p-plat">微博</div>
+            <!-- 右侧按钮 -->
+            <div class="p-actions">
+              <div class="p-btn"><div class="p-btn-icon">👤</div></div>
+              <div class="p-btn"><div class="p-btn-icon">❤️</div><div class="p-btn-num" id="p-like">2.3万</div></div>
+              <div class="p-btn"><div class="p-btn-icon">💬</div><div class="p-btn-num" id="p-cmt">4.1k</div></div>
+              <div class="p-btn"><div class="p-btn-icon">↗️</div><div class="p-btn-num" id="p-share">8.3k</div></div>
+            </div>
+            <!-- 底部字幕 -->
+            <div class="p-caption">
+              <div class="p-author" id="p-author">@用户</div>
+              <div class="p-text" id="p-text">加载中…</div>
+            </div>
+            <!-- 进度条 -->
+            <div class="p-progress"><div class="p-progress-fill"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分析卡片 -->
+
+    <div class="analysis-card">
+      <div class="card-main-title">系统分析</div>
+      <div class="card-sub-title" id="c-subtitle" style="color:var(--muted-2)">输入链接后开始分析</div>
+      <div class="card-divider"></div>
+
+      <!-- 语义标签 -->
+      <div class="card-section-title">识别标签</div>
+      <div class="tag-list" id="c-tags">
+        <span class="skel" style="display:inline-block;width:64px;height:24px;border-radius:20px;"></span>
+        <span class="skel" style="display:inline-block;width:80px;height:24px;border-radius:20px;"></span>
+        <span class="skel" style="display:inline-block;width:56px;height:24px;border-radius:20px;"></span>
+      </div>
+      <div class="card-divider"></div>
+
+      <!-- 风险评级 -->
+      <div class="card-section-title">风险评级</div>
+      <div class="risk-word" id="c-risk-word" style="color:var(--muted-2)">—</div>
+      <div class="risk-bar-wrap">
+        <div class="risk-bar">
+          <div class="risk-indicator" id="c-indicator" style="left:5%"></div>
+        </div>
+        <div class="risk-labels"><span>低风险</span><span>轻度</span><span>中度</span><span>高风险</span><span>极高</span></div>
+      </div>
+      <div class="card-divider"></div>
+
+      <!-- 叙事分析 -->
+      <div class="card-section-title">叙事分析</div>
+      <div class="narrative-body" id="c-narrative" style="color:var(--muted-2);font-size:12px">提交链接后，系统将自动生成内容叙事模式分析与引导建议。</div>
+    </div>
+
+  </div><!-- /demo-stage -->
+
+  <!-- 右：关联案例 -->
+  <div class="cases-section" id="casesSection">
+    <div class="cases-header">
+      <div class="cases-title">
+        关联案例
+        <span class="cases-domain-tag" id="casesDomainTag"></span>
+      </div>
+    </div>
+    <div class="cases-grid" id="casesGrid">
+      <!-- 骨架占位卡（分析完成后替换） -->
+      <div class="skel-card">
+        <div class="sk-title skel"></div>
+        <div class="sk-line skel" style="width:80%"></div>
+        <div class="sk-short skel"></div>
+      </div>
+      <div class="skel-card">
+        <div class="sk-title skel" style="width:70%"></div>
+        <div class="sk-line skel" style="width:75%"></div>
+        <div class="sk-short skel" style="width:38%"></div>
+      </div>
+      <div class="skel-card">
+        <div class="sk-title skel" style="width:55%"></div>
+        <div class="sk-line skel" style="width:85%"></div>
+        <div class="sk-short skel" style="width:50%"></div>
+      </div>
+      <div class="skel-card">
+        <div class="sk-title skel" style="width:65%"></div>
+        <div class="sk-line skel" style="width:70%"></div>
+        <div class="sk-short skel" style="width:42%"></div>
+      </div>
+      <div class="skel-card">
+        <div class="sk-title skel" style="width:60%"></div>
+        <div class="sk-line skel" style="width:80%"></div>
+        <div class="sk-short skel" style="width:35%"></div>
+        <div class="sk-short skel" style="width:42%"></div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /results-layout -->
+
+</div><!-- /results -->
+
+<!-- 案例抽屉 -->
+<div id="c-mask" onclick="closeCaseDrawer()"></div>
+<div id="c-drawer">
+  <div class="cd-header">
+    <div style="flex:1;min-width:0">
+      <div class="cd-title" id="cd-title">—</div>
+      <div class="cd-meta"  id="cd-meta">—</div>
+    </div>
+    <a id="cd-extlink" href="#" target="_blank" rel="noopener"
+       style="flex-shrink:0;align-self:center;margin-right:8px;font-size:11px;font-weight:500;color:var(--primary);text-decoration:none;padding:5px 11px;border-radius:8px;border:1px solid rgba(61,111,212,.2);background:rgba(61,111,212,.06);white-space:nowrap;transition:all .18s"
+       onmouseover="this.style.background='rgba(61,111,212,.14)'" onmouseout="this.style.background='rgba(61,111,212,.06)'">查看原文 ↗</a>
+    <button class="cd-close" onclick="closeCaseDrawer()">✕</button>
+  </div>
+  <div class="cd-body">
+    <div class="cd-section">
+      <div class="cd-lbl">核心关键词</div>
+      <div class="cd-tags" id="cd-kws"></div>
+    </div>
+    <div class="cd-section">
+      <div class="cd-lbl">传播机制</div>
+      <div class="cd-text" id="cd-spread">—</div>
+    </div>
+    <div class="cd-section">
+      <div class="cd-lbl">代表文本</div>
+      <div class="cd-text" id="cd-reptext" style="color:#6B7A90;font-style:italic">—</div>
+    </div>
+    <div class="cd-section">
+      <div class="cd-lbl">处置策略</div>
+      <div class="cd-age-tabs">
+        <div class="cd-atab active" onclick="cdSwitchAge(this,'6-12')">6-12岁</div>
+        <div class="cd-atab" onclick="cdSwitchAge(this,'13-15')">13-15岁</div>
+        <div class="cd-atab" onclick="cdSwitchAge(this,'16-18')">16-18岁</div>
+      </div>
+      <div class="cd-text" id="cd-disposal">—</div>
+    </div>
+    <div class="cd-section">
+      <div class="cd-lbl">引导话术</div>
+      <div class="cd-age-tabs" id="cd-stabs">
+        <div class="cd-atab active" onclick="cdSwitchScript(this,'6-12')">6-12岁</div>
+        <div class="cd-atab" onclick="cdSwitchScript(this,'13-15')">13-15岁</div>
+        <div class="cd-atab" onclick="cdSwitchScript(this,'16-18')">16-18岁</div>
+      </div>
+      <div id="cd-script-body"></div>
+    </div>
+    <div class="cd-section">
+      <div class="cd-lbl">复盘结论</div>
+      <div class="cd-text" id="cd-conclusion" style="color:#6B7A90">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let _data = null;
+
+// 开始分析
+async function startAnalysis(){
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url){ alert('请输入链接'); return; }
+  const btn = document.getElementById('btnGo');
+  btn.disabled = true;
+  btn.textContent = '分析中…';
+  dismissRiskAlert();
+  // 不隐藏results，只重置内容为loading状态
+  document.getElementById('c-subtitle').textContent = '分析中…';
+  document.getElementById('c-tags').innerHTML =
+    '<span class="skel" style="display:inline-block;width:64px;height:24px;border-radius:20px;"></span>' +
+    '<span class="skel" style="display:inline-block;width:80px;height:24px;border-radius:20px;margin-left:6px"></span>' +
+    '<span class="skel" style="display:inline-block;width:56px;height:24px;border-radius:20px;margin-left:6px"></span>';
+  document.getElementById('c-risk-word').textContent = '—';
+  document.getElementById('c-narrative').innerHTML = '<span class="typing-cursor">|</span>';
+  document.getElementById('casesGrid').innerHTML =
+    ['60%','75%','50%','65%','55%'].map(w=>`<div class="skel-card">
+      <div class="sk-title skel" style="width:${w}"></div>
+      <div class="sk-line skel" style="width:80%"></div>
+      <div class="sk-line skel" style="width:65%"></div>
+      <div class="sk-short skel"></div>
+    </div>`).join('');
+  try {
+    const res = await fetch(`${API}/analyze`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({url, age_group:'13-15'})
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    _data = await res.json();
+    console.log('API返回:', _data);
+    render(_data);
+  } catch(e){
+    alert(`分析失败：${e.message}\n请确认后端已启动（uvicorn main:app --port 8000）`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '开始分析';
+  }
+}
+
+// 主渲染
+function render(d){
+  if(!d) return;
+  try {
+  const el = document.getElementById('results');
+  el.style.display='block';
+
+  // 重置平台UI（上次可能被隐藏）
+  const pui = document.querySelector('.platform-ui');
+  if(pui) pui.style.display = '';
+  // 手机内容层：先用 CSS 场景占位，异步提取视频
+  renderPhoneContent({embed_type:'loading'}, d);
+  loadVideo(d.url, d);
+
+  // 手机UI
+  document.getElementById('p-plat').textContent = d.platform||'—';
+  document.getElementById('p-author').textContent = d.author ? `@${d.author}` : `@${d.platform||'用户'}`;
+  document.getElementById('p-text').textContent = (d.content_summary||d.title||'').slice(0,60)||'（内容加载中）';
+  const ic = d.interaction||{};
+  if(ic.like)  document.getElementById('p-like').textContent  = fmt(ic.like);
+  if(ic.comment) document.getElementById('p-cmt').textContent  = fmt(ic.comment);
+  if(ic.share) document.getElementById('p-share').textContent = fmt(ic.share);
+
+  // 分析卡 - 副标题
+  const methodLabel = d.match_method==='rag' ? '实时分析（RAG匹配）' : '实时分析（未收录）';
+  const titleStr = d.title ||
+    (d.matched_tags&&d.matched_tags[0] ? d.matched_tags[0].keyword :
+    (d.source==='realtime' ? methodLabel : '—'));
+  document.getElementById('c-subtitle').textContent = (titleStr||'').slice(0,28) || '—';
+
+  // 语义标签（最多5个，横排芯片）
+  const tags = (d.matched_tags||[]).slice(0,5);
+  const tagEl = document.getElementById('c-tags');
+  if(tags.length){
+    tagEl.innerHTML = tags.map((t,i)=>`
+      <span class="sem-tag" style="animation-delay:${i*.08}s">${t.keyword}</span>
+    `).join('') +
+    (tags[0]?.domain ? `<span class="tag-domain">${tags[0].domain.replace('风险','')}</span>` : '');
+  } else {
+    tagEl.innerHTML='<span class="tag-domain" style="opacity:.6">未命中关键词</span>';
+  }
+
+  // 风险评级
+  const score = d.composite_score||0;
+  const lv = d.risk_level||'L0';
+  const wordMap = {L4:'极高风险',L3:'高风险',L2:'中度风险',L1:'轻度风险',L0:'低风险'};
+  const colorMap = {L4:'#C0392B',L3:'#E67E22',L2:'#D4AC0D',L1:'#27AE60',L0:'#95A5A6'};
+  const posMap   = {L4:'88%',L3:'65%',L2:'40%',L1:'18%',L0:'5%'};
+  const riskWord = document.getElementById('c-risk-word');
+  riskWord.textContent = wordMap[lv]||'—';
+  riskWord.style.color = colorMap[lv]||'#95A5A6';
+  setTimeout(()=>{ document.getElementById('c-indicator').style.left = posMap[lv]||'50%'; },400);
+
+  // 叙事分析 → 流式引导建议
+  try {
+    const narEl = document.getElementById('c-narrative');
+    narEl.innerHTML = '<span class="typing-cursor">|</span>';
+    streamNarrative(d);
+  } catch(e){ console.warn('narrative error:', e); }
+
+  // 实时分析：无论是否有 RAG 结果，都调用 AI 补全/修正
+  if(d.source === 'realtime') {
+    fillAIAnalysis(d);
+  }
+
+  // 关联案例（逐张渲染；内部负责触发预警）
+  renderCasesSection(d.related_cases||[], d.primary_domain||'', d);
+  if (d.related_cases?.length) prefetchAdaptedScripts(d.related_cases);
+
+  } catch(err) {
+    console.error('render() 报错:', err);
+    document.getElementById('results').style.display='block';
+  }
+}
+
+function fmt(n){ return n>=10000?(n/10000).toFixed(1)+'万':n.toLocaleString(); }
+
+// ── 风险预警横幅 ──────────────────────────────────────────────
+const _RAB_ORDER = {L4:4,L3:3,L2:2,L1:1,L0:0};
+const _RAB_LV_CLS = {L4:'rab-lv4',L3:'rab-lv3',L2:'rab-lv2'};
+const _RAB_LV_LBL = {L4:'极高风险',L3:'高风险',L2:'中度风险'};
+const _RAB_ACTION = {
+  L4:'请立即人工复核，建议限制推荐并上报处置',
+  L3:'建议人工复核，考虑限制推荐范围',
+  L2:'建议人工抽检，注意后续传播变化',
+};
+
+function showRiskAlert(d){
+  const banner = document.getElementById('risk-alert-banner');
+  const inner  = document.getElementById('rab-inner');
+
+  // 找当前已出现案例中风险等级最高的（由调用方传入 maxAlertLv 控制触发时机）
+  const firstCase = (d.related_cases || []).reduce((best, c) => {
+    const lv = _RAB_ORDER[c.risk_level] || 0;
+    const bestLv = _RAB_ORDER[best?.risk_level] || 0;
+    return (lv >= 2 && lv > bestLv) ? c : best;
+  }, null);
+
+  if(!firstCase){
+    dismissRiskAlert();
+    return;
+  }
+
+  const lv      = firstCase.risk_level;
+  const lvCls   = _RAB_LV_CLS[lv] || 'rab-lv2';
+  const lvLabel = _RAB_LV_LBL[lv] || '中度风险';
+  const action  = _RAB_ACTION[lv]  || '建议关注';
+  const score   = Number(firstCase.priority_score || d.composite_score || 0).toFixed(2);
+
+  // 详情行：案例名 + 风险类型
+  let detail = firstCase.case_name || '';
+  if(firstCase.risk_type) detail += detail ? `　·　${firstCase.risk_type}` : firstCase.risk_type;
+
+  inner.className = `rab-inner ${lvCls}`;
+  inner.innerHTML = `
+    <div class="rab-clickable" data-jump-case="${firstCase.case_id||''}" title="点击跳转到对应案例">
+      <div class="rab-dot"></div>
+      <div class="rab-icon">⚠️</div>
+      <div class="rab-content">
+        <div class="rab-eyebrow">案例预警 · Case Alert</div>
+        <div class="rab-title">关联到<strong style="margin:0 3px">${lvLabel}</strong>案例 — ${action}</div>
+        ${detail ? `<div class="rab-detail">${detail}</div>` : ''}
+      </div>
+      <div class="rab-score-wrap">
+        <div class="rab-score">${score}</div>
+        <div class="rab-score-sub">案例优先级 / 5.0</div>
+      </div>
+    </div>
+    <button class="rab-close" onclick="dismissRiskAlert()" title="关闭预警">✕</button>
+  `;
+
+  // 点击跳转到对应案例卡片
+  const clickable = inner.querySelector('.rab-clickable');
+  if(clickable) clickable.addEventListener('click', () => {
+    const caseId = clickable.dataset.jumpCase;
+    const card = caseId && document.querySelector(`.c-card[data-case-id="${caseId}"]`);
+    if(card){
+      card.scrollIntoView({behavior:'smooth', block:'center'});
+      card.classList.add('highlighted');
+      setTimeout(() => card.classList.remove('highlighted'), 1300);
+    }
+  });
+
+  // 先移除再添加，触发重新动画
+  banner.classList.remove('rab-visible');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    banner.classList.add('rab-visible');
+    setTimeout(dismissRiskAlert, 4000);
+  }));
+}
+
+function dismissRiskAlert(){
+  document.getElementById('risk-alert-banner').classList.remove('rab-visible');
+}
+
+
+// 判断是否为视频链接
+function isVideoUrl(url){
+  const u = url.toLowerCase();
+  return u.includes('douyin.com/video/') || u.includes('bilibili.com') || u.includes('b23.tv');
+}
+
+// 异步加载内容
+async function loadVideo(url, d){
+  // 非视频链接：先尝试用爬虫获取干净正文，再渲染文章视图
+  if(!isVideoUrl(url)){
+    await fetchAndRenderArticle(url, d);
+    return;
+  }
+  // B站：前端直接构造 iframe，无需 API（立即渲染）
+  const ul = url.toLowerCase();
+  if(ul.includes('bilibili.com') || ul.includes('b23.tv')){
+    const bv = url.match(/BV\w+/);
+    if(bv){
+      renderPhoneContent({embed_type:'iframe',
+        embed_url:`https://player.bilibili.com/player.html?bvid=${bv[0]}&page=1&high_quality=1&as_wide=1&autoplay=1`}, d);
+      return;
+    }
+  }
+  // 抖音等：走后端提取（持久化浏览器 + 缓存，通常 1-3s）
+  try {
+    const res = await fetch(`${API}/video/extract?url=${encodeURIComponent(url)}`);
+    const info = await res.json();
+    if(info.video_url){
+      renderPhoneContent({embed_type:'video', video_url: API + info.video_url}, d);
+    } else if(info.embed_url){
+      renderPhoneContent({embed_type:'iframe', embed_url: info.embed_url}, d);
+    } else if(info.thumb_url){
+      renderPhoneContent({embed_type:'thumb', thumb_url: info.thumb_url}, d);
+    } else {
+      renderPhoneContent({embed_type:'none'}, d);
+    }
+    // Playwright 抓到了标题/描述 → 补充到数据里重新触发 AI 分析
+    if((info.title || info.description) && !d.matched_tags.length){
+      if(info.title) d.title = info.title;
+      if(info.description) d.content_summary = info.description;
+      // 更新副标题
+      document.getElementById('c-subtitle').textContent = (d.title||'').slice(0,28)||'实时分析（未收录）';
+      // 重新触发 AI 分析
+      fillAIAnalysis(d);
+    }
+  } catch(e){
+    console.warn('视频提取失败:', e);
+    renderPhoneContent({embed_type:'none'}, d);
+  }
+}
+
+// 先爬取干净正文，再渲染手机；失败则用 d 中已有数据兜底
+async function fetchAndRenderArticle(url, d){
+  // 先用已有数据快速渲染一次（骨架状态）
+  renderArticleInPhone(d);
+
+  // 异步获取爬虫干净正文
+  try{
+    const res  = await fetch(`${API}/dashboard/scan_page?url=${encodeURIComponent(url)}`,
+      {signal: AbortSignal.timeout(15000)});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const art  = data.articles?.[0];
+    if(!art) return;
+
+    // 用爬虫数据覆盖，更新手机视图
+    d._crawled_title   = art.title   || d.title;
+    d._crawled_body    = art.body    || art.summary || '';
+    d._crawled_time    = art.pub_time|| '';
+    renderArticleInPhone(d);
+  }catch(e){
+    console.warn('正文爬取失败，使用已有数据:', e);
+  }
+}
+
+// 文章阅读视图
+function renderArticleInPhone(d){
+  const wrap = document.getElementById('phone-content');
+  const pui  = document.querySelector('.platform-ui');
+  if(pui) pui.style.display = 'none';
+
+  // 优先使用爬虫提取的干净数据
+  const title   = d._crawled_title || d.title || '内容预览';
+  const platform= d.platform || '';
+  const time    = d._crawled_time
+    || (d.publish_time ? d.publish_time.split('T')[0] : '');
+  const rawText = d._crawled_body
+    || d.full_text || d.content_summary
+    || '（正文内容较少，请查看原文）';
+
+  // 分段：每70字左右断一段，视觉更像文章
+  const paras = [];
+  let t = rawText;
+  while(t.length > 0){
+    const cut = t.slice(0, 70);
+    paras.push(`<p>${cut}</p>`);
+    t = t.slice(70);
+    if(paras.length >= 20) break;  // 最多显示约1400字
+  }
+
+  wrap.innerHTML = `
+    <div class="phone-article">
+      <div class="pa-topbar">
+        <span class="pa-topbar-title">${platform}</span>
+        <a class="pa-topbar-link" href="${d.url||'#'}" target="_blank">原文 ↗</a>
+      </div>
+      <div class="pa-body">
+        <div class="pa-source">
+          <span>${platform}</span>
+          ${time ? `<span class="pa-source-dot"></span><span>${time}</span>` : ''}
+        </div>
+        <div class="pa-title">${title}</div>
+        <div class="pa-divider"></div>
+        <div class="pa-text">${paras.join('')}</div>
+      </div>
+      <div class="pa-fade"></div>
+    </div>`;
+}
+
+// 手机内容渲染
+function renderPhoneContent(embed, d){
+  const wrap = document.getElementById('phone-content');
+
+  if(embed.embed_type === 'loading'){
+    wrap.innerHTML = `
+      <div class="video-bg"></div>
+      <div class="video-scene"><div class="scene-bg"></div><div class="scene-window"></div><div class="scene-window2"></div><div class="scene-person"></div></div>
+      <div class="phone-thumb-overlay" style="background:rgba(0,0,0,.3)">
+        <div style="width:32px;height:32px;border:3px solid rgba(255,255,255,.7);border-top-color:transparent;border-radius:50%;animation:spin2 .8s linear infinite"></div>
+        <div class="phone-play-label">视频加载中…</div>
+      </div>`;
+
+  } else if(embed.embed_type === 'video' && embed.video_url){
+    wrap.innerHTML = `<video class="phone-iframe" src="${embed.video_url}"
+      autoplay muted playsinline controls
+      style="object-fit:cover;background:#000"></video>`;
+    wrap.querySelector('video')?.play().catch(()=>{});
+    // 隐藏平台UI覆盖层，让视频控件可点击
+    const ui = document.querySelector('.platform-ui');
+    if(ui) ui.style.display = 'none';
+
+  } else if(embed.embed_type === 'iframe' && embed.embed_url){
+    wrap.innerHTML = `<iframe class="phone-iframe" src="${embed.embed_url}"
+      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen frameborder="0"></iframe>`;
+    const ui = document.querySelector('.platform-ui');
+    if(ui) ui.style.display = 'none';
+
+  } else if(embed.embed_type === 'thumb' && embed.thumb_url){
+    wrap.innerHTML = `
+      <div class="phone-thumb" style="background-image:url('${embed.thumb_url}')"></div>
+      <div class="phone-thumb-overlay">
+        <a class="phone-play-btn" href="${d && d.url ? d.url : '#'}" target="_blank" title="查看原文">↗</a>
+        <div class="phone-play-label">点击查看原文</div>
+      </div>`;
+    const ui = document.querySelector('.platform-ui');
+    if(ui) ui.style.display = 'none';
+
+  } else {
+    // 兜底：CSS 模拟场景 + 跳转按钮
+    wrap.innerHTML = `
+      <div class="video-bg"></div>
+      <div class="video-scene">
+        <div class="scene-bg"></div>
+        <div class="scene-window"></div>
+        <div class="scene-window2"></div>
+        <div class="scene-person"></div>
+      </div>
+      ${d && d.url ? `<div class="phone-thumb-overlay" style="background:rgba(0,0,0,.25)">
+        <a class="phone-play-btn" href="${d.url}" target="_blank">↗</a>
+        <div class="phone-play-label">点击查看原文</div>
+      </div>` : ''}`;
+    const ui = document.querySelector('.platform-ui');
+    if(ui) ui.style.display = 'none';
+  }
+}
+
+// AI 补全未收录内容的标签和风险评级
+async function fillAIAnalysis(d){
+  const tagEl   = document.getElementById('c-tags');
+  const riskWord = document.getElementById('c-risk-word');
+  tagEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center">AI 识别中…</div>';
+
+  try {
+    const res = await fetch(`${API}/ai_analyze`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        url:     d.url,
+        platform:d.platform || '',
+        title:   d.title || '',
+        summary: d.content_summary || '',
+      })
+    });
+    const info = await res.json();
+    if(!info.ok && !info.tags) return;
+
+    // 更新语义标签
+    const tags = (info.tags || []).slice(0, 3);
+    if(tags.length){
+      tagEl.innerHTML = tags.map((t,i) => `
+        <span class="sem-tag" style="animation-delay:${i*.08}s">${t.keyword}</span>
+      `).join('') +
+      (tags[0]?.domain ? `<span class="tag-domain">${tags[0].domain.replace('风险','')}</span>` : '');
+    }
+    // 无论如何不显示"未识别"，让叙事流式继续
+
+    // 更新风险评级
+    const lv = info.risk_level || 'L0';
+    const word = info.risk_word || '暂无';
+    const colorMap = {L4:'#C0392B',L3:'#E67E22',L2:'#D4AC0D',L1:'#27AE60',L0:'#95A5A6'};
+    const posMap   = {L4:'88%',L3:'65%',L2:'40%',L1:'18%',L0:'5%'};
+    riskWord.textContent = word;
+    riskWord.style.color = colorMap[lv] || '#95A5A6';
+    setTimeout(()=>{ document.getElementById('c-indicator').style.left = posMap[lv]||'5%'; }, 300);
+
+    // 把 AI 识别到的标签信息传给叙事分析
+    if(tags.length && !d.matched_tags.length){
+      d.matched_tags = tags.map(t => ({keyword:t.keyword, domain:t.domain||''}));
+    }
+  } catch(e){
+    console.warn('AI分析失败:', e);
+    tagEl.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center">分析服务暂不可用</div>';
+  }
+}
+
+// 流式引导建议
+async function streamNarrative(d){
+  const el = document.getElementById('c-narrative');
+  const keywords = (d.matched_tags||[]).slice(0,3).map(t=>t.keyword).join('、');
+  try {
+    const res = await fetch(`${API}/narrative/stream`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        keywords: keywords||'',
+        domain:   d.primary_domain||'',
+        summary:  d.content_summary||d.title||'',
+        risk_level: d.risk_level||'L0',
+      })
+    });
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let text = '';
+    let finished = false;
+    el.innerHTML = '<span class="typing-cursor">|</span>';
+
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      const chunk = dec.decode(value);
+      for(const line of chunk.split('\n')){
+        if(!line.startsWith('data: ')) continue;
+        const payload = line.slice(6);
+        if(payload==='[DONE]'){
+          el.innerHTML = renderNarHl(text, d.matched_tags||[]);
+          finished = true; break;
+        }
+        if(payload.startsWith('[ERROR]')){
+          el.style.color = 'var(--muted-2)';
+          el.textContent = '引导建议暂时不可用，请稍后重试';
+          finished = true; break;
+        }
+        text += payload;
+        el.innerHTML = renderNarHl(text, d.matched_tags||[]) + '<span class="typing-cursor">|</span>';
+      }
+    }
+    if(!finished) el.innerHTML = renderNarHl(text, d.matched_tags||[]);
+  } catch(e){
+    el.textContent = '引导建议加载失败，请检查后端连接';
+  }
+}
+
+function renderNarHl(text, tags){
+  let t = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  (tags||[]).forEach(tag=>{
+    t = t.replace(new RegExp(tag.keyword,'g'),`<span class="hl">${tag.keyword}</span>`);
+  });
+  return t;
+}
+
+// ── 关联案例渲染 ──
+function caseSearchUrl(c){
+  return c.source_url || '';
+}
+
+const LV_COLOR = {L4:'#FF4D4F',L3:'#FA8C16',L2:'#D4AC0D',L1:'#27AE60',L0:'#95A5A6'};
+const LV_BG    = {L4:'rgba(255,77,79,.08)',L3:'rgba(250,141,22,.08)',L2:'rgba(212,172,13,.08)',L1:'rgba(39,174,96,.08)',L0:'rgba(149,165,166,.08)'};
+const LV_LBL   = {L4:'极高风险',L3:'高风险',L2:'中度风险',L1:'轻度风险',L0:'低风险'};
+const DOM_CLR  = {'制度认同风险':'#4FC3F7','历史认知风险':'#FF7043','心理韧性风险':'#C77DFF','认知闭合风险':'#26C6DA','网络素养风险':'#66BB6A'};
+
+const FIXED_DEMO_CASES = [
+  { case_id:'Z1-002', case_name:'派出所副所长诱人吸毒案',
+    risk_domain:'制度认同风险', risk_type:'”定体问”式的情绪归因', risk_level:'L3',
+    platform:'新闻', core_keywords:'定体问', total_interaction:0,
+    spread_mechanism:'恶劣影响',
+    representative_text:'江苏南京一派出所副所长马某为完成涉毒案件”查处任务”，与社会人员徐某合谋，由其提供含有国家二类管制精神药品依托咪酯的电子烟，召集6名未成年人在宾馆吸食，随后带队”查获”，伪造破案业绩。',
+    review_conclusion:'”定体问”是典型的简化归因话术，利用公众对个案的负面情绪，引导至对制度的整体否定。需用”发展视角””对比视角””解决问题视角”三层面进行话语对冲，同时培育青少年系统性思维能力。',
+    disposal_6_12:'1.引导就事论事，简单说明社会事件有多种原因，不盲目跟风、不乱下结论。\n2.树立信任意识，相信学校、家庭、社会管理与公共服务。\n4.不听、不信、不传播”这国怎、定体问”等极端简单化话术。',
+    disposal_13_15:'1.训练多因素归因思维，区分个案问题与整体制度、具体执行与体制设计。\n2.识别极端归因话术，不被情绪带节奏，不盲目批判、不跟风站队。\n4.理解社会问题的复杂性，学会理性看待、客观分析。',
+    disposal_16_18:'1.培养系统治理思维，了解政策制定、执行、监管、纠错的完整流程。\n2.深度辨析”泛体制化批判””单一极端归因”的逻辑谬误与意识形态目的。\n3.理解制度优势与自我完善机制，区分合理监督与恶意否定。\n5.形成理性、全面、建设性的社会观察视角。' },
+  { case_id:'L1-001', case_name:'罗昌平侮辱”冰雕连”英烈案',
+    risk_domain:'历史认知风险', risk_type:'英烈亵渎 / 娱乐化', risk_level:'L4',
+    platform:'微博', core_keywords:'冰雕连', total_interaction:22000,
+    spread_mechanism:'贴文阅读量超2.2万 | 引发公众强烈愤慨',
+    representative_text:'罗昌平使用其新浪微博账号（粉丝约220万）在观看电影《长津湖》后，发布帖文戏谑、侮辱在长津湖战役中牺牲的中国人民志愿军”冰雕连”英烈，称”\'冰雕连\'是\'装\'的”等不当内容。',
+    review_conclusion:'英烈亵渎类内容常以”玩梗””二次创作”为包装，在短视频、社交媒体中隐蔽传播，易削弱青少年对历史的敬畏心。需坚持”零容忍”态度，法律打击与正面宣传并重，同时强化青少年英烈事迹教育，从源头增强历史认同。',
+    disposal_6_12:'1.以英雄故事、动画、绘本、榜样示范为主要形式，强化英烈形象的崇高性与神圣感。\n2.明确告知：英雄烈士是民族的守护者，不可以开玩笑、不可以恶搞、不可以编成段子。\n3.结合升旗仪式、纪念日活动，建立直观情感认同，让孩子从内心产生尊敬与爱戴。',
+    disposal_13_15:'1.开展英雄烈士保护法治教育，讲解侮辱英烈的法律后果与道德危害。\n2.引导辨析”娱乐玩梗”与”历史亵渎”的边界，识别历史虚无主义的隐蔽话术。\n3.组织观看纪实影像、亲历者口述，还原真实历史场景，破除”不合理、不科学”等造谣式质疑。',
+    disposal_16_18:'1.从民族精神、国家认同、意识形态安全三层理解英烈保护的意义。\n2.深度剖析娱乐化、解构化、段子化背后的历史虚无主义逻辑，看清其削弱历史认知的目的。\n3.开展批判性讨论：为何有人刻意抹黑英雄？如何用史料与逻辑反驳历史虚无观点？' },
+  { case_id:'X1-001', case_name:'境外资助躺平网红案',
+    risk_domain:'心理韧性风险', risk_type:'”躺平””摆烂””最后一代”等消极模因的扩散', risk_level:'L4',
+    platform:'国安部', core_keywords:'躺平', total_interaction:0,
+    spread_mechanism:'境外势力资助境内网红批量制作消极短视频，精准推送青年群体，形成越刷越丧的闭环。',
+    representative_text:'国家安全部通报披露，境外势力通过基金会提供资金，资助境内网红批量制作”躺平即正义””奋斗=被剥削””不婚不育最后一代”等短视频，刻意放大社会压力、渲染阶层固化，系统性扩散消极模因。',
+    review_conclusion:'消极模因常与境外势力渗透、社会压力放大、个体无助感捆绑，易形成”越刷越丧”的闭环。需用”正向激励+心理支持+意义重建”三重干预，同时揭露境外资助躺平的意识形态渗透本质。',
+    disposal_6_12:'1.鼓励努力、坚持、不怕困难，培育成长型思维。\n2.传递”努力很棒、坚持很酷”的正向观念。\n3.不接触消极躺平、放弃努力的不良内容。',
+    disposal_13_15:'1.疏导学业压力与成长焦虑，纠正”努力无用”的错误认知。\n2.树立目标感与积极心态，理解挫折是成长的一部分。\n3.拒绝躺平、摆烂、绝望等消极模因影响。',
+    disposal_16_18:'1.引导人生规划、责任意识、长期主义与奋斗精神。\n2.认清消极模因瓦解意志、削弱心理韧性、制造虚无的危害。\n3.建立抗压能力与进取心态，增强心理韧性。' },
+  { case_id:'R1-002', case_name:'成都1死11伤阴谋论舆情案',
+    risk_domain:'认知闭合风险', risk_type:'阴谋论和身份对立叙事以”万能解释”满足认知闭合需求', risk_level:'L3',
+    platform:'微博', core_keywords:'成都1死11伤', total_interaction:0,
+    spread_mechanism:'部分网民不采信官方通报，大肆传播阴谋论叙事，把一切疑点统一解释为”官方压热度、删帖掩盖”。',
+    representative_text:'成都发生致1死11伤的意外事件后，部分网民在短视频、评论区、群组内大肆传播阴谋论叙事：将事件定性为”报复社会””故意杀人””掩盖真相”，并把伤亡、现场、动机等一切疑点统一解释为”官方压热度、删帖”。',
+    review_conclusion:'阴谋论以确定性满足认知闭合需求，突发事件是其高发窗口。需”快速发声+透明调查+情绪疏导+素养教育”四管齐下，长期目标是从”满足确定性需求”转向”培养对不确定性的健康容忍度”。',
+    disposal_6_12:'1.相信家长、老师、官方通报等正规信息。\n2.不听”吓人秘密、黑幕、压热度”等奇怪说法，不害怕、不盲从。\n4.养成”有疑问问大人”的习惯。',
+    disposal_13_15:'1.学会看证据、查来源、辨真假，不信没有根据的阴谋论。\n2.识别”官方掩盖、被洗脑、洗地”等标签化对立话术。\n4.不盲目站队、不参与对立、不被情绪煽动。',
+    disposal_16_18:'1.识别认知闭环、身份对立、阴谋话术的完整逻辑与心理机制。\n2.坚持多元视角、事实核查、理性判断，拒绝极端封闭认知。\n4.看清阴谋论制造对立、破坏信任、扰乱社会心态的现实危害。' },
+  { case_id:'W2-004', case_name:'反虐待动物法舆论极端对立案',
+    risk_domain:'网络素养风险', risk_type:'情绪感染与圈层煽动', risk_level:'L2',
+    platform:'抖音', core_keywords:'反虐待动物法', total_interaction:30017,
+    spread_mechanism:'点赞2.1万，评论7549，收藏1339，转发1129 | 哗众取宠，博取流量',
+    representative_text:'反虐待动物法立法讨论中，部分舆论极端对立，双方互相扣帽、谩骂攻击，以情绪站队替代法治讨论，煽动群体对立，形成极端圈层，压缩理性沟通空间。',
+    review_conclusion:'情绪感染与圈层煽动常利用愤怒、焦虑、优越感等高互动情绪，形成封闭圈层与对立氛围。需”平台干预+素养教育+情绪疏导”协同，长期目标是培养青少年的情绪觉察与理性表达能力。',
+    disposal_6_12:'文明上网、礼貌发言、不跟风骂人、不冲动评论。',
+    disposal_13_15:'1.不被煽动、不冲评论、不参与对立、不跟风围攻。\n5.保持冷静理智，不被情绪内容带节奏。',
+    disposal_16_18:'1.保持独立思考与理性判断，拒绝情绪极化与圈层裹挟。\n2.识别煽动话术、对立叙事、群体压力的操控手段。\n6.以平和、理性、法治的心态参与网络空间。' }
+];
+
+let _caseData = [];
+
+function renderCasesSection(cases, domain, alertData){
+  const grid = document.getElementById('casesGrid');
+  document.getElementById('casesDomainTag').textContent = domain || '';
+  if(!cases || !cases.length){
+    grid.innerHTML = '<div style="color:var(--muted-2);font-size:13px;padding:24px 0 8px;text-align:center">暂无关联案例</div>';
+    return;
+  }
+  _caseData = cases;
+  grid.innerHTML = '';   // 清空骨架，逐张追加
+
+  const CARD_DELAY = 1000;  // 每张间隔 ms
+  let maxAlertLv = 'L0';  // 当前已出现的最高风险等级
+
+  cases.forEach((c, i) => {
+    setTimeout(() => {
+      const lv    = c.risk_level && c.risk_level !== '' ? c.risk_level : null;
+      const color = lv ? (LV_COLOR[lv]||'#95A5A6') : '#95A5A6';
+      const bg    = lv ? (LV_BG[lv]||'')            : 'rgba(149,165,166,.08)';
+      const dc    = DOM_CLR[c.risk_domain] || '#95A5A6';
+      const snippet = (c.representative_text || c.spread_mechanism || c.spread_path || '').slice(0,70);
+      const inter   = fmtCaseNum(c.total_interaction);
+
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `
+      <div class="c-card" style="animation-delay:0s" data-case-id="${c.case_id||''}" onclick="openCaseDrawer(${i})">
+        <div class="c-band" style="background:${color}"></div>
+        <div class="c-body">
+          <div class="c-top">
+            ${lv?`<span class="c-lv" style="color:${color};background:${bg};border-color:${color}">${LV_LBL[lv]||lv}</span>`:''}
+            ${c.risk_domain?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${dc}22;color:${dc};border:1px solid ${dc}55;white-space:nowrap">${c.risk_domain}</span>`:''}
+            <span class="c-id">${c.case_id||''}</span>
+          </div>
+          <div class="c-name">${c.case_name||'—'}</div>
+          <div class="c-snippet">${snippet||'（暂无摘要）'}</div>
+          <div class="c-footer">
+            ${inter?`<span>📊 <b>${inter}</b></span>`:''}
+            ${c.risk_type?`<span style="font-size:10px;color:#A0AEC0;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${c.risk_type}</span>`:'<span style="flex:1"></span>'}
+            ${c.source_url ? `<a href="${c.source_url}" target="_blank" rel="noopener"
+               onclick="event.stopPropagation()"
+               style="flex-shrink:0;font-size:10px;color:var(--primary);text-decoration:none;padding:2px 8px;border-radius:5px;border:1px solid rgba(61,111,212,.18);background:rgba(61,111,212,.05);transition:all .18s;white-space:nowrap"
+               onmouseover="this.style.background='rgba(61,111,212,.12)'" onmouseout="this.style.background='rgba(61,111,212,.05)'">查看原文 ↗</a>` : ''}
+          </div>
+        </div>
+      </div>`;
+      grid.appendChild(wrap.firstElementChild);
+
+      // 比当前最高风险更高（且 >= L2）才更新预警
+      if(alertData && (_RAB_ORDER[lv]||0) >= 2 && (_RAB_ORDER[lv]||0) > (_RAB_ORDER[maxAlertLv]||0)){
+        maxAlertLv = lv;
+        setTimeout(() => showRiskAlert(alertData), 180);
+      }
+    }, i * CARD_DELAY);
+  });
+}
+
+function fmtCaseNum(n){
+  if(!n || n==0) return '';
+  n = parseInt(n);
+  return n>=10000?(n/10000).toFixed(1)+'万':n.toLocaleString();
+}
+
+let _cdDisposal = {};
+let _cdScripts  = {};
+const _adaptedScriptsCache = {};   // case_id → scripts，后台预取后存入
+
+function prefetchAdaptedScripts(cases) {
+  cases.forEach(c => {
+    if (!c.case_id || _adaptedScriptsCache[c.case_id]) return;
+    const p = new URLSearchParams();
+    p.set('case_id', c.case_id);
+    if (c.risk_domain) p.set('domain', c.risk_domain);
+    fetch(`${API}/scripts/adapted?${p}`)
+      .then(r => r.json())
+      .then(data => { if (data.scripts) _adaptedScriptsCache[c.case_id] = data.scripts; })
+      .catch(() => {});
+  });
+}
+
+function openCaseDrawer(idx){
+  const c = _caseData[idx]; if(!c) return;
+  _cdDisposal = {'6-12':c.disposal_6_12||'','13-15':c.disposal_13_15||'','16-18':c.disposal_16_18||''};
+  const lv = c.risk_level||'L0';
+
+  document.getElementById('cd-title').textContent = c.case_name||'—';
+  document.getElementById('cd-meta').textContent  = [c.risk_domain, c.risk_type, lv ? LV_LBL[lv]||lv : ''].filter(Boolean).join(' · ');
+  const cdExtLink = document.getElementById('cd-extlink');
+  if(c.source_url){ cdExtLink.href = c.source_url; cdExtLink.style.display = ''; }
+  else { cdExtLink.style.display = 'none'; }
+  document.getElementById('cd-meta').style.color  = LV_COLOR[lv]||'#95A5A6';
+
+  // 核心关键词
+  const kwList = (c.core_keywords||'').split(/[,，、]/).map(s=>s.trim()).filter(Boolean);
+  document.getElementById('cd-kws').innerHTML = kwList.length
+    ? kwList.map(k=>`<span class="cd-tag">${k}</span>`).join('')
+    : [c.risk_domain, c.risk_type].filter(Boolean).map(k=>`<span class="cd-tag">${k}</span>`).join('')
+      || '<span style="color:var(--muted-2);font-size:12px">暂无</span>';
+
+  document.getElementById('cd-spread').textContent     = c.spread_mechanism    || c.spread_path || '暂无';
+  document.getElementById('cd-reptext').textContent    = c.representative_text  ||'暂无';
+  document.getElementById('cd-conclusion').textContent = c.review_conclusion    ||'暂无';
+
+  // 处置策略 tab 重置
+  document.querySelectorAll('#c-drawer .cd-section:nth-child(4) .cd-atab')
+    .forEach((t,i)=>t.classList.toggle('active',i===0));
+  document.getElementById('cd-disposal').textContent = _cdDisposal['6-12']||'暂无';
+
+  // 话术 tab 重置，优先用后台预取缓存，其次实时加载
+  document.querySelectorAll('#cd-stabs .cd-atab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  _cdScripts = _adaptedScriptsCache[c.case_id] || {};
+  const _hasScripts = Object.values(_cdScripts).some(a => Array.isArray(a) && a.length > 0);
+  if(_hasScripts){
+    renderCdScripts('6-12');
+  } else {
+    document.getElementById('cd-script-body').innerHTML =
+      '<div style="color:var(--muted-2);font-size:12px;padding:8px 0">加载中…</div>';
+    loadCdScripts(c.risk_domain||'', c.case_id||'');
+  }
+
+  document.getElementById('c-mask').style.display='block';
+  document.getElementById('c-drawer').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+async function loadCdScripts(domain, caseId){
+  try {
+    const p = new URLSearchParams();
+    if(caseId) p.set('case_id', caseId);
+    if(domain) p.set('domain', domain);
+    const res = await fetch(`${API}/scripts?${p}`);
+    const data = await res.json();
+    _cdScripts = data.scripts || {};
+  } catch(e) {
+    _cdScripts = {};
+  }
+
+  renderCdScripts('6-12');
+
+  // 检测三个年龄段 script_content 是否完全相同
+  const ages = ['6-12','13-15','16-18'];
+  const contents = ages.map(a => (_cdScripts[a]||[])[0]?.script_content||'');
+  const allSame = contents[0] && contents.every(c => c === contents[0]);
+  if(allSame){
+    // 收集三个年龄段的 script_phase 作为改写依据
+    const phases = {};
+    ages.forEach(a => {
+      const s = (_cdScripts[a]||[])[0];
+      if(s) phases[a] = s.script_phase || '';
+    });
+    adaptScripts(contents[0], phases, (_cdScripts['6-12']||[])[0]?.follow_up_action||'');
+  }
+}
+
+async function adaptScripts(baseContent, phases, followUp){
+  document.getElementById('cd-script-body').innerHTML =
+    '<div style="color:var(--muted-2);font-size:12px;padding:4px 0">正在生成年龄适配版本…</div>';
+  try {
+    const res = await fetch(`${API}/scripts/adapt`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({base_content: baseContent, phases, follow_up: followUp})
+    });
+    const data = await res.json();
+    if(data.ok && data.adapted){
+      // 把改写内容注入 _cdScripts
+      ['6-12','13-15','16-18'].forEach(age => {
+        if(data.adapted[age]){
+          const arr = _cdScripts[age] || [];
+          if(arr.length){
+            arr[0] = {...arr[0], script_content: data.adapted[age]};
+          } else {
+            _cdScripts[age] = [{script_content: data.adapted[age]}];
+          }
+        }
+      });
+    }
+  } catch(e){ console.warn('adapt失败:', e); }
+  // 重新渲染当前 tab
+  const activeAge = document.querySelector('#cd-stabs .cd-atab.active')?.textContent?.replace('岁','') || '6-12';
+  renderCdScripts(activeAge.includes('13') ? '13-15' : activeAge.includes('16') ? '16-18' : '6-12');
+}
+
+function closeCaseDrawer(){
+  document.getElementById('c-drawer').classList.remove('open');
+  document.getElementById('c-mask').style.display='none';
+  document.body.style.overflow='';
+}
+function cdSwitchAge(el,age){
+  el.closest('.cd-age-tabs').querySelectorAll('.cd-atab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('cd-disposal').textContent = _cdDisposal[age]||'暂无';
+}
+function cdSwitchScript(el,age){
+  document.querySelectorAll('#cd-stabs .cd-atab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderCdScripts(age);
+}
+function renderCdScripts(age){
+  const el = document.getElementById('cd-script-body');
+  const scripts = _cdScripts[age] || [];
+  if(!scripts.length){
+    el.innerHTML='<div class="cd-text" style="color:var(--muted-2)">该年龄段暂无适用话术</div>';
+    return;
+  }
+  // 按 script_content 去重
+  const seen = new Set();
+  const unique = scripts.filter(s=>{
+    const key = (s.script_content||'').trim();
+    if(!key || seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+  el.innerHTML = unique.map(s=>`
+    <div class="cd-text" style="margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:.5px;margin-bottom:7px;display:flex;gap:6px;align-items:center">
+        ${s.script_type  ? `<span>${s.script_type}</span>`  : ''}
+        ${s.script_phase ? `<span style="color:var(--muted-2)">· ${s.script_phase}</span>` : ''}
+        ${s.applicable_risk_level ? `<span style="margin-left:auto;color:var(--muted-2)">${s.applicable_risk_level}</span>` : ''}
+      </div>
+      <div style="font-size:12.5px;line-height:1.85;color:var(--text-2)">${s.script_content||''}</div>
+      ${s.follow_up_action ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(61,111,212,.08);font-size:11px;color:var(--muted)">→ 后续行动：${s.follow_up_action}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function tryDemo(url){
+  document.getElementById('urlInput').value = url;
+  startAnalysis();
+}
+// 回车
+document.getElementById('urlInput').addEventListener('keydown',e=>{if(e.key==='Enter')startAnalysis();});
+
+// ── 清除服务端缓存 ────────────────────────────────────────
+async function clearCache(){
+  const btn = document.getElementById('btnClearCache');
+  btn.textContent = '清除中…';
+  try {
+    const res = await fetch(`${API}/admin/clear-cache`, {method:'POST'});
+    const d = await res.json();
+    btn.textContent = '已清除 ✓';
+    setTimeout(()=>{ btn.textContent = '清除缓存'; }, 2000);
+  } catch(e) {
+    btn.textContent = '失败';
+    setTimeout(()=>{ btn.textContent = '清除缓存'; }, 2000);
+  }
+}
+
+// ── URL 参数自动触发分析（从 home.html 跳转而来）──────────
+(function(){
+  const _p = new URLSearchParams(location.search).get('url');
+  if(_p){ document.getElementById('urlInput').value = _p; startAnalysis(); }
+})();
+
+// ── 背景粒子系统 ─────────────────────────────────────
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  // 鼠标位置（归一化到 canvas 坐标）
+  let mx = -9999, my = -9999;
+  window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  window.addEventListener('mouseleave', () => { mx = -9999; my = -9999; });
+
+  // 粒子参数
+  const COLORS = [
+    [61,  111, 212],   // --primary 蓝
+    [124, 58,  237],   // --accent 紫
+    [99,  172, 255],   // 浅蓝
+    [160, 100, 255],   // 浅紫
+    [80,  200, 200],   // 青
+  ];
+  const COUNT = 28;
+
+  function rand(a, b){ return a + Math.random() * (b - a); }
+
+  // 初始化粒子
+  function mkParticle(){
+    const [r,g,b] = COLORS[Math.floor(Math.random() * COLORS.length)];
+    return {
+      x:  rand(0, window.innerWidth),
+      y:  rand(0, window.innerHeight),
+      vx: rand(-.18, .18),
+      vy: rand(-.18, .18),
+      r:  rand(1.5, 4.5),
+      alpha: rand(.06, .22),
+      r_: r, g_: g, b_: b,
+      // 每颗粒子缓慢呼吸（alpha 脉动）
+      breathPhase: rand(0, Math.PI * 2),
+      breathSpeed: rand(.004, .012),
+    };
+  }
+
+  let particles = Array.from({length: COUNT}, mkParticle);
+
+  function resize(){
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function lerp(a, b, t){ return a + (b - a) * t; }
+
+  function draw(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    particles.forEach(p => {
+      // 呼吸动画
+      p.breathPhase += p.breathSpeed;
+      const breath = .5 + .5 * Math.sin(p.breathPhase);
+      const alpha  = p.alpha * (.6 + .4 * breath);
+
+      // 鼠标吸引（距离越近吸引越弱，保持漂浮感）
+      const dx = mx - p.x;
+      const dy = my - p.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if(dist < 320 && dist > 1){
+        // 引力随距离线性衰减，最大加速度极小
+        const force = (1 - dist / 320) * .012;
+        p.vx = lerp(p.vx, p.vx + dx / dist * force, .08);
+        p.vy = lerp(p.vy, p.vy + dy / dist * force, .08);
+      }
+
+      // 速度阻尼（防止越飘越快）
+      p.vx *= .995;
+      p.vy *= .995;
+
+      // 最大速度限制
+      const spd = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+      if(spd > .55){ p.vx = p.vx/spd * .55; p.vy = p.vy/spd * .55; }
+
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // 边界：超出屏幕外 40px 从对面重新进入
+      const M = 40;
+      if(p.x < -M) p.x = canvas.width  + M;
+      if(p.x > canvas.width  + M) p.x = -M;
+      if(p.y < -M) p.y = canvas.height + M;
+      if(p.y > canvas.height + M) p.y = -M;
+
+      // 绘制：柔和发光圆点
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.5);
+      grad.addColorStop(0,   `rgba(${p.r_},${p.g_},${p.b_},${alpha})`);
+      grad.addColorStop(.45, `rgba(${p.r_},${p.g_},${p.b_},${alpha * .35})`);
+      grad.addColorStop(1,   `rgba(${p.r_},${p.g_},${p.b_},0)`);
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+})();
+
+</script>
+</body>
+</html>

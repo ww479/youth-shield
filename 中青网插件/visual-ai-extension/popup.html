@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>内容风险分析助手</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="popup">
+    <header class="head">
+      <div>
+        <div class="title">青年心盾内容分析助手</div>
+        <div id="pageUrl" class="url">正在读取当前页面...</div>
+      </div>
+      <div class="head-actions">
+        <button id="pinBtn" class="pin-btn" type="button">固定悬浮球</button>
+        <span id="statusBadge" class="badge">分析中</span>
+      </div>
+    </header>
+
+    <section id="skeleton" hidden>
+      <div class="sk-card">
+        <div class="sk-bone sk-line w30"></div>
+        <div class="sk-bone sk-line w90 mt10"></div>
+        <div class="sk-bone sk-line w100 mt6"></div>
+        <div class="sk-bone sk-line w70 mt6"></div>
+        <div class="sk-bone sk-line w40 mt14"></div>
+      </div>
+      <div class="sk-card mt12">
+        <div class="sk-bone sk-line w40 sk-center"></div>
+        <div class="sk-tags mt12">
+          <div class="sk-bone sk-tag"></div>
+          <div class="sk-bone sk-tag"></div>
+          <div class="sk-bone sk-tag w50"></div>
+        </div>
+        <div class="sk-bone sk-bar mt14"></div>
+        <div class="sk-bone sk-line w100 mt12"></div>
+        <div class="sk-bone sk-line w80 mt6"></div>
+      </div>
+      <div class="sk-card mt12">
+        <div class="sk-bone sk-line w50 mt0"></div>
+        <div class="sk-bone sk-line w100 mt10"></div>
+        <div class="sk-bone sk-line w90 mt6"></div>
+      </div>
+    </section>
+
+    <section id="result" class="result" hidden>
+      <div class="preview">
+        <div class="preview-top">
+          <span id="platform">当前页面</span>
+          <a id="sourceLink" href="#" target="_blank" rel="noopener">原文 ↗</a>
+        </div>
+        <div id="contentTitle" class="content-title"></div>
+        <div id="contentSummary" class="content-summary"></div>
+        <div class="preview-bottom">
+          <span id="author">@用户</span>
+          <span id="interaction">互动数据待补充</span>
+        </div>
+      </div>
+
+      <div class="analysis-card">
+        <div class="card-title">系统分析</div>
+        <div id="cardSub" class="card-sub"></div>
+
+        <div class="divider"></div>
+        <div class="section-title">识别标签</div>
+        <div id="tags" class="tags"></div>
+
+        <div class="divider"></div>
+        <div class="section-title">风险评级</div>
+        <div id="riskWord" class="risk-word">—</div>
+        <div class="risk-bar">
+          <div class="risk-gradient"></div>
+          <div id="riskDot" class="risk-dot"></div>
+        </div>
+        <div class="risk-labels">
+          <span>正常</span><span>关注</span><span>误导</span><span>高危</span><span>重大</span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-title">叙事分析</div>
+        <div id="narrative" class="narrative"></div>
+      </div>
+
+      <!-- 六维风险研判（仅历史虚无主义命中时展示） -->
+      <div id="dimensionCard" class="analysis-card" hidden>
+        <div class="section-title">六维风险研判</div>
+        <div id="dimSummary" class="dim-summary"></div>
+        <div id="dimensions" class="dims"></div>
+        <div id="scoreSourceNote" class="score-source-note" hidden></div>
+      </div>
+
+      <!-- 命中详情（仅历史虚无主义命中时展示） -->
+      <div id="hitCard" class="analysis-card" hidden>
+        <div class="section-title">命中详情</div>
+        <div id="hitReasonBlock" class="hit-block" hidden>
+          <div class="hit-label">大模型判定理由</div>
+          <div id="hitReason" class="hit-reason"></div>
+        </div>
+        <div class="hit-block">
+          <div class="hit-label">命中话术套路</div>
+          <div id="hitSubtypes" class="hit-chips"></div>
+        </div>
+        <div id="hitEvidBlock" class="hit-block" hidden>
+          <div class="hit-label">大模型抽取证据</div>
+          <div id="hitEvidence" class="hit-evid"></div>
+        </div>
+        <div class="hit-block">
+          <div class="hit-label">命中原文片段（规则库）</div>
+          <div id="hitPhrases" class="hit-phrases"></div>
+        </div>
+        <div id="hitEscBlock" class="hit-block" hidden>
+          <div class="hit-label">叠加 / 降档规则</div>
+          <div id="hitEscalations" class="hit-esc"></div>
+        </div>
+      </div>
+
+      <div id="positiveHead" class="positive-head" hidden>
+        <div class="positive-title">关联案例参考</div>
+        <span id="positiveCount" class="positive-count"></span>
+      </div>
+      <div id="positiveCases" class="positive-cases"></div>
+
+      <div class="cases-head">
+        <div class="cases-title">风险案例</div>
+        <span id="domain" class="domain"></span>
+      </div>
+
+      <!-- 预警横幅（扫到第一个 L3+ 案例时滑入） -->
+      <div id="alertBanner" class="alert-banner">
+        <div class="ab-stripe"></div>
+        <div class="ab-body">
+          <div class="ab-dot"></div>
+          <div class="ab-content">
+            <div class="ab-eyebrow">意识形态风险预警</div>
+            <div class="ab-title" id="abTitle">—</div>
+            <div class="ab-detail" id="abDetail">—</div>
+          </div>
+          <button class="ab-close" id="abClose" title="关闭">✕</button>
+        </div>
+      </div>
+
+      <div id="cases" class="cases"></div>
+    </section>
+
+    <section id="error" class="error" hidden>
+      <div class="error-title">分析失败</div>
+      <div id="errorText" class="error-text"></div>
+      <button id="retryBtn" class="retry">重新分析</button>
+    </section>
+  </main>
+  <script src="anime.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+# 历史虚无主义 —— 六维评分标准 + 五级风险 + 叠加升降档规则
+#
+# 来源：材料/命中规则/历史虚无命中规则-20260706.docx
+# 用途：未来接入 backend/main.py 时，作为大模型判别阶段（六维打分）
+#       和规则后处理阶段（叠加/降档）的 Prompt / 规则引擎输入。
+# 本文件不含任何代码逻辑，纯数据。字段含义见同目录 README.md。
+
+domain: 历史认知风险
+sub_domain: 历史虚无主义
+source_doc: 历史虚无命中规则-20260706.docx
+version: "20260706"
+
+# ── 一、六维打分维度 ──
+# 六维指标统一取值区间 0~5 分，分值越高风险越强；分档标准对六个维度通用：
+# 0=无风险特征 1=极轻微特征 2=轻度特征 3=中度特征 4=重度特征 5=完全具备该类极端虚无特征
+score_band_labels:
+  0: 无风险特征
+  1: 极轻微特征
+  2: 轻度特征
+  3: 中度特征
+  4: 重度特征
+  5: 完全具备该类极端虚无特征
+
+dimensions:
+  - id: fact_handling
+    name_cn: 史实处理
+    definition: 评判内容史料使用规范度
+    bands:
+      0: 引用权威正史、完整史料、多方佐证
+      1: 少量简化史料，无主观臆断
+      2: 仅提及史料差异，不推导造假
+      3: 局部细节以偏概全、无权威佐证
+      4: 主观揣测动机、刻意放大史料瑕疵
+      5: 全盘否定全部官方史料、编造无依据虚假史实
+
+  - id: narrative_frame
+    name_cn: 叙事框架
+    definition: 评判是否构建"官方隐瞒 / 刻意造神 / 胜利者造假"二元对立叙事
+    bands:
+      0: 中立客观无对立
+      1: 仅客观区分史料版本
+      2: 轻微暗示信息不全，无阵营对立
+      3: 划分普通人与知情者，轻度割裂
+      4: 搭建"盲从大众 vs 清醒少数"强对立
+      5: 完整闭环阴谋叙事，定义官方长期系统性造假
+
+  - id: emotional_mobilization
+    name_cn: 情绪煽动
+    definition: 评判是否制造猎奇、优越感、怀疑、鄙夷等负面情绪
+    bands:
+      0: 纯理性学术分析无情绪
+      1: 平淡客观陈述
+      2: 轻度猎奇引流，无价值贬低
+      3: 放大疑点制造不信任
+      4: 塑造"清醒者"优越感、煽动抵触主流
+      5: 大范围煽动崇外、否定民族历史的极端负面情绪
+
+  - id: value_orientation
+    name_cn: 价值导向
+    definition: 评判对英雄、民族、历史、制度、道路的消解程度
+    bands:
+      0: 正向弘扬主流历史价值
+      1: 客观辩证无消解
+      2: 仅单个人物轻度质疑，不否定体系
+      3: 贬低单个人物 / 单一事件价值
+      4: 否定同类群体（全体英雄、全部近代史事件）
+      5: 系统性否定国家道路、制度、民族整体历史认同
+
+  - id: expression_packaging
+    name_cn: 表达包装
+    definition: 评判是否使用虚无类流量套路话术
+    bands:
+      0: 标准学术书面表达，无营销式标题
+      1: 普通客观叙述
+      2: 轻微叙事简化
+      3: 使用揭秘、摘滤镜、塌房等虚无类流量包装词汇
+      4: 成套反转、内幕类引流句式
+      5: 多层叠加虚无话术，通篇靠猎奇标题博流量
+
+  - id: youth_impact
+    name_cn: 青少年影响
+    definition: 评判对未成年人历史认知破坏力度
+    bands:
+      0: 面向专业学术群体，无青少年传播风险
+      1: 受众偏向成年人，影响极小
+      2: 轻微误导，不易形成固定错误认知
+      3: 容易让学生片面看待教材、英雄
+      4: 极易诱导青少年抵触主流历史教育
+      5: 彻底摧毁青少年爱国、英雄、道路核心认同
+
+# ── 二、总分对应五级风险 ──
+# 六维单项满分 5，总分区间 0-30 分。
+# code 沿用 backend/main.py 中已有的 L0-L4 编码（RISK_LEVELS / RISK_CODE_LABEL），
+# 避免未来接入时和现有编码体系冲突。
+risk_levels:
+  - code: L0
+    name_cn: 低风险
+    score_range: [0, 5]
+    judgment_standard: >-
+      纯学术客观史料辨析，无任何虚无类包装、对立叙事、价值消解；
+      无揭秘、祛魅、阴谋、全盘否定等核心命中语料，仅正常历史研究表述。
+    action: 正常推送，常规监测。
+
+  - code: L1
+    name_cn: 轻度风险
+    score_range: [6, 11]
+    judgment_standard: >-
+      仅标题轻微夸张、表述片面情绪化，未使用成套虚无叙事；
+      不存在揭秘、祛魅、阴谋论核心套路，无二元对立框架，不消解英雄与制度；
+      仅单一语句表达瑕疵。
+    action: 可正常发布，建议优化夸张标题。
+
+  - code: L2
+    name_cn: 中度风险
+    score_range: [12, 19]
+    judgment_standard: >-
+      仅单一基础虚无话术，无叠加阴谋、反权威、中外贬损、全盘否定逻辑；
+      仅片面解读史料，不形成系统性否定链条。
+    action: 人工复核，补充史料、修改猎奇话术。
+
+  - code: L3
+    name_cn: 高风险
+    score_range: [20, 25]
+    judgment_standard: >-
+      基础虚无话术叠加阴谋论 / 反清醒人设 / 英雄祛魅，
+      仅否定单个人、单一事件，不上升到国家道路、全盘民族历史否定。
+    action: 限制推荐流量，要求删除贬损、阴谋类表述。
+
+  - code: L4
+    name_cn: 极高风险
+    score_range: [26, 30]
+    judgment_standard: >-
+      成套虚无话语链，从细节质疑延伸至全盘否定本国历史、发展道路、社会制度，
+      搭配中外对比踩一捧一。
+    action: 暂缓 / 拦截发布，重点人工复核，限制全渠道传播。
+
+# ── 三、通用叠加升降档规则 ──
+# 应用顺序：先按 target=dimension 的规则调整对应维度分值 → 重新求和得到总分
+# → 再应用 target=total 的规则（分值调整 / 等级平移）。
+# level_shift 基于"总分对应五级风险"重新分档后的等级，向上/下移动一级，
+# 不越过 L0/L4 边界。
+escalation_rules:
+  - id: closed_loop_rhetoric
+    trigger_type: keyword_pattern
+    trigger_detail: 出现闭环话术（越辟谣越真、删帖 = 心虚）、匿名无实锤内部爆料
+    effect:
+      target: dimension
+      dimension_id: fact_handling
+      delta: 2
+    note: 命中语料库中标注"叠加阴谋话术加分 2"的判例均属于此规则。
+
+  - id: youth_channel_boost
+    trigger_type: channel_context
+    trigger_detail: 面向短视频、校园青少年渠道发布
+    effect:
+      target: dimension
+      dimension_id: youth_impact
+      delta: 2
+    note: 需要传播渠道/受众信息作为触发条件，非纯文本内容规则。
+
+  - id: multi_category_stack
+    trigger_type: multi_category
+    trigger_detail: 同时叠加两类及以上虚无大类话术（如"揭秘/真相型"与"阴谋论/因果倒置型"同时命中）
+    effect:
+      target: total
+      delta: 2
+      level_shift: 1
+    note: 触发条件是命中的一级大类（7 大类）数量 ≥ 2，而非小类数量。
+
+  - id: title_only_with_authoritative_body
+    trigger_type: content_structure
+    trigger_detail: 仅标题命中虚无词汇、正文完整补充权威史料与时代背景
+    effect:
+      target: total
+      delta: -2
+      level_shift: -1
+    note: 需要区分标题文本与正文文本分别判断，属于降档规则，注意不要与其他升档规则冲突叠加时的先后顺序。

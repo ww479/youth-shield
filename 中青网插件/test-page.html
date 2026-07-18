@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>历史随笔：那些课本里没讲的事 —— 插件测试页</title>
+  <style>
+    :root{--ink:#1a2632;--sub:#5a6b7a;--line:#e3eaef;--bg:#f4f7f9;--accent:#2f6f8f}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);
+      font:16px/1.85 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+    .wrap{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+    .tip{background:#fff8e6;border:1px solid #f0d98a;border-radius:10px;
+      padding:14px 16px;font-size:13.5px;line-height:1.7;color:#7a5b12;margin-bottom:28px}
+    .tip b{color:#8a4b00}
+    article{background:#fff;border:1px solid var(--line);border-radius:14px;
+      padding:34px 38px;box-shadow:0 2px 14px rgba(30,60,90,.05)}
+    h1{font-size:26px;line-height:1.4;margin:0 0 10px}
+    .meta{color:var(--sub);font-size:13px;border-bottom:1px solid var(--line);
+      padding-bottom:16px;margin-bottom:22px}
+    .meta span{margin-right:16px}
+    h2{font-size:19px;margin:30px 0 10px;color:var(--accent)}
+    p{margin:0 0 16px}
+    .label{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;
+      border-radius:6px;margin-bottom:6px}
+    .label-risk{background:#fdecec;color:#b5322b}
+    .label-normal{background:#e8f5ec;color:#2e7d46}
+    footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+      color:var(--sub);font-size:12.5px}
+    .stat{margin-top:20px;color:var(--sub);font-size:13px}
+    .stat span{margin-right:18px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="tip">
+      <b>插件测试页说明：</b>本页专供「青年心盾」插件联调。启动后端后，用 <b>http 方式</b>访问本页
+      （不要用 file:// 打开，否则插件会走演示兜底），再点击浏览器工具栏的插件图标。<br>
+      页面下半部分「高风险样本」应被判为高风险并由大模型<b>确认命中类型</b>；「正常讨论样本」即使被规则/语义初筛命中，
+      也应被大模型<b>复核为「疑似误命中」</b>、六维接近 0。
+    </div>
+
+    <article>
+      <h1>历史随笔：那些课本里没讲的事</h1>
+      <div class="meta">
+        <span>作者：史海拾遗</span>
+        <span>发布于 历史观察</span>
+        <span>阅读 2.4 万</span>
+      </div>
+
+      <p class="label label-risk">高风险样本（应被判高风险 · 大模型确认命中）</p>
+      <h2>课本只是精心筛选后的版本？</h2>
+      <p>
+        课本刻意美化过往史实，只有不盲从标准答案的人才能看透内幕。教科书过滤残酷、矛盾的真实历史，
+        普通人只会被课本思维洗脑，真正独立思考的人早就跳出了这套叙事框架。
+      </p>
+      <p>
+        就拿庐山会议和七千人大会来说，官方叙事所谓的功过七三开，不过是胜利者写好的剧本；
+        官方刻意销毁关键档案，掩盖背后利益交易，很多照片被人为删除，就是怕群众看清内幕，环环相扣、早有安排。
+      </p>
+
+      <p class="label label-normal" style="margin-top:34px">正常讨论样本（应被复核为疑似误命中）</p>
+      <h2>教材为什么会做简化处理</h2>
+      <p>
+        历史教材因篇幅有限，对部分事件做了简化处理，这属于正常的编写取舍。老师通常会建议同学们课后
+        查阅权威史料和学界公开研究来补充了解，从而更全面地掌握史实脉络。
+      </p>
+      <p>
+        对课本没有展开细讲的内容，感兴趣的读者完全可以通过图书馆、正规学术数据库进一步查证，
+        用扎实的一手资料充实自己的历史认识，这也是历史学习本应有的态度。
+      </p>
+
+      <div class="stat">
+        <span>👍 点赞 1.2 万</span>
+        <span>💬 评论 860</span>
+        <span>🔁 转发 430</span>
+      </div>
+
+      <footer>
+        本文为插件功能测试用的虚构内容，不代表任何真实观点，仅用于验证「规则初筛 + 大模型语义复核」链路。
+      </footer>
+    </article>
+  </div>
+</body>
+</html>

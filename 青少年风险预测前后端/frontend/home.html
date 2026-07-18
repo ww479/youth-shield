@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>青年心盾 · 青少年网络空间价值观审查与正向引导平台</title>
+<style>
+:root {
+  --bg: #EEF2FF;
+  --card-bg: rgba(255,255,255,0.92);
+  --border: rgba(99,120,210,0.14);
+  --primary: #3D6FD4;
+  --primary-2: #6B9DFF;
+  --accent: #7C3AED;
+  --text: #0F172A;
+  --text-2: #334155;
+  --muted: #64748B;
+  --muted-2: #94A3B8;
+  --r: 20px;
+  --r-sm: 12px;
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.05),0 1px 2px rgba(15,23,42,.04);
+  --shadow-md: 0 4px 16px rgba(15,23,42,.08),0 2px 6px rgba(15,23,42,.05);
+  --shadow-lg: 0 16px 48px rgba(15,23,42,.12),0 4px 14px rgba(15,23,42,.06);
+  --hist: #FF7043;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;
+  background:
+    radial-gradient(ellipse 900px 560px at 12% -4%,rgba(61,111,212,.1) 0%,transparent 58%),
+    radial-gradient(ellipse 700px 480px at 88% 105%,rgba(124,58,237,.08) 0%,transparent 58%),
+    #EEF2FF;
+  color:var(--text);
+  min-height:100vh;
+}
+
+/* ── HEADER ── */
+header{
+  padding:14px 48px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,0.78);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(200,215,245,0.35);
+  box-shadow:0 1px 0 rgba(255,255,255,.8),0 2px 10px rgba(15,23,42,.04);
+  position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{
+  width:34px;height:34px;border-radius:10px;
+  background:linear-gradient(135deg,#3D6FD4,#7C3AED);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:#fff;
+  box-shadow:0 4px 12px rgba(61,111,212,.32),inset 0 1px 0 rgba(255,255,255,.2);
+}
+.logo-name{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.2px;}
+.logo-sub{font-size:11px;color:var(--muted-2);margin-top:1px;}
+.btn-enter{
+  padding:9px 22px;border-radius:44px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#3D6FD4,#7C3AED);
+  color:#fff;font-size:13px;font-weight:600;
+  box-shadow:0 4px 14px rgba(61,111,212,.3);
+  transition:transform .18s,box-shadow .18s;
+  text-decoration:none;display:inline-block;
+}
+.btn-enter:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(61,111,212,.38);}
+.header-actions{display:flex;align-items:center;gap:10px;}
+.btn-enter.secondary{
+  background:#fff;
+  color:var(--primary);
+  border:1px solid rgba(61,111,212,.18);
+  box-shadow:var(--shadow-sm);
+}
+
+/* ── HERO ── */
+.hero{
+  padding:72px 40px 56px;
+  text-align:center;
+  display:flex;flex-direction:column;align-items:center;
+}
+.hero-title{
+  font-size:42px;font-weight:800;line-height:1.2;
+  letter-spacing:-.5px;
+  margin-bottom:16px;
+  animation:fadeup .5s .12s ease both;
+}
+.hero-title em{
+  font-style:normal;
+  background:linear-gradient(135deg,#3D6FD4,#7C3AED);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+/* ── DEMO SECTION ── */
+.demo-section{
+  max-width:1120px;margin:0 auto;padding:0 40px 80px;
+}
+.section-head{
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:32px;
+  animation:fadeup .5s .1s ease both;
+}
+.section-icon{
+  width:42px;height:42px;border-radius:12px;
+  background:linear-gradient(135deg,rgba(255,112,67,.15),rgba(255,112,67,.05));
+  border:1px solid rgba(255,112,67,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;
+}
+.section-title{font-size:20px;font-weight:700;color:var(--text);}
+.section-sub{font-size:13px;color:var(--muted-2);margin-top:2px;}
+.section-domain-badge{
+  margin-left:auto;
+  font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;
+  background:rgba(255,112,67,.1);color:#D4450C;
+  border:1px solid rgba(255,112,67,.22);
+}
+
+/* ── DEMO CARDS GRID ── */
+.demo-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:20px;
+}
+.demo-card{
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:24px;
+  box-shadow:var(--shadow-md);
+  backdrop-filter:blur(20px);
+  cursor:pointer;
+  transition:transform .2s,box-shadow .2s,border-color .2s;
+  position:relative;
+  overflow:hidden;
+  animation:card-in .45s ease both;
+  display:flex;flex-direction:column;gap:14px;
+}
+.demo-card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:3px;
+  border-radius:var(--r) var(--r) 0 0;
+}
+.demo-card.l4::before{background:linear-gradient(90deg,#C0392B,#E74C3C);}
+.demo-card.l3::before{background:linear-gradient(90deg,#E67E22,#F39C12);}
+.demo-card.l2::before{background:linear-gradient(90deg,#D4AC0D,#F1C40F);}
+.demo-card.l1::before{background:linear-gradient(90deg,#27AE60,#2ECC71);}
+.demo-card:hover{
+  transform:translateY(-4px);
+  box-shadow:var(--shadow-lg);
+  border-color:rgba(99,120,210,.26);
+}
+/* 卡片顶部：风险徽章 + 平台 + 分数 */
+.card-top{display:flex;align-items:center;gap:8px;}
+.risk-badge{
+  font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;
+}
+.rb-l4{background:rgba(192,57,43,.12);color:#C0392B;border:1px solid rgba(192,57,43,.22);}
+.rb-l3{background:rgba(230,126,34,.12);color:#C97D1D;border:1px solid rgba(230,126,34,.22);}
+.rb-l2{background:rgba(212,172,13,.12);color:#8E6D05;border:1px solid rgba(212,172,13,.22);}
+.rb-l1{background:rgba(39,174,96,.12);color:#1E8449;border:1px solid rgba(39,174,96,.22);}
+.plat-badge{
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;
+  background:rgba(61,111,212,.08);color:var(--primary);
+  border:1px solid rgba(61,111,212,.15);
+}
+.card-score{
+  margin-left:auto;
+  font-size:22px;font-weight:800;line-height:1;
+}
+.score-l4{color:#C0392B;} .score-l3{color:#C97D1D;}
+.score-l2{color:#8E6D05;} .score-l1{color:#1E8449;}
+.score-unit{font-size:11px;font-weight:400;color:var(--muted-2);}
+/* 卡片标题区 */
+.card-title{font-size:16px;font-weight:700;color:var(--text);line-height:1.4;}
+.card-type{
+  font-size:11px;color:var(--hist);font-weight:600;
+  background:rgba(255,112,67,.08);border:1px solid rgba(255,112,67,.18);
+  padding:2px 8px;border-radius:6px;display:inline-block;margin-top:2px;
+}
+/* 摘要 */
+.card-summary{
+  font-size:13px;color:var(--muted);line-height:1.65;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+  overflow:hidden;
+}
+/* 风险得分条 */
+.score-bar-wrap{display:flex;align-items:center;gap:10px;}
+.score-bar{
+  flex:1;height:5px;border-radius:3px;
+  background:rgba(0,0,0,.06);overflow:hidden;
+}
+.score-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+.fill-l4{background:linear-gradient(90deg,#E74C3C,#C0392B);}
+.fill-l3{background:linear-gradient(90deg,#F39C12,#E67E22);}
+.fill-l2{background:linear-gradient(90deg,#F1C40F,#D4AC0D);}
+.fill-l1{background:linear-gradient(90deg,#2ECC71,#27AE60);}
+.score-bar-label{font-size:11px;color:var(--muted-2);white-space:nowrap;}
+/* CTA 按钮 */
+.card-cta{
+  display:flex;align-items:center;justify-content:flex-end;
+  margin-top:auto;padding-top:4px;
+}
+.btn-cta{
+  font-size:12px;font-weight:600;color:var(--primary);
+  background:rgba(61,111,212,.08);border:1px solid rgba(61,111,212,.2);
+  padding:7px 16px;border-radius:20px;cursor:pointer;
+  transition:all .18s;text-decoration:none;display:inline-block;
+  white-space:nowrap;
+}
+.btn-cta:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+/* ── 分析入口 banner ── */
+.enter-banner{
+  max-width:1120px;margin:0 auto 60px;padding:0 40px;
+  animation:fadeup .5s .35s ease both;
+}
+.banner-inner{
+  background:linear-gradient(135deg,rgba(61,111,212,.08),rgba(124,58,237,.06));
+  border:1px solid rgba(61,111,212,.18);
+  border-radius:16px;padding:28px 32px;
+  display:flex;align-items:center;gap:24px;
+}
+.banner-text{flex:1;}
+.banner-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+.banner-sub{font-size:13px;color:var(--muted);}
+.btn-banner{
+  padding:11px 28px;border-radius:44px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#3D6FD4,#7C3AED);
+  color:#fff;font-size:14px;font-weight:600;
+  box-shadow:0 4px 16px rgba(61,111,212,.3);
+  transition:transform .18s,box-shadow .18s;
+  text-decoration:none;display:inline-block;white-space:nowrap;
+}
+.btn-banner:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(61,111,212,.38);}
+
+/* ── FOOTER ── */
+footer{
+  text-align:center;padding:28px;
+  font-size:12px;color:var(--muted-2);
+  border-top:1px solid rgba(200,215,245,.3);
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeup{
+  from{opacity:0;transform:translateY(-14px);}
+  to{opacity:1;transform:translateY(0);}
+}
+@keyframes card-in{
+  from{opacity:0;transform:translateY(12px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .demo-grid{grid-template-columns:1fr;}
+  header{padding:14px 20px;}
+  .hero{padding:48px 20px 40px;}
+  .hero-title{font-size:28px;}
+  .hero-stats{gap:24px;}
+  .demo-section{padding:0 20px 60px;}
+  .enter-banner{padding:0 20px;}
+  .banner-inner{flex-direction:column;gap:16px;text-align:center;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    <div>
+      <div class="logo-name">青年心盾</div>
+      <div class="logo-sub">Youth Ideology Risk Detection · v1.0</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <a class="btn-enter secondary" href="chat.html">🧠 智能问答</a>
+    <a class="btn-enter secondary" href="visual-ai.html">AI 可视化</a>
+    <a class="btn-enter secondary" href="alert.html">⚠ 风险预警</a>
+    <a class="btn-enter secondary" href="scan.html">🔍 页面扫描</a>
+    <a class="btn-enter" href="index.html">进入分析系统 →</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-title">青年心盾：青少年网络空间<em>价值观审查</em>与正向引导平台</div>
+</div>
+
+<!-- DEMO SECTION -->
+<div class="demo-section">
+  <div class="section-head">
+    <div class="section-icon">📜</div>
+    <div>
+      <div class="section-title">历史虚无主义风险识别 · 效果演示</div>
+      <div class="section-sub">以下为系统在历史认知风险域的真实识别结果，点击任意样例查看完整分析报告</div>
+    </div>
+    <div class="section-domain-badge">历史认知风险域</div>
+  </div>
+
+  <div class="demo-grid" id="demoGrid">
+    <!-- JS 渲染 -->
+  </div>
+</div>
+
+
+<footer>
+  © 2025 青年心盾 &nbsp;·&nbsp; 四库内容治理体系 &nbsp;·&nbsp; 仅供内部演示
+</footer>
+
+<script>
+const DEMO_ITEMS = [
+  {
+    url:       'https://weibo.com/7624881855/QlqWAxghL?refer_flag=1001030103_',
+    platform:  '微博',
+    riskLevel: 'L4',
+    riskText:  '极高风险',
+    title:     '七千人大会执政反思史',
+    riskType:  '近现代史虚无化叙事',
+    score:     4.8,
+    summary:   '以"执政反思"为叙事包装，选择性呈现七千人大会中的批评性内容，刻意弱化历史背景，引导读者对党的历史形成片面否定印象，属典型近现代史虚无化叙事。',
+  },
+  {
+    url:       'https://weibo.com/3527687082/NFySbgSOB?refer_flag=1001030103_',
+    platform:  '微博',
+    riskLevel: 'L4',
+    riskText:  '极高风险',
+    title:     '"三年困难"与中央高层尖锐分歧',
+    riskType:  '近现代史虚无化叙事',
+    score:     4.3,
+    summary:   '以"三年困难时期"为切入点，援引刘少奇批评毛泽东的激烈言辞，选择性呈现七千人大会中的高层矛盾，刻意放大党内分歧、回避历史复杂背景，诱导读者对党的历史领导形成片面否定印象，属典型近现代史虚无化叙事。',
+  },
+  {
+    url:       'https://www.douyin.com/video/7451208816881945868',
+    platform:  '抖音',
+    riskLevel: 'L3',
+    riskText:  '高风险',
+    title:     '艾跃进：阶级与历史叙述',
+    riskType:  '旧时代美化·反向叙事',
+    score:     4.0,
+    summary:   '借助历史人物演讲片段，以"阶级"话语为核心，构建旧时代正面形象与现时代负向对比的反向叙事框架，具有较强的价值观渗透性，对青少年历史认知影响风险较高。',
+  },
+  {
+    url:       'https://www.douyin.com/video/7636677734412777721',
+    platform:  '抖音',
+    riskLevel: 'L3',
+    riskText:  '高风险',
+    title:     '法国大革命启蒙思想解读',
+    riskType:  '西方史观渗透·历史比较叙事',
+    score:     4.0,
+    summary:   '以"天赋人权""主权在民"等启蒙话语为框架解读法国大革命，隐性构建西方历史认知框架，引导青少年以西方视角评价本国历史与制度，属历史认知风险中的史观渗透类型。',
+  },
+];
+
+const LV_CLASS  = {L4:'l4',L3:'l3',L2:'l2',L1:'l1'};
+const RB_CLASS  = {L4:'rb-l4',L3:'rb-l3',L2:'rb-l2',L1:'rb-l1'};
+const SC_CLASS  = {L4:'score-l4',L3:'score-l3',L2:'score-l2',L1:'score-l1'};
+const FL_CLASS  = {L4:'fill-l4',L3:'fill-l3',L2:'fill-l2',L1:'fill-l1'};
+// score 满分 5，换算为百分比
+const scorePct  = s => Math.round((s / 5) * 100);
+
+function renderCards(){
+  const grid = document.getElementById('demoGrid');
+  grid.innerHTML = DEMO_ITEMS.map((item, i) => {
+    const lv     = item.riskLevel;
+    const pct    = scorePct(item.score);
+    const delay  = (i * 0.08 + 0.12).toFixed(2);
+    return `
+    <div class="demo-card ${LV_CLASS[lv]||''}"
+         style="animation-delay:${delay}s"
+         onclick="goAnalyze('${encodeURIComponent(item.url)}')">
+      <div class="card-top">
+        <span class="risk-badge ${RB_CLASS[lv]||''}">${item.riskText}</span>
+        <span class="plat-badge">${item.platform}</span>
+        <span class="card-score ${SC_CLASS[lv]||''}">${item.score.toFixed(1)}<span class="score-unit"> / 5.0</span></span>
+      </div>
+      <div>
+        <div class="card-title">${item.title}</div>
+        <span class="card-type">${item.riskType}</span>
+      </div>
+      <div class="card-summary">${item.summary}</div>
+      <div class="score-bar-wrap">
+        <div class="score-bar">
+          <div class="score-fill ${FL_CLASS[lv]||''}" style="width:${pct}%"></div>
+        </div>
+        <span class="score-bar-label">风险得分 ${pct}%</span>
+      </div>
+      <div class="card-cta">
+        <span class="btn-cta">查看完整识别结果 →</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function goAnalyze(encodedUrl){
+  window.location.href = 'index.html?url=' + encodedUrl;
+}
+
+renderCards();
+</script>
+</body>
+</html>

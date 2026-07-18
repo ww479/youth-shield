@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>案例库 · 青年心盾</title>
+<style>
+:root {
+  --bg:#EDF0F4; --primary:#3A7FD4; --text:#1A2030; --muted:#7A8BA0;
+  --border:rgba(58,127,212,.15); --card:#fff;
+  --L4:#FF4D4F; --L3:#FA8C16; --L2:#D4AC0D; --L1:#27AE60; --L0:#95A5A6;
+  --制度认同风险:#4FC3F7; --历史认知风险:#FF7043;
+  --心理韧性风险:#C77DFF; --认知闭合风险:#26C6DA; --网络素养风险:#66BB6A;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── Header ── */
+header{
+  padding:16px 40px;display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.85);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(180,200,220,.3);
+  position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,#3A7FD4,#6C5CE7);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:#fff;box-shadow:0 4px 12px rgba(58,127,212,.3);}
+.logo-name{font-size:15px;font-weight:700;color:var(--text);}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.nav-back{font-size:13px;color:var(--primary);text-decoration:none;
+  display:flex;align-items:center;gap:6px;padding:7px 16px;
+  background:rgba(58,127,212,.08);border-radius:20px;
+  border:1px solid rgba(58,127,212,.2);transition:all .2s;}
+.nav-back:hover{background:rgba(58,127,212,.15);}
+
+/* ── 页头 ── */
+.page-head{padding:32px 40px 0;}
+.page-title{font-size:26px;font-weight:800;color:var(--text);margin-bottom:6px;}
+.page-sub{font-size:13px;color:var(--muted);}
+.page-stats{display:flex;gap:24px;margin-top:16px;}
+.pstat{font-size:13px;color:var(--muted);}
+.pstat b{color:var(--text);font-size:18px;margin-right:3px;}
+
+/* ── 筛选栏 ── */
+.filter-wrap{padding:20px 40px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.filter-btn{
+  font-size:12px;padding:7px 16px;border-radius:20px;cursor:pointer;
+  border:1px solid rgba(180,200,220,.4);background:#fff;color:var(--muted);
+  transition:all .2s;user-select:none;
+}
+.filter-btn:hover{border-color:var(--primary);color:var(--primary);}
+.filter-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);
+  box-shadow:0 3px 10px rgba(58,127,212,.3);}
+.filter-sep{width:1px;background:rgba(180,200,220,.4);margin:4px 4px;}
+.filter-lv{display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;padding:7px 14px;border-radius:20px;cursor:pointer;
+  border:1.5px solid;transition:all .2s;background:transparent;}
+.filter-lv:not(.active){border-color:rgba(180,200,220,.4);color:var(--muted);
+  background:#fff;}
+
+/* ── 卡片网格 ── */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:18px;padding:24px 40px 60px;
+}
+.case-card{
+  background:var(--card);border-radius:16px;overflow:hidden;
+  box-shadow:0 2px 16px rgba(80,110,160,.07);
+  border:1px solid rgba(180,200,220,.2);
+  cursor:pointer;transition:transform .2s,box-shadow .2s;
+  animation:card-in .5s ease both;
+}
+.case-card:hover{transform:translateY(-4px);
+  box-shadow:0 8px 32px rgba(80,110,160,.15);}
+@keyframes card-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* 卡片顶部色带 */
+.card-band{
+  height:5px;width:100%;
+}
+/* 卡片主体 */
+.card-body{padding:18px 20px 16px;}
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.lv-badge{
+  font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
+  border-width:1px;border-style:solid;flex-shrink:0;
+}
+.plat-badge{
+  font-size:11px;padding:3px 8px;border-radius:8px;
+  background:rgba(58,127,212,.08);color:var(--primary);
+  border:1px solid rgba(58,127,212,.15);
+}
+.card-id{font-size:10px;color:var(--muted);margin-left:auto;font-family:monospace;}
+.card-name{
+  font-size:14px;font-weight:700;color:var(--text);
+  line-height:1.5;margin-bottom:8px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.domain-tag{
+  display:inline-block;font-size:11px;padding:3px 10px;border-radius:8px;
+  border-width:1px;border-style:solid;margin-bottom:12px;
+}
+.card-snippet{
+  font-size:12px;color:#6B7A90;line-height:1.7;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  margin-bottom:14px;
+}
+.card-footer{
+  display:flex;align-items:center;gap:12px;
+  padding-top:12px;border-top:1px solid rgba(180,200,220,.2);
+}
+.card-stat{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;}
+.card-stat b{color:var(--text);}
+.card-arrow{margin-left:auto;font-size:13px;color:var(--primary);}
+
+/* ── 抽屉 ── */
+#drawer-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.25);
+  z-index:200;display:none;backdrop-filter:blur(2px);
+}
+#drawer{
+  position:fixed;top:0;right:-520px;width:520px;height:100vh;
+  background:#fff;z-index:201;
+  box-shadow:-8px 0 40px rgba(80,110,160,.15);
+  transition:right .35s cubic-bezier(.22,.68,0,1.2);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#drawer.open{right:0;}
+.drawer-header{
+  padding:20px 24px;display:flex;align-items:flex-start;gap:12px;
+  border-bottom:1px solid rgba(180,200,220,.2);flex-shrink:0;
+}
+.drawer-close{
+  width:32px;height:32px;border:none;background:rgba(180,200,220,.2);
+  border-radius:8px;cursor:pointer;font-size:16px;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background .2s;margin-left:auto;
+}
+.drawer-close:hover{background:rgba(180,200,220,.4);}
+.drawer-title{font-size:16px;font-weight:700;color:var(--text);line-height:1.4;}
+.drawer-meta{font-size:12px;color:var(--muted);margin-top:4px;}
+.drawer-body{flex:1;overflow-y:auto;padding:20px 24px;}
+.drawer-body::-webkit-scrollbar{width:4px;}
+.drawer-body::-webkit-scrollbar-thumb{background:rgba(180,200,220,.4);border-radius:2px;}
+
+/* 抽屉内容块 */
+.d-section{margin-bottom:20px;}
+.d-label{
+  font-size:11px;font-weight:700;color:var(--muted);
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
+}
+.d-label::before{content:'';width:3px;height:12px;border-radius:2px;
+  background:linear-gradient(to bottom,var(--primary),#6C5CE7);}
+.d-text{font-size:13px;color:#4A5568;line-height:1.85;
+  background:#F8F9FC;border-radius:10px;padding:12px 14px;}
+.d-tags{display:flex;flex-wrap:wrap;gap:8px;}
+.d-tag{font-size:12px;padding:4px 12px;border-radius:8px;
+  background:rgba(58,127,212,.08);color:var(--primary);
+  border:1px solid rgba(58,127,212,.15);}
+
+/* 年龄段 Tab */
+.age-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.age-tab{flex:1;text-align:center;padding:7px;font-size:12px;
+  border-radius:10px;cursor:pointer;border:1px solid rgba(180,200,220,.3);
+  color:var(--muted);background:#fff;transition:all .2s;}
+.age-tab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+/* 空状态 */
+.empty{text-align:center;padding:80px 20px;color:var(--muted);}
+.empty-icon{font-size:48px;margin-bottom:16px;}
+
+/* 响应式 */
+@media(max-width:768px){
+  .grid{padding:16px;grid-template-columns:1fr;}
+  #drawer{width:100%;}
+  .page-head,.filter-wrap{padding-left:16px;padding-right:16px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    <div>
+      <div class="logo-name">青年心盾</div>
+      <div class="logo-sub">案例库 · Case Library</div>
+    </div>
+  </div>
+  <a class="nav-back" href="index.html">← 返回识别系统</a>
+</header>
+
+<div class="page-head">
+  <div class="page-title">典型风险案例库</div>
+  <div class="page-sub">基于平台语料研判归纳，覆盖五大风险域的典型传播案例</div>
+  <div class="page-stats">
+    <div class="pstat"><b id="stat-total">—</b> 个案例</div>
+    <div class="pstat"><b>5</b> 个风险域</div>
+    <div class="pstat"><b>4</b> 个平台</div>
+  </div>
+</div>
+
+<!-- 筛选栏 -->
+<div class="filter-wrap" id="filterWrap">
+  <div class="filter-btn active" data-type="domain" data-val="">全部风险域</div>
+  <div class="filter-btn" data-type="domain" data-val="制度认同风险">制度认同</div>
+  <div class="filter-btn" data-type="domain" data-val="历史认知风险">历史认知</div>
+  <div class="filter-btn" data-type="domain" data-val="心理韧性风险">心理韧性</div>
+  <div class="filter-btn" data-type="domain" data-val="认知闭合风险">认知闭合</div>
+  <div class="filter-btn" data-type="domain" data-val="网络素养风险">网络素养</div>
+  <div class="filter-sep"></div>
+  <div class="filter-lv active" data-type="level" data-val=""
+       style="border-color:rgba(180,200,220,.4);color:var(--muted);background:#fff;">全部等级</div>
+  <div class="filter-lv" data-type="level" data-val="L4"
+       style="border-color:var(--L4);color:var(--L4);">L4 极高</div>
+  <div class="filter-lv" data-type="level" data-val="L3"
+       style="border-color:var(--L3);color:var(--L3);">L3 高风险</div>
+  <div class="filter-lv" data-type="level" data-val="L2"
+       style="border-color:var(--L2);color:var(--L2);">L2 中等</div>
+</div>
+
+<!-- 卡片网格 -->
+<div class="grid" id="grid">
+  <div class="empty"><div class="empty-icon">📂</div><div>加载中…</div></div>
+</div>
+
+<!-- 遮罩 + 抽屉 -->
+<div id="drawer-mask" onclick="closeDrawer()"></div>
+<div id="drawer">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title" id="d-title">—</div>
+      <div class="drawer-meta" id="d-meta">—</div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="d-section">
+      <div class="d-label">核心关键词</div>
+      <div class="d-tags" id="d-keywords"></div>
+    </div>
+    <div class="d-section">
+      <div class="d-label">传播机制研判</div>
+      <div class="d-text" id="d-spread">—</div>
+    </div>
+    <div class="d-section">
+      <div class="d-label">代表文本</div>
+      <div class="d-text" id="d-reptext" style="color:#6B7A90;font-style:italic"></div>
+    </div>
+    <div class="d-section">
+      <div class="d-label">处置策略</div>
+      <div class="age-tabs">
+        <div class="age-tab active" onclick="switchAge(this,'6-12')">6-12岁</div>
+        <div class="age-tab" onclick="switchAge(this,'13-15')">13-15岁</div>
+        <div class="age-tab" onclick="switchAge(this,'16-18')">16-18岁</div>
+      </div>
+      <div class="d-text" id="d-disposal">—</div>
+    </div>
+    <div class="d-section">
+      <div class="d-label">复盘结论</div>
+      <div class="d-text" id="d-conclusion" style="color:#6B7A90"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+const LV_COLOR  = {L4:'#FF4D4F',L3:'#FA8C16',L2:'#D4AC0D',L1:'#27AE60',L0:'#95A5A6'};
+const LV_BG     = {L4:'rgba(255,77,79,.08)',L3:'rgba(250,141,22,.08)',L2:'rgba(212,172,13,.08)',L1:'rgba(39,174,96,.08)',L0:'rgba(149,165,166,.08)'};
+const LV_LABEL  = {L4:'极高风险',L3:'高风险',L2:'中等风险',L1:'低风险',L0:'暂无风险'};
+const DOM_COLOR = {'制度认同风险':'#4FC3F7','历史认知风险':'#FF7043','心理韧性风险':'#C77DFF','认知闭合风险':'#26C6DA','网络素养风险':'#66BB6A'};
+
+let _cases = [], _currentCase = null;
+let _filterDomain = '', _filterLevel = '';
+
+async function loadCases(){
+  const params = new URLSearchParams();
+  if(_filterDomain) params.set('domain', _filterDomain);
+  if(_filterLevel)  params.set('level',  _filterLevel);
+  const res   = await fetch(`${API}/cases?${params}`);
+  const data  = await res.json();
+  _cases = data.cases || [];
+  document.getElementById('stat-total').textContent = data.total || 0;
+  renderGrid(_cases);
+}
+
+function renderGrid(cases){
+  const grid = document.getElementById('grid');
+  if(!cases.length){
+    grid.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div>暂无符合条件的案例</div></div>`;
+    return;
+  }
+  grid.innerHTML = cases.map((c,i) => {
+    const lv    = c.risk_level || 'L0';
+    const color = LV_COLOR[lv]  || '#95A5A6';
+    const bg    = LV_BG[lv]     || 'rgba(149,165,166,.08)';
+    const dc    = DOM_COLOR[c.risk_domain_l1] || '#95A5A6';
+    const inter = fmtNum(c.total_interaction);
+    const snippet = (c.representative_text || c.spread_mechanism || '').slice(0, 80);
+    const kws = (c.core_keywords || '').split(/[,，、]/).filter(Boolean).slice(0,3).join(' · ');
+    return `
+    <div class="case-card" style="animation-delay:${i*0.04}s" onclick="openDrawer(${i})">
+      <div class="card-band" style="background:${color}"></div>
+      <div class="card-body">
+        <div class="card-top">
+          <span class="lv-badge" style="color:${color};background:${bg};border-color:${color}">
+            ${lv} · ${LV_LABEL[lv]}
+          </span>
+          ${c.platform ? `<span class="plat-badge">${c.platform}</span>` : ''}
+          <span class="card-id">${c.case_id||''}</span>
+        </div>
+        <div class="card-name">${c.case_name || '—'}</div>
+        <div class="domain-tag" style="color:${dc};border-color:${dc}20;background:${dc}12">
+          ${c.risk_domain_l1 || '—'}${c.risk_type_l2 ? ' · '+c.risk_type_l2 : ''}
+        </div>
+        <div class="card-snippet">${snippet || '（暂无摘要）'}</div>
+        <div class="card-footer">
+          ${inter ? `<div class="card-stat">📊 互动量 <b>${inter}</b></div>` : ''}
+          ${kws   ? `<div class="card-stat" style="color:#A0AEC0;font-size:10px">${kws}</div>` : ''}
+          <div class="card-arrow">→</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fmtNum(n){
+  if(!n || n == 0) return '';
+  n = parseInt(n);
+  return n >= 10000 ? (n/10000).toFixed(1)+'万' : n.toLocaleString();
+}
+
+// 抽屉
+let _disposalData = {};
+function openDrawer(idx){
+  const c = _cases[idx];
+  if(!c) return;
+  _currentCase = c;
+  _disposalData = {
+    '6-12':  c.disposal_strategy_6_12  || '暂无',
+    '13-15': c.disposal_strategy_13_15 || '暂无',
+    '16-18': c.disposal_strategy_16_18 || '暂无',
+  };
+  const lv    = c.risk_level || 'L0';
+  const color = LV_COLOR[lv] || '#95A5A6';
+
+  document.getElementById('d-title').textContent = c.case_name || '—';
+  document.getElementById('d-meta').textContent  =
+    [c.risk_domain_l1, c.platform, lv+' '+LV_LABEL[lv]].filter(Boolean).join(' · ');
+  document.getElementById('d-meta').style.color = color;
+
+  // 关键词
+  const kws = (c.core_keywords||'').split(/[,，、]/).filter(Boolean);
+  document.getElementById('d-keywords').innerHTML =
+    kws.length ? kws.map(k=>`<span class="d-tag">${k}</span>`).join('') : '<span style="color:var(--muted);font-size:12px">暂无</span>';
+
+  document.getElementById('d-spread').textContent   = c.spread_mechanism    || '暂无传播机制数据';
+  document.getElementById('d-reptext').textContent  = c.representative_text  || '暂无代表文本';
+  document.getElementById('d-conclusion').textContent = c.review_conclusion  || '暂无复盘结论';
+
+  // 默认显示 6-12 岁
+  document.querySelectorAll('.age-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.age-tab')[0].classList.add('active');
+  document.getElementById('d-disposal').textContent = _disposalData['6-12'];
+
+  document.getElementById('drawer-mask').style.display = 'block';
+  document.getElementById('drawer').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-mask').style.display = 'none';
+  document.body.style.overflow = '';
+}
+function switchAge(el, age){
+  document.querySelectorAll('.age-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('d-disposal').textContent = _disposalData[age] || '暂无';
+}
+
+// 筛选
+document.getElementById('filterWrap').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-type]');
+  if(!btn) return;
+  const type = btn.dataset.type;
+  const val  = btn.dataset.val;
+  // 取消同组其他选中
+  document.querySelectorAll(`[data-type="${type}"]`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(type === 'domain') _filterDomain = val;
+  if(type === 'level')  _filterLevel  = val;
+  loadCases();
+});
+
+loadCases();
+</script>
+</body>
+</html>

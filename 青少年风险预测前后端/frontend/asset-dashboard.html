@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XXXX实物资产管控平台</title>
+<style>
+:root {
+  --bg: #031a35;
+  --panel: rgba(4, 42, 78, .64);
+  --panel-strong: rgba(8, 67, 112, .48);
+  --cyan: #2fe9ff;
+  --cyan-soft: rgba(47, 233, 255, .52);
+  --blue: #0875bd;
+  --blue-deep: #062a54;
+  --green: #aaff1e;
+  --text: #e9fbff;
+  --muted: #7dbcd4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% 56%, rgba(0, 156, 255, .34), transparent 29%),
+    radial-gradient(circle at 13% 19%, rgba(27, 195, 255, .16), transparent 19%),
+    radial-gradient(circle at 86% 20%, rgba(9, 128, 212, .18), transparent 22%),
+    linear-gradient(180deg, #05294d 0%, #031a35 48%, #021224 100%);
+}
+
+.screen {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  min-width: 1180px;
+  min-height: 664px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(rgba(40, 208, 255, .04) 1px, transparent 1px) 0 0 / 42px 42px,
+    linear-gradient(90deg, rgba(40, 208, 255, .035) 1px, transparent 1px) 0 0 / 42px 42px;
+}
+
+.screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  opacity: .65;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(109, 238, 255, .16) 0 1px, transparent 2px) 0 0 / 74px 68px,
+    radial-gradient(circle at 80% 75%, rgba(109, 238, 255, .12) 0 1px, transparent 2px) 0 0 / 62px 58px,
+    linear-gradient(120deg, transparent 0 40%, rgba(20, 189, 255, .08), transparent 64%);
+}
+
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(47, 233, 255, .22), transparent 14%, transparent 86%, rgba(47, 233, 255, .22)),
+    linear-gradient(180deg, rgba(47, 233, 255, .24), transparent 13%, transparent 88%, rgba(47, 233, 255, .22)),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 5px);
+  box-shadow: inset 0 0 0 2px rgba(53, 209, 255, .32), inset 0 0 26px rgba(16, 190, 255, .28);
+}
+
+.top-frame {
+  position: absolute;
+  left: 1.35%;
+  top: 1.7%;
+  width: 97.3%;
+  height: 8.4%;
+  clip-path: polygon(0 0, 100% 0, 100% 63%, 96.7% 100%, 72.5% 100%, 71.5% 70%, 29.4% 70%, 28.6% 100%, 2.2% 100%, 0 64%);
+  background:
+    linear-gradient(180deg, rgba(8, 75, 122, .88), rgba(4, 36, 78, .72)),
+    linear-gradient(90deg, transparent, rgba(47, 233, 255, .22), transparent);
+  border: 1px solid rgba(58, 225, 255, .58);
+  box-shadow: inset 0 0 18px rgba(54, 213, 255, .35), 0 0 18px rgba(15, 169, 255, .3);
+}
+
+.top-frame::before,
+.top-frame::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  background: linear-gradient(90deg, transparent, rgba(47, 233, 255, .16), transparent);
+  transform: skewX(-28deg);
+}
+
+.top-frame::before {
+  left: 29%;
+}
+
+.top-frame::after {
+  right: 28%;
+}
+
+.title {
+  position: absolute;
+  left: 7%;
+  top: 3.8%;
+  font-size: clamp(18px, 1.85vw, 31px);
+  font-weight: 800;
+  letter-spacing: .08em;
+  color: #49e8ff;
+  text-shadow: 0 0 8px rgba(45, 237, 255, .8), 0 0 22px rgba(45, 135, 255, .78);
+}
+
+.nav {
+  position: absolute;
+  top: 4.25%;
+  left: 32%;
+  width: 51%;
+  height: 5.3%;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1.2%;
+}
+
+.nav-item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #f2fdff;
+  font-size: clamp(12px, .96vw, 17px);
+  font-weight: 700;
+  letter-spacing: .06em;
+  clip-path: polygon(13% 0, 100% 0, 87% 100%, 0 100%);
+  background: linear-gradient(180deg, rgba(13, 105, 170, .72), rgba(3, 55, 105, .84));
+  border: 1px solid rgba(70, 224, 255, .44);
+  box-shadow: inset 0 0 12px rgba(34, 199, 255, .32), 0 0 12px rgba(15, 154, 255, .18);
+  text-shadow: 0 0 7px rgba(255, 255, 255, .58);
+}
+
+.nav-item:first-child {
+  background: linear-gradient(180deg, rgba(19, 133, 196, .76), rgba(4, 70, 121, .9));
+}
+
+.user {
+  position: absolute;
+  top: 3%;
+  right: 2.7%;
+  height: 6.6%;
+  width: 10.6%;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: .7vw;
+}
+
+.avatar {
+  width: min(3.6vw, 58px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #0b8db9;
+  font-weight: 900;
+  font-size: clamp(15px, 1.1vw, 22px);
+  background:
+    radial-gradient(circle at 50% 45%, white 0 36%, #e8feff 37% 57%, transparent 58%),
+    conic-gradient(from 0deg, #51ecff, #fff, #36c9ff, #fff, #51ecff);
+  box-shadow: 0 0 14px rgba(70, 235, 255, .75);
+}
+
+.designer {
+  line-height: 1.3;
+  min-width: 4.2vw;
+}
+
+.designer b {
+  display: block;
+  font-size: clamp(10px, .72vw, 14px);
+  font-weight: 500;
+  color: #c7eff9;
+}
+
+.designer span {
+  display: block;
+  font-size: clamp(10px, .74vw, 14px);
+  color: #fff;
+}
+
+.power {
+  width: min(2vw, 34px);
+  height: min(2vw, 34px);
+  border-radius: 50%;
+  position: relative;
+  filter: drop-shadow(0 0 8px rgba(150, 247, 255, .9));
+}
+
+.power::before {
+  content: "";
+  position: absolute;
+  inset: 16% 24% 20%;
+  border: 3px solid #c6f9ff;
+  border-top-color: transparent;
+  border-radius: 50%;
+}
+
+.power::after {
+  content: "";
+  position: absolute;
+  top: 9%;
+  left: 45%;
+  width: 10%;
+  height: 39%;
+  border-radius: 999px;
+  background: #c6f9ff;
+}
+
+.panel {
+  position: absolute;
+  padding: 2.2% 2.1% 1.7%;
+  clip-path: polygon(8% 0, 100% 0, 100% 86%, 92% 100%, 0 100%, 0 10%);
+  background:
+    linear-gradient(180deg, rgba(10, 66, 108, .72), rgba(2, 28, 61, .58)),
+    radial-gradient(circle at 88% 12%, rgba(55, 230, 255, .22), transparent 22%);
+  border: 1px solid rgba(51, 214, 255, .42);
+  box-shadow:
+    inset 0 0 22px rgba(31, 186, 255, .2),
+    0 0 18px rgba(7, 116, 206, .28);
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 8px;
+  background:
+    linear-gradient(90deg, transparent 0 4%, rgba(73, 239, 255, .56) 4% 86%, transparent 86%),
+    repeating-linear-gradient(90deg, #36e8ff 0 17px, transparent 17px 25px);
+  opacity: .58;
+  box-shadow: 0 0 10px rgba(47, 233, 255, .9);
+}
+
+.panel::after {
+  content: "";
+  position: absolute;
+  left: 4%;
+  bottom: 4%;
+  width: 31%;
+  height: 6px;
+  transform: skewX(-32deg);
+  background: repeating-linear-gradient(90deg, #35eaff 0 10px, transparent 10px 16px);
+  opacity: .75;
+}
+
+.panel-title {
+  position: absolute;
+  top: -9.2%;
+  left: 7%;
+  display: flex;
+  align-items: baseline;
+  gap: .55vw;
+  white-space: nowrap;
+}
+
+.panel-title strong {
+  font-size: clamp(13px, 1vw, 18px);
+  letter-spacing: .14em;
+  color: #fff;
+  text-shadow: 0 0 7px rgba(255, 255, 255, .75), 0 0 12px rgba(23, 199, 255, .62);
+}
+
+.panel-title span {
+  font-family: Georgia, serif;
+  font-size: clamp(8px, .62vw, 11px);
+  color: #9ed7ec;
+  opacity: .9;
+}
+
+.asset-analysis {
+  left: 1.1%;
+  top: 17%;
+  width: 28.2%;
+  height: 37.2%;
+}
+
+.visit {
+  left: 1.1%;
+  bottom: 1.8%;
+  width: 28.2%;
+  height: 37.2%;
+}
+
+.yield {
+  right: 1.1%;
+  top: 17%;
+  width: 28.2%;
+  height: 37.2%;
+}
+
+.proportion {
+  right: 1.1%;
+  bottom: 1.8%;
+  width: 28.2%;
+  height: 37.2%;
+}
+
+.center {
+  position: absolute;
+  left: 30.4%;
+  top: 13.2%;
+  width: 39.3%;
+  height: 84%;
+}
+
+.total-title {
+  position: absolute;
+  left: 5.8%;
+  top: 1.8%;
+  font-size: clamp(20px, 1.62vw, 30px);
+  font-weight: 800;
+  letter-spacing: .22em;
+  color: #fff;
+  text-shadow: 0 0 7px rgba(255, 255, 255, .92), 0 0 18px rgba(47, 233, 255, .75);
+}
+
+.digits {
+  position: absolute;
+  left: 6%;
+  top: 8.5%;
+  width: 88%;
+  height: 11.5%;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1.25%;
+}
+
+.digit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-size: clamp(39px, 4.25vw, 76px);
+  line-height: 1;
+  font-weight: 300;
+  font-family: "Impact", "Arial Narrow", sans-serif;
+  color: #e9ffff;
+  border: 1px solid rgba(126, 243, 255, .72);
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgba(42, 195, 239, .84), rgba(11, 119, 183, .86) 46%, rgba(38, 214, 252, .82)),
+    repeating-linear-gradient(180deg, transparent 0 9px, rgba(255, 255, 255, .08) 10px 11px);
+  box-shadow:
+    inset 0 0 16px rgba(244, 255, 255, .35),
+    inset 0 0 34px rgba(3, 79, 145, .5),
+    0 0 14px rgba(30, 206, 255, .5);
+  text-shadow: 0 0 10px rgba(255, 255, 255, .9), 0 0 20px rgba(255, 255, 255, .6);
+}
+
+.digit::before {
+  content: "";
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 47%;
+  height: 1px;
+  background: rgba(3, 68, 113, .7);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .24);
+}
+
+.orbit {
+  position: absolute;
+  left: 4%;
+  top: 23%;
+  width: 91%;
+  height: 64%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 51%, rgba(43, 213, 255, .15) 0 38%, transparent 39%),
+    radial-gradient(circle at 50% 50%, transparent 0 42%, rgba(31, 185, 255, .18) 43% 44%, transparent 45% 100%);
+}
+
+.orbit::before,
+.orbit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(31, 196, 255, .2);
+  box-shadow: 0 0 28px rgba(21, 177, 255, .3), inset 0 0 34px rgba(10, 118, 198, .25);
+}
+
+.orbit::after {
+  inset: 6%;
+  border-style: dashed;
+  border-color: rgba(45, 216, 255, .24);
+  animation: spin 38s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.globe {
+  position: absolute;
+  left: 15%;
+  top: 12%;
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 65% 28%, rgba(255, 255, 255, .96) 0 7%, rgba(167, 249, 255, .94) 8% 19%, rgba(25, 178, 225, .94) 38%, rgba(0, 83, 159, .98) 72%),
+    linear-gradient(110deg, #0754a1, #1ad9ff 55%, #052f7f);
+  box-shadow:
+    inset -42px -32px 58px rgba(0, 30, 95, .58),
+    inset 20px 18px 38px rgba(218, 255, 255, .36),
+    0 0 34px rgba(26, 205, 255, .6);
+}
+
+.globe svg {
+  position: absolute;
+  inset: 0;
+}
+
+.land {
+  fill: rgba(222, 255, 255, .82);
+  stroke: rgba(185, 255, 255, .2);
+  stroke-width: .4;
+  filter: drop-shadow(0 0 6px rgba(220, 255, 255, .38));
+}
+
+.land.dark {
+  fill: rgba(8, 82, 143, .7);
+}
+
+.latlon {
+  fill: none;
+  stroke: rgba(255, 255, 255, .2);
+  stroke-width: .5;
+}
+
+.hotspot {
+  fill: #d9ff24;
+  filter: drop-shadow(0 0 6px #d9ff24) drop-shadow(0 0 14px #d9ff24);
+}
+
+.info-card {
+  position: absolute;
+  right: 0;
+  bottom: 11%;
+  width: 37%;
+  min-height: 30%;
+  padding: 4.6% 4.5%;
+  color: #c9fbff;
+  background: linear-gradient(180deg, rgba(8, 99, 143, .72), rgba(6, 53, 100, .72));
+  border: 1px solid rgba(60, 230, 255, .6);
+  box-shadow: inset 0 0 18px rgba(58, 229, 255, .22), 0 0 18px rgba(13, 159, 255, .4);
+}
+
+.info-card::before {
+  content: "";
+  position: absolute;
+  top: -7%;
+  left: 0;
+  right: -9%;
+  height: 10%;
+  clip-path: polygon(0 0, 100% 0, 94% 100%, 0 100%);
+  background: linear-gradient(90deg, rgba(27, 206, 255, .25), rgba(60, 232, 255, .8));
+  box-shadow: 0 0 12px rgba(63, 231, 255, .65);
+}
+
+.info-card h3 {
+  margin: 0 0 6%;
+  font-size: clamp(13px, .95vw, 18px);
+  letter-spacing: .1em;
+  color: #fff;
+}
+
+.info-card p {
+  margin: 4.6% 0;
+  font-size: clamp(10px, .78vw, 14px);
+  color: #c7f8ff;
+}
+
+.info-card b {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.callout-line {
+  position: absolute;
+  left: 34.6%;
+  bottom: 29%;
+  width: 28%;
+  height: 9%;
+  border-left: 1px solid rgba(171, 255, 59, .7);
+  border-bottom: 1px solid rgba(171, 255, 59, .7);
+}
+
+.callout-line::after {
+  content: "";
+  position: absolute;
+  right: -7px;
+  bottom: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+}
+
+.legend {
+  position: absolute;
+  top: 11%;
+  right: 7%;
+  display: flex;
+  gap: 2vw;
+  align-items: center;
+  font-size: clamp(9px, .72vw, 13px);
+  color: #d7faff;
+}
+
+.legend i {
+  display: inline-block;
+  width: 22px;
+  height: 8px;
+  margin-right: .45vw;
+  vertical-align: middle;
+}
+
+.legend .tri {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid rgba(121, 190, 225, .9);
+}
+
+.legend .line {
+  height: 2px;
+  background: #37f7ff;
+  box-shadow: 0 0 6px #37f7ff;
+  position: relative;
+}
+
+.legend .line::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #37f7ff;
+}
+
+.axis {
+  position: absolute;
+  inset: 20% 8% 20% 8%;
+}
+
+.axis .grid-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: rgba(116, 196, 225, .15);
+}
+
+.axis .grid-line span {
+  position: absolute;
+  left: 0;
+  top: -9px;
+  transform: translateX(-120%);
+  font-size: clamp(9px, .72vw, 12px);
+  color: #88c8df;
+}
+
+.labels {
+  position: absolute;
+  left: 9.8%;
+  right: 8%;
+  bottom: 14%;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  color: #8ccfe5;
+  font-size: clamp(9px, .72vw, 12px);
+  text-align: center;
+}
+
+.bars {
+  position: absolute;
+  left: 10%;
+  right: 8%;
+  bottom: 21%;
+  height: 52%;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  align-items: end;
+  gap: 6%;
+}
+
+.bar {
+  justify-self: center;
+  width: 37%;
+  height: var(--h);
+  border-radius: 4px 4px 0 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, .18), transparent 32%, rgba(255, 255, 255, .24) 52%, transparent 74%),
+    linear-gradient(180deg, #4ffcff 0%, #13e6d1 42%, rgba(12, 130, 143, .36) 100%);
+  box-shadow: 0 0 13px rgba(55, 255, 244, .65), inset -7px 0 10px rgba(7, 75, 123, .33);
+}
+
+.line-chart {
+  position: absolute;
+  left: 8%;
+  top: 20%;
+  width: 84%;
+  height: 56%;
+}
+
+.line-chart polyline {
+  fill: none;
+  stroke: rgba(63, 241, 255, .75);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 6px rgba(55, 241, 255, .65));
+}
+
+.line-chart circle {
+  fill: #092b54;
+  stroke: #42f5ff;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 5px #42f5ff);
+}
+
+.area-peak {
+  fill: url(#peakGradient);
+  opacity: .85;
+}
+
+.pyramid-wrap {
+  position: absolute;
+  left: 6%;
+  top: 16%;
+  width: 88%;
+  height: 72%;
+}
+
+.percent {
+  position: absolute;
+  left: 0;
+  top: 40%;
+  color: #49fff0;
+  font-size: clamp(18px, 1.65vw, 30px);
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(73, 255, 240, .72);
+}
+
+.percent-line {
+  position: absolute;
+  left: 22%;
+  top: 44%;
+  width: 18%;
+  height: 1px;
+  background: rgba(51, 230, 255, .65);
+}
+
+.pyramid {
+  position: absolute;
+  left: 24%;
+  top: 2%;
+  width: 40%;
+  height: 86%;
+  filter: drop-shadow(0 0 12px rgba(35, 225, 255, .6));
+}
+
+.pyramid .tier {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 19%;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, #ccfb2e, #12d9a0 70%, #0477a8);
+  box-shadow: inset 0 -8px 16px rgba(255, 255, 255, .18);
+}
+
+.pyramid .tier:nth-child(1) {
+  top: 0;
+  width: 43%;
+}
+
+.pyramid .tier:nth-child(2) {
+  top: 22%;
+  width: 71%;
+  clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, #19eba7, #12d5d5 78%, #06719d);
+}
+
+.pyramid .tier:nth-child(3) {
+  top: 46%;
+  width: 92%;
+  clip-path: polygon(12% 0, 88% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, #19d6db, #13aeda 78%, #095f9b);
+}
+
+.pyramid .tier:nth-child(4) {
+  top: 71%;
+  width: 122%;
+  clip-path: polygon(10% 0, 90% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, #168bd0, #0d63aa 82%, #074985);
+}
+
+.visit-numbers {
+  position: absolute;
+  right: 1%;
+  top: 4%;
+  width: 34%;
+}
+
+.visit-numbers div {
+  position: absolute;
+  right: 0;
+  color: #c8faff;
+  font-size: clamp(10px, .8vw, 14px);
+  text-align: right;
+  text-shadow: 0 0 7px rgba(41, 228, 255, .5);
+}
+
+.visit-numbers b {
+  display: block;
+  color: #a4ff1e;
+  font-size: clamp(15px, 1.22vw, 23px);
+}
+
+.visit-numbers div:nth-child(1) { top: 6%; }
+.visit-numbers div:nth-child(2) { top: 26%; }
+.visit-numbers div:nth-child(3) { top: 49%; }
+.visit-numbers div:nth-child(4) { top: 73%; }
+
+.pie-wrap {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 16%;
+  bottom: 15%;
+}
+
+.pie {
+  position: absolute;
+  left: 30%;
+  top: 14%;
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #062f54 0 15%, transparent 16%),
+    conic-gradient(#b916de 0 10.89%, #2ae4e7 10.89% 41.78%, #327ec4 41.78% 80.16%, #e9dd27 80.16% 88.3%, #f1547c 88.3% 100%);
+  box-shadow: 0 0 22px rgba(48, 216, 255, .34);
+}
+
+.pie::after {
+  content: "";
+  position: absolute;
+  inset: 36%;
+  border-radius: 50%;
+  background: #052b4d;
+  box-shadow: inset 0 0 10px rgba(79, 249, 255, .3);
+}
+
+.pie-triangle {
+  position: absolute;
+  right: 8%;
+  top: 5%;
+  width: 34%;
+  height: 42%;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, #22f576, #15acde);
+  filter: drop-shadow(0 0 13px rgba(45, 255, 190, .55));
+}
+
+.pie-note {
+  position: absolute;
+  color: #d8fbff;
+  font-size: clamp(9px, .76vw, 13px);
+  white-space: nowrap;
+  text-shadow: 0 0 7px rgba(47, 233, 255, .45);
+}
+
+.pie-note b {
+  color: #41f5ff;
+  margin-left: .4vw;
+}
+
+.pie-note.magenta b {
+  color: #ed2cff;
+}
+
+.pie-note.green b {
+  color: #77ff71;
+}
+
+.pie-note.pink b {
+  color: #ff6f95;
+}
+
+.pie-note::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  height: 1px;
+  background: rgba(210, 252, 255, .62);
+}
+
+.n1 { left: 8%; top: 8%; }
+.n1::before { left: 100%; width: 7vw; }
+.n2 { left: 2%; top: 27%; }
+.n2::before { left: 100%; width: 9vw; }
+.n3 { left: 3%; top: 56%; }
+.n3::before { left: 100%; width: 6vw; }
+.n4 { right: 0; top: 15%; }
+.n4::before { right: 100%; width: 5vw; }
+.n5 { right: 0; bottom: 9%; }
+.n5::before { right: 100%; width: 6vw; }
+
+.corner {
+  position: absolute;
+  width: 11px;
+  height: 36px;
+  left: 1.05%;
+  top: 2.7%;
+  border-left: 5px solid #54f5ff;
+  border-top: 5px solid #54f5ff;
+  transform: skewY(-28deg);
+  filter: drop-shadow(0 0 8px rgba(84, 245, 255, .8));
+}
+
+@media (max-aspect-ratio: 16/9) {
+  .screen {
+    width: 177.78vh;
+    height: 100vh;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+</style>
+</head>
+<body>
+<main class="screen" aria-label="XXXX实物资产管控平台数据大屏">
+  <div class="corner"></div>
+  <div class="top-frame"></div>
+  <h1 class="title">XXXX实物资产管控平台</h1>
+  <nav class="nav" aria-label="平台导航">
+    <div class="nav-item">资产信息</div>
+    <div class="nav-item">物资信息</div>
+    <div class="nav-item">实物资产</div>
+    <div class="nav-item">实物资产</div>
+    <div class="nav-item">实物资产</div>
+    <div class="nav-item">实物资产</div>
+  </nav>
+  <section class="user" aria-label="用户信息">
+    <div class="avatar">灿</div>
+    <div class="designer"><b>设计师</b><span>luck001</span></div>
+    <div class="power" aria-hidden="true"></div>
+  </section>
+
+  <section class="panel asset-analysis">
+    <div class="panel-title"><strong>资产分析</strong><span>Asset Analysis</span></div>
+    <div class="legend">
+      <span><i class="tri"></i>资产总数</span>
+      <span><i class="line"></i>资产占有率</span>
+    </div>
+    <div class="axis" aria-hidden="true">
+      <div class="grid-line" style="top:0"><span>3000</span></div>
+      <div class="grid-line" style="top:20%"><span>2500</span></div>
+      <div class="grid-line" style="top:40%"><span>2000</span></div>
+      <div class="grid-line" style="top:60%"><span>1500</span></div>
+      <div class="grid-line" style="top:80%"><span>1000</span></div>
+      <div class="grid-line" style="top:100%"><span>500</span></div>
+    </div>
+    <svg class="line-chart" viewBox="0 0 420 210" role="img" aria-label="资产分析折线图">
+      <defs>
+        <linearGradient id="peakGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#37f7ff" stop-opacity=".75"/>
+          <stop offset="100%" stop-color="#0a5eaa" stop-opacity=".08"/>
+        </linearGradient>
+      </defs>
+      <polygon class="area-peak" points="26,49 48,192 88,88 112,192 151,125 176,192 219,74 244,192 288,18 312,192 355,61 376,192 403,41 420,192 0,192 0,192"/>
+      <polyline points="26,49 88,88 151,125 219,74 288,18 355,61 403,41"/>
+      <circle cx="26" cy="49" r="4.5"/><circle cx="88" cy="88" r="4.5"/><circle cx="151" cy="125" r="4.5"/>
+      <circle cx="219" cy="74" r="4.5"/><circle cx="288" cy="18" r="4.5"/><circle cx="355" cy="61" r="4.5"/><circle cx="403" cy="41" r="4.5"/>
+    </svg>
+    <div class="labels"><span>2012年</span><span>2013年</span><span>2014年</span><span>2015年</span><span>2016年</span><span>2017年</span><span>2018年</span></div>
+  </section>
+
+  <section class="panel visit">
+    <div class="panel-title"><strong>访问来源</strong><span>Asset Analysis</span></div>
+    <div class="pyramid-wrap">
+      <div class="percent">34.67%</div>
+      <div class="percent-line"></div>
+      <div class="pyramid" aria-hidden="true">
+        <div class="tier"></div>
+        <div class="tier"></div>
+        <div class="tier"></div>
+        <div class="tier"></div>
+      </div>
+      <div class="visit-numbers">
+        <div><b>289</b>网页浏览量</div>
+        <div><b>1289</b>微信访问量</div>
+        <div><b>2289</b>微信访问量</div>
+        <div><b>12890</b>微信访问量</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="center">
+    <div class="total-title">实物资产总量</div>
+    <div class="digits" aria-label="实物资产总量 10123789">
+      <div class="digit">1</div>
+      <div class="digit">0</div>
+      <div class="digit">1</div>
+      <div class="digit">2</div>
+      <div class="digit">3</div>
+      <div class="digit">7</div>
+      <div class="digit">8</div>
+      <div class="digit">9</div>
+    </div>
+    <div class="orbit">
+      <div class="globe">
+        <svg viewBox="0 0 500 500" aria-hidden="true">
+          <circle class="latlon" cx="250" cy="250" r="202"/>
+          <ellipse class="latlon" cx="250" cy="250" rx="200" ry="72"/>
+          <ellipse class="latlon" cx="250" cy="250" rx="200" ry="134"/>
+          <ellipse class="latlon" cx="250" cy="250" rx="78" ry="204"/>
+          <ellipse class="latlon" cx="250" cy="250" rx="143" ry="204"/>
+          <path class="land dark" d="M79 116c30-37 83-60 133-70 18 11 24 30 18 53-21 1-47-2-62 14-18 18-6 36-14 55-9 20-34 19-45 37-14 24 9 49 0 75-30-15-54-44-67-79-10-28-2-61 37-85z"/>
+          <path class="land" d="M202 57c40 5 76 22 100 48-12 16-31 19-44 31-15 15-7 31-19 45-17 20-45 4-61 20-19 19 2 49-13 71-13 20-43 20-52 43-5 13 4 29 18 45-49-34-81-91-81-155 0-51 20-98 52-134 24-5 57-15 100-14z"/>
+          <path class="land" d="M291 83c45 10 88 38 114 75 16 22 26 47 31 74-22-8-43-11-63-2-19 8-36 23-55 16-26-9-17-44-43-52-24-7-45 13-65 4 16-32 49-48 77-70 12-10 9-29 4-45z"/>
+          <path class="land" d="M351 260c22-14 59-13 83 0-3 45-22 85-52 116-18-10-35-16-55-11-23 6-39 26-63 23-30-5-37-35-57-51 9-26 38-35 65-38 30-4 54-19 79-39z"/>
+          <path class="land" d="M247 319c-12 31-22 61-9 98-43-3-82-20-112-47 24-19 33-51 65-61 21-7 42 1 56 10z"/>
+          <path class="land" d="M411 174c21 31 32 68 31 107-14-12-26-27-28-48-2-19-8-38-3-59z"/>
+          <circle class="hotspot" cx="121" cy="153" r="6"/>
+          <circle class="hotspot" cx="112" cy="244" r="6"/>
+          <circle class="hotspot" cx="158" cy="349" r="7"/>
+          <circle class="hotspot" cx="188" cy="378" r="6"/>
+          <circle class="hotspot" cx="338" cy="138" r="6"/>
+          <circle class="hotspot" cx="383" cy="160" r="6"/>
+          <circle class="hotspot" cx="401" cy="194" r="6"/>
+          <circle class="hotspot" cx="438" cy="236" r="6"/>
+          <circle class="hotspot" cx="368" cy="225" r="6"/>
+          <circle class="hotspot" cx="334" cy="265" r="6"/>
+          <circle class="hotspot" cx="285" cy="362" r="6"/>
+          <circle class="hotspot" cx="417" cy="302" r="6"/>
+        </svg>
+      </div>
+    </div>
+    <div class="callout-line"></div>
+    <aside class="info-card">
+      <h3>澳洲地区</h3>
+      <p>实物资产总数：<b>10237</b></p>
+      <p>归属类别：<b>实物资产类型三</b></p>
+      <p>实物资产类占比：<b>38.78%</b></p>
+      <p>实物资产总数：<b>10237</b></p>
+      <p>归属类别：<b>实物资产类型三</b></p>
+      <p>实物资产类占比：<b>38.78%</b></p>
+    </aside>
+  </section>
+
+  <section class="panel yield">
+    <div class="panel-title"><strong>实物产量分析</strong><span>Physical Yield Analysis</span></div>
+    <div class="axis" aria-hidden="true">
+      <div class="grid-line" style="top:0"><span>3500</span></div>
+      <div class="grid-line" style="top:20%"><span>3000</span></div>
+      <div class="grid-line" style="top:40%"><span>2500</span></div>
+      <div class="grid-line" style="top:60%"><span>2000</span></div>
+      <div class="grid-line" style="top:80%"><span>1500</span></div>
+      <div class="grid-line" style="top:100%"><span>1000</span></div>
+    </div>
+    <div class="bars" aria-label="实物产量柱状图">
+      <div class="bar" style="--h:56%"></div>
+      <div class="bar" style="--h:80%"></div>
+      <div class="bar" style="--h:61%"></div>
+      <div class="bar" style="--h:44%"></div>
+      <div class="bar" style="--h:36%"></div>
+      <div class="bar" style="--h:100%"></div>
+      <div class="bar" style="--h:86%"></div>
+    </div>
+    <div class="labels"><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>周日</span></div>
+  </section>
+
+  <section class="panel proportion">
+    <div class="panel-title"><strong>实物资产类占比</strong><span>Proportion of Physical Assets</span></div>
+    <div class="pie-wrap">
+      <div class="pie-triangle"></div>
+      <div class="pie"></div>
+      <div class="pie-note magenta n1">类型一 <b>10.89%</b></div>
+      <div class="pie-note n2">类型三 <b>30.89%</b></div>
+      <div class="pie-note n3">类型四 <b>38.38%</b></div>
+      <div class="pie-note green n4">类型二 <b>39.72%</b></div>
+      <div class="pie-note pink n5">类型五 <b>27.47%</b></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

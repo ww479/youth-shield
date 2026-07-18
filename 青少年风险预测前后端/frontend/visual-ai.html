@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 交互可视化插件原型</title>
+<style>
+:root{
+  --bg:#111318;
+  --panel:#181b22;
+  --panel-2:#20242d;
+  --line:#303541;
+  --line-soft:rgba(255,255,255,.08);
+  --text:#f4f7fb;
+  --muted:#9aa4b2;
+  --sub:#c1c8d2;
+  --teal:#33d6c0;
+  --amber:#f6bd4f;
+  --rose:#ff6f91;
+  --blue:#62a8ff;
+  --green:#82e07d;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif}
+body{overflow:hidden}
+a{color:inherit;text-decoration:none}
+button,input,textarea,select{font:inherit}
+.topbar{
+  height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  background:#14171d;
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:11px;min-width:260px}
+.brand-mark{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,var(--teal),var(--blue));
+  display:grid;place-items:center;
+  color:#071018;font-size:12px;font-weight:900;
+  box-shadow:0 0 22px rgba(51,214,192,.24);
+}
+.brand-title{font-size:15px;font-weight:900}
+.brand-sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+.nav{display:flex;align-items:center;gap:8px}
+.nav-link{
+  height:34px;
+  padding:0 12px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  color:var(--sub);
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:#191d25;
+  font-size:12.5px;
+}
+.nav-link:hover{border-color:#4d5564;color:#fff}
+.shell{
+  height:calc(100vh - 58px);
+  display:grid;
+  grid-template-columns:360px minmax(0,1fr);
+}
+.side{
+  background:#161920;
+  border-right:1px solid var(--line);
+  padding:16px;
+  overflow:auto;
+}
+.main{
+  min-width:0;
+  display:grid;
+  grid-template-rows:minmax(0,1fr) 150px;
+  background:
+    radial-gradient(circle at 22% 18%,rgba(51,214,192,.12),transparent 28%),
+    radial-gradient(circle at 82% 24%,rgba(255,111,145,.09),transparent 26%),
+    linear-gradient(180deg,#111318,#0d0f14);
+}
+.section-label{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:0 0 10px;
+  color:#dce4ee;
+  font-size:13px;
+  font-weight:800;
+}
+.pill{
+  display:inline-flex;
+  align-items:center;
+  height:22px;
+  padding:0 8px;
+  border-radius:999px;
+  background:rgba(51,214,192,.12);
+  color:var(--teal);
+  font-size:11px;
+  font-weight:800;
+}
+.prompt{
+  width:100%;
+  min-height:122px;
+  resize:vertical;
+  padding:12px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:#101319;
+  color:var(--text);
+  outline:none;
+  line-height:1.55;
+}
+.prompt:focus{border-color:rgba(51,214,192,.65);box-shadow:0 0 0 3px rgba(51,214,192,.1)}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.field{display:grid;gap:6px}
+.field label{font-size:11.5px;color:var(--muted)}
+.field select,.field input{
+  height:36px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:#101319;
+  color:var(--text);
+  padding:0 10px;
+  outline:none;
+}
+.actions{display:flex;gap:10px;margin-top:12px}
+.btn{
+  height:38px;
+  border:0;
+  border-radius:8px;
+  padding:0 14px;
+  cursor:pointer;
+  font-weight:800;
+  color:#071018;
+  background:linear-gradient(135deg,var(--teal),var(--amber));
+}
+.btn.secondary{
+  color:var(--sub);
+  background:#20242d;
+  border:1px solid var(--line);
+}
+.btn:disabled{opacity:.58;cursor:not-allowed}
+.examples{display:grid;gap:8px;margin-top:16px}
+.example{
+  text-align:left;
+  border:1px solid var(--line);
+  background:#1b1f27;
+  color:var(--sub);
+  border-radius:8px;
+  padding:10px;
+  cursor:pointer;
+  line-height:1.45;
+  font-size:12.5px;
+}
+.example:hover{border-color:rgba(51,214,192,.5);color:#fff}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.metric{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:11px;
+  background:#1b1f27;
+  min-height:76px;
+}
+.metric-label{font-size:11.5px;color:var(--muted)}
+.metric-value{font-size:24px;font-weight:900;margin-top:6px}
+.metric-trend{font-size:11px;color:var(--green);margin-top:2px}
+.stage{
+  min-height:0;
+  position:relative;
+  border-bottom:1px solid var(--line);
+}
+.stage-head{
+  position:absolute;
+  top:16px;
+  left:18px;
+  right:18px;
+  z-index:3;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+  pointer-events:none;
+}
+.stage-title{font-size:22px;font-weight:900;letter-spacing:0}
+.stage-sub{font-size:12.5px;color:var(--muted);margin-top:5px;max-width:720px;line-height:1.5}
+.mode-tag{
+  border:1px solid var(--line);
+  background:rgba(18,21,27,.72);
+  backdrop-filter:blur(14px);
+  color:var(--sub);
+  border-radius:8px;
+  padding:8px 10px;
+  font-size:12px;
+  white-space:nowrap;
+}
+canvas{width:100%;height:100%;display:block}
+.hint{
+  position:absolute;
+  left:18px;
+  bottom:16px;
+  z-index:3;
+  color:var(--muted);
+  font-size:12px;
+  background:rgba(18,21,27,.72);
+  border:1px solid var(--line-soft);
+  border-radius:8px;
+  padding:8px 10px;
+  backdrop-filter:blur(12px);
+}
+.tooltip{
+  position:absolute;
+  display:none;
+  min-width:156px;
+  max-width:240px;
+  z-index:5;
+  pointer-events:none;
+  background:rgba(14,17,22,.92);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:8px;
+  padding:10px;
+  box-shadow:0 18px 36px rgba(0,0,0,.34);
+}
+.tooltip strong{display:block;font-size:13px;margin-bottom:5px}
+.tooltip span{display:block;color:var(--muted);font-size:11.5px;line-height:1.45}
+.bottom{
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr);
+  gap:14px;
+  padding:14px 16px;
+  background:#151820;
+}
+.info-panel{
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#1b1f27;
+  padding:12px;
+  overflow:auto;
+}
+.info-title{font-size:13px;font-weight:900;margin-bottom:8px}
+.insights{display:grid;gap:6px}
+.insight{
+  color:var(--sub);
+  font-size:12.5px;
+  line-height:1.45;
+  display:flex;
+  gap:8px;
+}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--teal);margin-top:7px;flex:0 0 auto}
+.schema{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.schema-item{
+  border:1px solid var(--line-soft);
+  border-radius:8px;
+  padding:9px;
+  background:#171b22;
+}
+.schema-name{font-size:12px;font-weight:900;color:#f0f5fb}
+.schema-desc{font-size:11px;color:var(--muted);line-height:1.4;margin-top:4px}
+.loading{
+  position:absolute;
+  inset:0;
+  display:none;
+  place-items:center;
+  z-index:4;
+  background:rgba(12,14,18,.44);
+  backdrop-filter:blur(2px);
+}
+.loading.show{display:grid}
+.loader{
+  border:1px solid var(--line);
+  background:#1b1f27;
+  border-radius:8px;
+  padding:14px 18px;
+  color:var(--sub);
+  font-weight:800;
+}
+@media(max-width:980px){
+  body{overflow:auto}
+  .shell{height:auto;min-height:calc(100vh - 58px);grid-template-columns:1fr}
+  .main{height:820px;grid-template-rows:minmax(0,1fr) 220px}
+  .bottom{grid-template-columns:1fr}
+  .nav{display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="home.html">
+    <div class="brand-mark">AI</div>
+    <div>
+      <div class="brand-title">效能屏 AI 交互可视化</div>
+      <div class="brand-sub">General Visualization Plugin Prototype</div>
+    </div>
+  </a>
+  <nav class="nav">
+    <a class="nav-link" href="home.html">系统入口</a>
+    <a class="nav-link" href="index.html">内容研判</a>
+    <a class="nav-link" href="trends.html">态势研判</a>
+  </nav>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="section-label">
+      <span>输入可视化需求</span>
+      <span class="pill">MVP</span>
+    </div>
+    <textarea id="prompt" class="prompt">展示近30天各平台传播关系和核心扩散节点</textarea>
+    <div class="field-grid">
+      <div class="field">
+        <label for="visualType">偏好图表</label>
+        <select id="visualType">
+          <option value="">自动推荐</option>
+          <option value="force">力导向星云图</option>
+          <option value="flow">密度流场图</option>
+          <option value="galaxy">星系层级图</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="timeRange">时间范围</label>
+        <input id="timeRange" value="近30天">
+      </div>
+    </div>
+    <div class="actions">
+      <button id="runBtn" class="btn">生成可视化</button>
+      <button id="resetBtn" class="btn secondary">重置视图</button>
+    </div>
+
+    <div class="examples">
+      <button class="example" data-text="展示近30天各平台传播关系和核心扩散节点" data-type="force">传播关系和核心节点分析</button>
+      <button class="example" data-text="分析重点区域传播热度分布和扩散趋势" data-type="flow">区域热度和流场趋势分析</button>
+      <button class="example" data-text="展示总台账号矩阵的多级分发层级结构" data-type="galaxy">账号矩阵和层级分发分析</button>
+    </div>
+
+    <div id="metrics" class="metrics"></div>
+  </aside>
+
+  <main class="main">
+    <section class="stage" id="stage">
+      <div class="stage-head">
+        <div>
+          <div id="chartTitle" class="stage-title">传播关系星云图</div>
+          <div id="chartSub" class="stage-sub">输入自然语言需求后，系统会识别分析意图、推荐图表类型，并返回通用结构化数据用于渲染。</div>
+        </div>
+        <div id="modeTag" class="mode-tag">等待生成</div>
+      </div>
+      <canvas id="viz"></canvas>
+      <div id="tooltip" class="tooltip"></div>
+      <div class="hint">交互：滚轮缩放，拖拽节点或移动鼠标扰动流场</div>
+      <div id="loading" class="loading"><div class="loader">正在生成可视化方案...</div></div>
+    </section>
+
+    <section class="bottom">
+      <div class="info-panel">
+        <div class="info-title">AI 解读</div>
+        <div id="insights" class="insights"></div>
+      </div>
+      <div class="info-panel">
+        <div class="info-title">通用数据协议</div>
+        <div class="schema">
+          <div class="schema-item">
+            <div class="schema-name">nodes / links</div>
+            <div class="schema-desc">关系网络、传播链路、账号互动。</div>
+          </div>
+          <div class="schema-item">
+            <div class="schema-name">points / timeline</div>
+            <div class="schema-desc">地域热度、时间趋势、流场扰动。</div>
+          </div>
+          <div class="schema-item">
+            <div class="schema-name">tree</div>
+            <div class="schema-desc">层级结构、矩阵分发、父子关系。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const API_BASE = location.protocol === 'file:' ? 'http://localhost:8000' : '';
+const canvas = document.getElementById('viz');
+const ctx = canvas.getContext('2d');
+const stage = document.getElementById('stage');
+const tooltip = document.getElementById('tooltip');
+const loading = document.getElementById('loading');
+const promptEl = document.getElementById('prompt');
+const visualTypeEl = document.getElementById('visualType');
+const timeRangeEl = document.getElementById('timeRange');
+const runBtn = document.getElementById('runBtn');
+const resetBtn = document.getElementById('resetBtn');
+const chartTitle = document.getElementById('chartTitle');
+const chartSub = document.getElementById('chartSub');
+const modeTag = document.getElementById('modeTag');
+const metricsEl = document.getElementById('metrics');
+const insightsEl = document.getElementById('insights');
+
+let width = 0;
+let height = 0;
+let dpr = 1;
+let response = null;
+let view = {x:0,y:0,scale:1};
+let mouse = {x:0,y:0,down:false,worldX:0,worldY:0};
+let dragNode = null;
+let hoverItem = null;
+let forceState = null;
+let particles = [];
+let startTime = performance.now();
+
+function resize(){
+  const box = stage.getBoundingClientRect();
+  const nextDpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const nextW = Math.floor(box.width);
+  const nextH = Math.floor(box.height);
+  if(nextW === width && nextH === height && nextDpr === dpr) return;
+  dpr = nextDpr;
+  width = nextW;
+  height = nextH;
+  canvas.width = Math.floor(width * dpr);
+  canvas.height = Math.floor(height * dpr);
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function clear(){
+  const g = ctx.createLinearGradient(0,0,width,height);
+  g.addColorStop(0,'#111318');
+  g.addColorStop(.52,'#0d1016');
+  g.addColorStop(1,'#15151b');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,width,height);
+}
+
+function colorFor(value, type){
+  if(type === 'source') return '#f6bd4f';
+  if(type === 'topic') return '#ff6f91';
+  if(type === 'content') return '#82e07d';
+  if(value >= 80) return '#33d6c0';
+  if(value >= 65) return '#62a8ff';
+  return '#b78cff';
+}
+
+function renderMetrics(items){
+  metricsEl.innerHTML = (items || []).map(item => `
+    <div class="metric">
+      <div class="metric-label">${escapeHtml(item.label)}</div>
+      <div class="metric-value">${escapeHtml(item.value)}<span style="font-size:12px;color:var(--muted);margin-left:2px">${escapeHtml(item.unit || '')}</span></div>
+      <div class="metric-trend">${escapeHtml(item.trend || '')}</div>
+    </div>
+  `).join('');
+}
+
+function renderInsights(items){
+  insightsEl.innerHTML = (items || []).map(text => `
+    <div class="insight"><span class="dot"></span><span>${escapeHtml(text)}</span></div>
+  `).join('');
+}
+
+function escapeHtml(value){
+  return String(value || '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[ch]));
+}
+
+function setLoading(show){
+  loading.classList.toggle('show', show);
+  runBtn.disabled = show;
+}
+
+async function generate(){
+  const prompt = promptEl.value.trim();
+  if(!prompt){
+    promptEl.focus();
+    return;
+  }
+  setLoading(true);
+  try{
+    const res = await fetch(`${API_BASE}/visual-ai/generate`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        prompt,
+        preferred_visual: visualTypeEl.value,
+        time_range: timeRangeEl.value || '近30天',
+        data_source:'demo'
+      })
+    });
+    if(!res.ok) throw new Error(await res.text());
+    response = await res.json();
+    applyResponse(response);
+  }catch(err){
+    chartSub.textContent = '接口调用失败，请确认后端服务已启动在 http://localhost:8000。';
+    modeTag.textContent = '生成失败';
+    console.error(err);
+  }finally{
+    setLoading(false);
+  }
+}
+
+function applyResponse(data){
+  chartTitle.textContent = data.chart.title;
+  chartSub.textContent = data.intent.reason;
+  modeTag.textContent = `${data.intent.recommended_chart} · ${data.request.time_range}`;
+  renderMetrics(data.metrics);
+  renderInsights(data.insights);
+  view = {x:0,y:0,scale:1};
+  dragNode = null;
+  hoverItem = null;
+  tooltip.style.display = 'none';
+  if(data.chart.type === 'force') initForce(data.data);
+  if(data.chart.type === 'flow') initFlow(data.data);
+  if(data.chart.type === 'galaxy') initGalaxy();
+}
+
+function initForce(data){
+  const cx = width / 2;
+  const cy = height / 2;
+  const nodes = data.nodes.map((n, i) => {
+    const angle = (Math.PI * 2 * i) / data.nodes.length;
+    const ring = 80 + (i % 4) * 35;
+    return {
+      ...n,
+      x: cx + Math.cos(angle) * ring,
+      y: cy + Math.sin(angle) * ring,
+      vx: 0,
+      vy: 0,
+      r: 8 + Math.sqrt(n.value || 30) * 1.5,
+    };
+  });
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const links = data.links.map(l => ({...l, source:byId[l.source], target:byId[l.target]})).filter(l => l.source && l.target);
+  forceState = {nodes, links};
+}
+
+function initFlow(){
+  particles = Array.from({length:110}, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    vx: (Math.random() - .5) * .6,
+    vy: (Math.random() - .5) * .6,
+    life: Math.random() * 100
+  }));
+}
+
+function initGalaxy(){}
+
+function drawGrid(){
+  ctx.save();
+  ctx.globalAlpha = .16;
+  ctx.strokeStyle = '#39404c';
+  ctx.lineWidth = 1;
+  const step = 48;
+  for(let x = (view.x % step); x < width; x += step){
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,height);
+    ctx.stroke();
+  }
+  for(let y = (view.y % step); y < height; y += step){
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(width,y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawForce(){
+  if(!forceState) return;
+  const {nodes, links} = forceState;
+  const cx = width / 2;
+  const cy = height / 2;
+  for(const a of nodes){
+    for(const b of nodes){
+      if(a === b) continue;
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const d2 = Math.max(80, dx * dx + dy * dy);
+      const f = 22 / d2;
+      a.vx += dx * f;
+      a.vy += dy * f;
+    }
+  }
+  for(const l of links){
+    const dx = l.target.x - l.source.x;
+    const dy = l.target.y - l.source.y;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    const target = 88 + (1 - l.weight) * 80;
+    const f = (dist - target) * .006 * l.weight;
+    const fx = dx / dist * f;
+    const fy = dy / dist * f;
+    l.source.vx += fx;
+    l.source.vy += fy;
+    l.target.vx -= fx;
+    l.target.vy -= fy;
+  }
+  for(const n of nodes){
+    if(n === dragNode){
+      n.x = mouse.worldX;
+      n.y = mouse.worldY;
+      n.vx = 0;
+      n.vy = 0;
+      continue;
+    }
+    n.vx += (cx - n.x) * .0009;
+    n.vy += (cy - n.y) * .0009;
+    n.vx *= .9;
+    n.vy *= .9;
+    n.x += n.vx;
+    n.y += n.vy;
+  }
+
+  ctx.save();
+  ctx.translate(view.x, view.y);
+  ctx.scale(view.scale, view.scale);
+  for(const l of links){
+    const grad = ctx.createLinearGradient(l.source.x,l.source.y,l.target.x,l.target.y);
+    grad.addColorStop(0, colorFor(l.source.value, l.source.type));
+    grad.addColorStop(1, colorFor(l.target.value, l.target.type));
+    ctx.strokeStyle = grad;
+    ctx.globalAlpha = .18 + l.weight * .34;
+    ctx.lineWidth = 1 + l.weight * 2.5;
+    ctx.beginPath();
+    ctx.moveTo(l.source.x,l.source.y);
+    ctx.lineTo(l.target.x,l.target.y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  for(const n of nodes){
+    const c = colorFor(n.value, n.type);
+    ctx.shadowColor = c;
+    ctx.shadowBlur = n === hoverItem ? 26 : 14;
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,.92)';
+    ctx.font = '12px Microsoft YaHei';
+    ctx.textAlign = 'center';
+    ctx.fillText(n.label, n.x, n.y + n.r + 16);
+  }
+  ctx.restore();
+}
+
+function drawFlow(){
+  const data = response.data;
+  const t = (performance.now() - startTime) / 1000;
+  const points = data.points || [];
+  ctx.save();
+  for(const p of points){
+    const px = p.x * width;
+    const py = p.y * height;
+    const wobble = Math.sin(t * 1.5 + p.value) * 12;
+    const radius = 64 + p.value * 1.5 + wobble;
+    const mx = mouse.x - px;
+    const my = mouse.y - py;
+    const md = Math.hypot(mx,my);
+    const boost = Math.max(0, 1 - md / 180) * 42;
+    const g = ctx.createRadialGradient(px,py,0,px,py,radius + boost);
+    g.addColorStop(0, `rgba(51,214,192,${Math.min(.56, .18 + p.value / 180)})`);
+    g.addColorStop(.45, `rgba(98,168,255,${Math.min(.28, p.value / 300)})`);
+    g.addColorStop(1,'rgba(255,111,145,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(px,py,radius + boost,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.22)';
+    ctx.lineWidth = 1;
+    for(let r=32;r<radius;r+=28){
+      ctx.beginPath();
+      ctx.ellipse(px,py,r + Math.sin(t + r) * 5,r * .62,Math.sin(t+p.value)*.4,0,Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#f4f7fb';
+    ctx.font = '12px Microsoft YaHei';
+    ctx.fillText(`${p.name} ${p.value}`, px + 8, py - 8);
+  }
+  ctx.globalAlpha = .72;
+  ctx.strokeStyle = 'rgba(246,189,79,.55)';
+  ctx.lineWidth = 1.4;
+  for(const p of particles){
+    const nearest = points.reduce((best, pt) => {
+      const dx = pt.x * width - p.x;
+      const dy = pt.y * height - p.y;
+      const d = dx*dx + dy*dy;
+      return d < best.d ? {pt,d} : best;
+    }, {pt:points[0], d:Infinity}).pt;
+    if(nearest){
+      const dx = nearest.x * width - p.x;
+      const dy = nearest.y * height - p.y;
+      const dist = Math.max(1, Math.hypot(dx,dy));
+      p.vx += dx / dist * .018;
+      p.vy += dy / dist * .018;
+    }
+    const mdx = p.x - mouse.x;
+    const mdy = p.y - mouse.y;
+    const md = Math.hypot(mdx, mdy);
+    if(md < 130){
+      p.vx += mdx / Math.max(1, md) * .06;
+      p.vy += mdy / Math.max(1, md) * .06;
+    }
+    p.vx *= .985;
+    p.vy *= .985;
+    const ox = p.x;
+    const oy = p.y;
+    p.x += p.vx + Math.sin(t + p.life) * .22;
+    p.y += p.vy + Math.cos(t * .9 + p.life) * .22;
+    if(p.x < 0 || p.x > width || p.y < 0 || p.y > height){
+      p.x = Math.random() * width;
+      p.y = Math.random() * height;
+      p.vx = 0;
+      p.vy = 0;
+    }
+    ctx.beginPath();
+    ctx.moveTo(ox,oy);
+    ctx.lineTo(p.x,p.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function flattenTree(root){
+  const rows = [];
+  function walk(node, depth, parent, index, count){
+    rows.push({node, depth, parent, index, count});
+    const children = node.children || [];
+    children.forEach((child, i) => walk(child, depth + 1, node, i, children.length));
+  }
+  walk(root, 0, null, 0, 1);
+  return rows;
+}
+
+function drawGalaxy(){
+  const root = response.data;
+  const rows = flattenTree(root);
+  const t = (performance.now() - startTime) / 1000;
+  const cx = width / 2;
+  const cy = height / 2 + 8;
+  const levels = [0, 110, 205, 295];
+  ctx.save();
+  ctx.translate(view.x, view.y);
+  ctx.scale(view.scale, view.scale);
+  for(let i=1;i<levels.length;i++){
+    ctx.strokeStyle = 'rgba(255,255,255,.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, levels[i], 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  const placed = new Map();
+  for(const row of rows){
+    let x = cx;
+    let y = cy;
+    if(row.depth > 0){
+      const sameDepth = rows.filter(r => r.depth === row.depth);
+      const order = sameDepth.indexOf(row);
+      const angle = (Math.PI * 2 * order / sameDepth.length) + t * (.06 / row.depth);
+      const r = levels[row.depth] || (120 + row.depth * 90);
+      x = cx + Math.cos(angle) * r;
+      y = cy + Math.sin(angle) * r * .72;
+    }
+    placed.set(row.node, {x,y,row});
+  }
+  for(const row of rows){
+    if(!row.parent) continue;
+    const a = placed.get(row.parent);
+    const b = placed.get(row.node);
+    ctx.strokeStyle = 'rgba(51,214,192,.25)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y);
+    ctx.lineTo(b.x,b.y);
+    ctx.stroke();
+  }
+  for(const row of rows){
+    const p = placed.get(row.node);
+    const value = row.node.value || 40;
+    const r = row.depth === 0 ? 26 : 10 + Math.sqrt(value) * 1.2;
+    const c = row.depth === 0 ? '#f6bd4f' : row.depth === 1 ? '#33d6c0' : '#62a8ff';
+    ctx.shadowColor = c;
+    ctx.shadowBlur = row.node === hoverItem ? 28 : 16;
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,r,0,Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#f4f7fb';
+    ctx.font = row.depth === 0 ? '14px Microsoft YaHei' : '12px Microsoft YaHei';
+    ctx.textAlign = 'center';
+    ctx.fillText(row.node.name, p.x, p.y + r + 16);
+  }
+  ctx.restore();
+}
+
+function hitTest(x, y){
+  if(!response) return null;
+  const wx = (x - view.x) / view.scale;
+  const wy = (y - view.y) / view.scale;
+  mouse.worldX = wx;
+  mouse.worldY = wy;
+  if(response.chart.type === 'force' && forceState){
+    return [...forceState.nodes].reverse().find(n => Math.hypot(n.x - wx, n.y - wy) <= n.r + 8) || null;
+  }
+  if(response.chart.type === 'flow'){
+    return (response.data.points || []).find(p => Math.hypot(p.x * width - x, p.y * height - y) <= 34) || null;
+  }
+  if(response.chart.type === 'galaxy'){
+    const rows = flattenTree(response.data);
+    const t = (performance.now() - startTime) / 1000;
+    const cx = width / 2;
+    const cy = height / 2 + 8;
+    const levels = [0, 110, 205, 295];
+    for(const row of rows){
+      let px = cx, py = cy;
+      if(row.depth > 0){
+        const sameDepth = rows.filter(r => r.depth === row.depth);
+        const order = sameDepth.indexOf(row);
+        const angle = (Math.PI * 2 * order / sameDepth.length) + t * (.06 / row.depth);
+        const r = levels[row.depth] || (120 + row.depth * 90);
+        px = cx + Math.cos(angle) * r;
+        py = cy + Math.sin(angle) * r * .72;
+      }
+      if(Math.hypot(px - wx, py - wy) <= 24) return row.node;
+    }
+  }
+  return null;
+}
+
+function showTooltip(item, x, y){
+  if(!item){
+    tooltip.style.display = 'none';
+    return;
+  }
+  const title = item.label || item.name;
+  const meta = [
+    item.platform ? `平台：${item.platform}` : '',
+    item.cluster ? `圈层：${item.cluster}` : '',
+    item.type ? `类型：${item.type}` : '',
+    item.value ? `指标值：${item.value}` : '',
+    item.delta ? `增幅：+${item.delta}%` : ''
+  ].filter(Boolean);
+  tooltip.innerHTML = `<strong>${escapeHtml(title)}</strong>${meta.map(m => `<span>${escapeHtml(m)}</span>`).join('')}`;
+  tooltip.style.left = Math.min(width - 260, x + 14) + 'px';
+  tooltip.style.top = Math.max(70, y + 14) + 'px';
+  tooltip.style.display = 'block';
+}
+
+function animate(){
+  resize();
+  clear();
+  drawGrid();
+  if(response){
+    if(response.chart.type === 'force') drawForce();
+    if(response.chart.type === 'flow') drawFlow();
+    if(response.chart.type === 'galaxy') drawGalaxy();
+  }
+  requestAnimationFrame(animate);
+}
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - rect.left;
+  mouse.y = e.clientY - rect.top;
+  const item = hitTest(mouse.x, mouse.y);
+  hoverItem = item;
+  showTooltip(item, mouse.x, mouse.y);
+});
+
+canvas.addEventListener('mousedown', e => {
+  mouse.down = true;
+  const rect = canvas.getBoundingClientRect();
+  const item = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+  if(response && response.chart.type === 'force') dragNode = item;
+});
+
+window.addEventListener('mouseup', () => {
+  mouse.down = false;
+  dragNode = null;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.08 : .92;
+  const next = Math.max(.55, Math.min(2.2, view.scale * factor));
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  view.x = x - ((x - view.x) / view.scale) * next;
+  view.y = y - ((y - view.y) / view.scale) * next;
+  view.scale = next;
+}, {passive:false});
+
+document.querySelectorAll('.example').forEach(btn => {
+  btn.addEventListener('click', () => {
+    promptEl.value = btn.dataset.text;
+    visualTypeEl.value = btn.dataset.type;
+    generate();
+  });
+});
+
+runBtn.addEventListener('click', generate);
+resetBtn.addEventListener('click', () => {
+  view = {x:0,y:0,scale:1};
+  if(response && response.chart.type === 'force') initForce(response.data);
+});
+window.addEventListener('resize', resize);
+
+resize();
+animate();
+generate();
+</script>
+</body>
+</html>
