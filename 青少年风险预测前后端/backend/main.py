@@ -33,8 +33,28 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 import nihilism_scorer
 import six_dim_scorer
+try:
+    import homophone_fix   # 转写文本的同音错字纠正（span 锚定时做容错匹配）
+except Exception as e:
+    homophone_fix = None
+    print(f"⚠ 同音纠正模块未加载（转写研判仍可用，容错匹配关闭）：{e}")
+try:
+    import major_lexicon   # 重大风险 M1-M11 规则中文名（红线卡片展示用）
+except Exception:
+    major_lexicon = None
 
 app = FastAPI(title="风险识别平台 API", version="1.0")
+
+# ── 视频转写：挂进主服务，让转写文本能用上下面 startup() 建的语义索引 ──
+# 独立进程跑 transcribe_api 拿不到 Chroma major_samples（2.5 万条重大风险样本），
+# M 规则只剩词库精确匹配、召回会掉一截，所以合并而不是各起一个端口。
+try:
+    import transcribe_api
+    app.include_router(transcribe_api.router)
+    _TRANSCRIBE_OK = True
+except Exception as e:
+    _TRANSCRIBE_OK = False
+    print(f"⚠ 视频转写模块未加载（不影响其他功能）：{e}")
 
 # ── Claude 客户端（中转/官方）：密钥与地址从环境变量读取，绝不写死在代码里 ──
 _anthropic_key  = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -245,12 +265,71 @@ def build_case_index():
     )
     print(f"✓ Chroma案例向量库构建：{len(rows)} 条")
 
+# ── 重大风险语义样本库（t_major_risk_sample → 向量近邻检测 M1-M11）──
+_major_sample_collection = None
+_MAJOR_SEM_CAP = int(os.environ.get("MAJOR_SEM_CAP", "300"))          # 每规则最多取样条数（控启动耗时）
+_MAJOR_SEM_THRESHOLD = float(os.environ.get("MAJOR_SEM_THRESHOLD", "0.30"))  # 余弦距离阈值（越小越严）
+_MAJOR_SEM_STRICT = float(os.environ.get("MAJOR_SEM_STRICT", "0.20"))        # 单条最近邻可直接判的更严阈值
+
+def build_major_sample_index():
+    """把重大风险标注样本 embed 进 Chroma，供语义近邻检测重大风险规则。"""
+    global _major_sample_collection
+    if _embed_model is None or _chroma_client is None:
+        return
+    rows = qall(f"""
+        SELECT rule_code, sample_text FROM (
+          SELECT rule_code, sample_text,
+                 ROW_NUMBER() OVER (PARTITION BY rule_code ORDER BY id) AS rn
+          FROM t_major_risk_sample
+        ) t WHERE rn <= {_MAJOR_SEM_CAP}
+    """)
+    if not rows:
+        return
+    texts = [r["sample_text"] for r in rows]
+    embs  = _embed_model.encode(texts, batch_size=64, show_progress_bar=False).tolist()
+    _major_sample_collection = _chroma_client.get_or_create_collection(
+        "major_samples", metadata={"hnsw:space": "cosine"}
+    )
+    _major_sample_collection.upsert(
+        ids        = [f"mj_{i}" for i in range(len(rows))],
+        embeddings = embs,
+        documents  = texts,
+        metadatas  = [{"rule": r["rule_code"]} for r in rows],
+    )
+    print(f"✓ 重大风险语义样本库构建：{len(rows)} 条")
+
+def semantic_detect_major(text: str) -> list:
+    """对文本做向量近邻检索，命中足够近的重大风险样本则返回其规则 M 编号。
+    近邻同规则≥2 票或最近邻极近(<STRICT) 才判，降低误报。"""
+    if _major_sample_collection is None or _embed_model is None or not (text or "").strip():
+        return []
+    try:
+        emb = _embed_model.encode([text[:800]], show_progress_bar=False)[0].tolist()
+        res = _major_sample_collection.query(
+            query_embeddings=[emb], n_results=6, include=["metadatas", "distances"])
+        dists = res["distances"][0] if res.get("distances") else []
+        metas = res["metadatas"][0] if res.get("metadatas") else []
+    except Exception:
+        return []
+    votes = {}
+    hit = set()
+    for i, m in enumerate(metas):
+        d = dists[i] if i < len(dists) else 1.0
+        rule = m.get("rule")
+        if d <= _MAJOR_SEM_STRICT:
+            hit.add(rule)
+        if d <= _MAJOR_SEM_THRESHOLD:
+            votes[rule] = votes.get(rule, 0) + 1
+    hit.update(r for r, c in votes.items() if c >= 2)
+    return sorted(hit, key=lambda x: int(x[1:]) if x and x[1:].isdigit() else 99)
+
+
 def build_keyword_collection():
     """将关键词库 embed 后存入内存 Chroma collection，供语义检索使用。"""
     global _embed_model, _chroma_client, _kw_collection
     if not _KEYWORDS:
         return
-    _embed_model   = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+    _embed_model   = SentenceTransformer(os.environ.get("EMBED_MODEL_PATH", "paraphrase-multilingual-MiniLM-L12-v2"))
     _chroma_client = chromadb.Client()
     _kw_collection = _chroma_client.get_or_create_collection(
         "keywords", metadata={"hnsw:space": "cosine"}
@@ -285,11 +364,25 @@ async def startup():
     load_keywords()
     load_domain_lexicon()        # 五大风险域词库（识别标签召回）
     load_scripts()               # 话术全量载入内存
-    build_keyword_collection()   # embed model + chroma
-    build_case_index()
-    build_positive_case_index()  # 中青网正向案例向量库
+    # 语义检索索引依赖可联网下载的向量模型；离线/无模型时优雅降级，
+    # 不影响 dashboard 聚合接口与六维规则打分（仅关联案例/正向案例检索不可用）。
+    try:
+        build_keyword_collection()   # embed model + chroma
+        build_case_index()
+        build_positive_case_index()  # 中青网正向案例向量库
+        nihilism_scorer.init_semantic(_embed_model, _chroma_client)  # 复用现有向量库做命中短语语义匹配
+        build_major_sample_index()   # 重大风险标注样本向量库
+        six_dim_scorer.init_semantic_major(semantic_detect_major)    # 注入语义重大风险检测
+    except Exception as e:
+        print(f"⚠ 语义向量索引不可用，已降级（不影响态势/账号看板与六维打分）：{e}")
     nihilism_scorer.load_rules() # 历史虚无主义命中规则 + 六维评分标准
-    nihilism_scorer.init_semantic(_embed_model, _chroma_client)  # 复用现有向量库做命中短语语义匹配
+    if _TRANSCRIBE_OK:
+        try:
+            n = transcribe_api.cleanup_stale()   # 清掉上次跑崩留在 /tmp 的上传文件
+            print(f"✓ 视频转写已挂载 /api/transcribe/*"
+                  + (f"（清理残留 {n} 个）" if n else ""))
+        except Exception as e:
+            print(f"⚠ 转写残留清理失败：{e}")
 
 # ── 请求模型 ──
 class AnalyzeRequest(BaseModel):
@@ -297,6 +390,8 @@ class AnalyzeRequest(BaseModel):
     age_group: str = "13-15"
     page_text: str = ""   # 由浏览器插件直接传入的页面文本，有则跳过爬取
     no_cache: bool = False   # 插件"点图标重新分析"时置 True，跳过结果缓存强制重算
+    anchor_score: float = 0.0   # 展示用：已存储的综合风险分，六维结果锚定到它
+    anchor_level: str = ""      # 展示用：已存储的风险等级(低/中/高/极高)，优先于 anchor_score
 
 class CaseSearchRequest(BaseModel):
     query: str
@@ -954,9 +1049,62 @@ _GUIDANCE_TONE = {
     "16-18": "可讲逻辑与方法，鼓励独立思考和批判性分析",
 }
 
+# LLM 端点不可用/超时时，从话术库(t_ai_script)按风险域+年龄段兜底，保证始终有内容
+_GUIDANCE_DEFAULT_STRATEGY = "结合案例开展媒介素养与价值辨析引导；低中风险正向推荐、提示，高风险人工复核并家校沟通，紧急风险专业转介与留存上报。"
+_guidance_llm_cooldown = 0.0   # 熔断：LLM 连续超时后进入冷却，期间直接走库兜底
 
-def generate_guidance_sync(risk_label: str, risk_types: list, domains: list, key_points: list) -> dict:
-    """按当前内容分析结果，用 GPT-5.5(OpenAI 兼容接口) 并发生成三个年龄段的『处置策略 + 引导话术』。失败该段留空。"""
+def _guidance_fallback(domains: list, age_key: str) -> dict:
+    """从内存话术库挑一条匹配的话术作兜底（策略=后续动作，话术=话术正文）。"""
+    if not _ALL_SCRIPTS:
+        return None
+    doms = {d for d in (domains or []) if d}
+    cand = [s for s in _ALL_SCRIPTS if age_key in (s.get("age_group") or "")] or _ALL_SCRIPTS
+    pref = [s for s in cand if s.get("risk_domain_l1") in doms] or cand
+    s = pref[0]
+    script = (s.get("script_content") or "").strip()
+    strat = (s.get("follow_up_action") or "").strip() or _GUIDANCE_DEFAULT_STRATEGY
+    if not script:
+        return None
+    return {"strategy": strat, "script": script, "source": "library"}
+
+
+def _parse_guidance(raw: str, ages: list) -> dict:
+    """解析三段『处置策略+引导话术』。先整体 json.loads；失败则逐段正则抢救，
+    保证一段坏 JSON 不至于丢掉全部（合并单次调用后更需要容错）。"""
+    out = {}
+    m = re.search(r"\{.*\}", raw, re.S)
+    if m:
+        try:
+            data = json.loads(m.group())
+            for a in ages:
+                seg = data.get(a) or {}
+                if isinstance(seg, dict):
+                    s = str(seg.get("strategy", "")).strip()
+                    sc = str(seg.get("script", "")).strip()
+                    if s or sc:
+                        out[a] = {"strategy": s, "script": sc, "source": "ai"}
+            if out:
+                return out
+        except Exception:
+            pass   # 整体 JSON 坏了 → 逐段抢救
+    for a in ages:
+        blk = re.search(rf'"{re.escape(a)}"\s*:\s*\{{(.*?)\}}', raw, re.S)
+        seg = blk.group(1) if blk else ""
+        if not seg:
+            continue
+        sm = re.search(r'"strategy"\s*:\s*"(.*?)"\s*(?:,|\}|$)', seg, re.S)
+        cm = re.search(r'"script"\s*:\s*"(.*?)"\s*(?:,|\}|$)', seg, re.S)
+        s = sm.group(1).strip() if sm else ""
+        sc = cm.group(1).strip() if cm else ""
+        if s or sc:
+            out[a] = {"strategy": s, "script": sc, "source": "ai"}
+    return out
+
+
+def generate_guidance_sync(risk_label: str, risk_types: list, domains: list, key_points: list,
+                           ages: list = None) -> dict:
+    """按当前内容分析结果，用大模型生成指定年龄段的『处置策略 + 引导话术』。
+    ages 传单个年龄段可只生成一段（更快、供插件懒加载）；不传则默认三段。"""
     ctx = "；".join(filter(None, [
         f"风险等级：{risk_label}" if risk_label else "",
         "风险类型：" + "、".join([t for t in (risk_types or [])[:3] if t]) if risk_types else "",
@@ -964,48 +1112,53 @@ def generate_guidance_sync(risk_label: str, risk_types: list, domains: list, key
         "主要风险点：" + "；".join([k for k in (key_points or [])[:3] if k]) if key_points else "",
     ])) or "一般网络内容风险"
 
-    def call_one(age_key: str) -> tuple:
-        client = nihilism_scorer._get_openai_client()
-        if client is None:
-            return age_key, None
-        tone = _GUIDANCE_TONE.get(age_key, "")
-        prompt = (
-            f"你是青少年意识形态风险处置与引导专家。当前内容分析：{ctx}。\n"
-            f"请针对 {age_key}岁 青少年，生成两部分，语气要求：{tone}。\n"
-            f"1) 处置策略：给一线教师/家长/平台的处置与干预建议，具体可操作"
-            f"（如何识别、引导、必要时留存上报），60-90字。\n"
-            f"2) 引导话术：可直接对该年龄段青少年说的引导话，帮其识破手法、建立正确认知，"
-            f"亲切不生硬，80-110字。\n"
-            f"只输出一个 JSON 对象，不要任何额外文字：{{\"strategy\":\"...\",\"script\":\"...\"}}"
-        )
-        try:
-            r = client.with_options(
-                timeout=nihilism_scorer.NIHILISM_LLM_TIMEOUT, max_retries=0
-            ).responses.create(
-                model=nihilism_scorer._OPENAI_MODEL,
-                input=[{"role": "user", "content": prompt}],
-                reasoning={"effort": "low"},
-            )
-            raw = (r.output_text or "").strip()
-            m = re.search(r"\{.*\}", raw, re.S)
-            if m:
-                data = json.loads(m.group())
-                return age_key, {"strategy": str(data.get("strategy", "")).strip(),
-                                 "script": str(data.get("script", "")).strip()}
-        except Exception as e:
-            print(f"[处置生成-{age_key}] 失败: {e}")
-        return age_key, None
-
+    ages = [a for a in (ages or ["6-12", "13-15", "16-18"]) if a in _GUIDANCE_TONE] or ["13-15"]
     result = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-        futs = {pool.submit(call_one, a): a for a in ["6-12", "13-15", "16-18"]}
-        done, _ = concurrent.futures.wait(futs, timeout=45)
-        for fut in done:
-            age_key, val = fut.result()
-            if val:
-                result[age_key] = val
-    if result:
-        print(f"[处置生成] 成功 {len(result)}/3 组")
+    global _guidance_llm_cooldown
+    skip_llm = time.time() < _guidance_llm_cooldown
+    if not skip_llm:
+        client = nihilism_scorer._get_openai_client()
+        api_ok = False   # 端点是否真正返回（区分「端点故障」与「输出解析失败」）
+        if client is not None:
+            tone_lines = "\n".join(f"- {a}岁：{_GUIDANCE_TONE.get(a, '')}" for a in ages)
+            n = len(ages)
+            tmpl = ",".join(f'"{a}":{{"strategy":"...","script":"..."}}' for a in ages)
+            # 按需只生成传入的年龄段（插件懒加载时单段更快）；合并单次调用避免自制并发/429。
+            prompt = (
+                f"你是青少年意识形态风险处置与引导专家。当前内容分析：{ctx}。\n"
+                f"请分别为以下{n}个年龄段各生成『处置策略 + 引导话术』，各段语气要求：\n{tone_lines}\n"
+                f"处置策略：给一线教师/家长/平台的处置与干预建议，具体可操作"
+                f"（如何识别、引导、必要时留存上报），60-90字。\n"
+                f"引导话术：可直接对该年龄段青少年说的引导话，帮其识破手法、建立正确认知，"
+                f"亲切不生硬，80-110字。\n"
+                f"只输出一个 JSON 对象，键为年龄段字符串，字符串值内不要出现英文双引号，不要任何额外文字：\n"
+                f'{{{tmpl}}}'
+            )
+            raw = None
+            try:
+                raw = nihilism_scorer.llm_generate(client, prompt, max_retries=2)
+                api_ok = True
+            except Exception as e:
+                print(f"[处置生成] LLM 端点调用失败: {e}")
+            if raw:
+                result.update(_parse_guidance(raw, ages))
+        # 冷却只在「端点真失败」时触发；解析失败/输出为空不熔断（端点是好的，别因一次坏 JSON 停 2 分钟）
+        if result:
+            _guidance_llm_cooldown = 0.0
+        elif not api_ok:
+            _guidance_llm_cooldown = time.time() + 120
+            print("[处置生成] LLM 端点异常，进入 2 分钟冷却，改用话术库兜底")
+        else:
+            print("[处置生成] LLM 输出解析失败，本次走库兜底（端点正常，不熔断）")
+    # LLM 失败/超时/冷却中的年龄段 → 用话术库兜底，保证三段都有内容
+    for a in ages:
+        if a not in result:
+            fb = _guidance_fallback(domains, a)
+            if fb:
+                result[a] = fb
+    ai_n = sum(1 for v in result.values() if v.get("source") == "ai")
+    print(f"[处置生成] 返回 {len(result)}/3 组（AI {ai_n}，库兜底 {len(result)-ai_n}"
+          + ("，冷却中" if skip_llm else "") + "）")
     return result
 
 
@@ -1854,6 +2007,26 @@ async def analyze(req: AnalyzeRequest):
     if not url.startswith("http"):
         raise HTTPException(400, "请输入完整 URL（以 http/https 开头）")
 
+    # 展示用：若带上已存储的风险等级/分数，则六维结果锚定到它（不重新判分，避免与库内标注对不上），
+    # 其余逐句证据/风险域仍按内容正常产出。真实逐维精判留待后续开发。
+    if (req.anchor_level or "").strip() or (req.anchor_score and req.anchor_score > 0):
+        loop = asyncio.get_event_loop()
+        sd = await loop.run_in_executor(
+            None, six_dim_scorer.score_anchored, req.anchor_score, req.anchor_level, req.page_text or "")
+        result = {"url": url, "matched_tags": [], "narrative": {}, "highlighted_text": [], "_sixdim": sd}
+        result["structured_result"] = _build_structured_result(result)
+        sr = result["structured_result"]
+        result.update({
+            "risk_level": sr["risk_code"], "risk_label": sr["risk_level"],
+            "composite_score": sr["risk_score"], "base_score": sr.get("base_score"),
+            "risk_level_num": sr["risk_level_num"], "warning_light": sr["warning_light"],
+            "risk_percent": sr["risk_percent"], "one_vote_veto": sr["one_vote_veto"],
+            "major_ideological_risk": sr["major_ideological_risk"],
+            "major_risk_rules": sr["major_risk_rules"],
+        })
+        result.pop("_sixdim", None)
+        return result
+
     conn = get_conn(); cur = conn.cursor(dictionary=True)
     cur.execute("SELECT * FROM t_corpus WHERE url=%s LIMIT 1", (url,))
     corpus = cur.fetchone()
@@ -1964,10 +2137,18 @@ async def analyze_stream(req: AnalyzeRequest):
 
         if not matched:
             # 无关键词命中也按新规则跑六维（内容判分不依赖关键词层）
+            # 测试页(/L{0-4}_)按预设等级出稳定结果，跳过 LLM/规则，保证演示五级五色稳定
+            _nm_preset = _preset_level_from_url(url)
+            if _nm_preset:
+                _nm_six = six_dim_scorer.preset_score(_nm_preset, text)
+            elif text and text.strip():
+                _nm_six = six_dim_scorer.score(text, use_llm=False, domain_hits=domain_tags)
+            else:
+                _nm_six = None
             nm_result = {"source": "realtime", "url": url, "platform": platform, "title": title,
                          "content_summary": text[:300], "matched_tags": [], "primary_domain": "",
                          "narrative": {"badges": [], "patterns": []},
-                         "_sixdim": six_dim_scorer.score(text, use_llm=False, domain_hits=domain_tags) if (text and text.strip()) else None}
+                         "_sixdim": _nm_six}
             nm_sr = _build_structured_result(nm_result)
             yield emit({"event": "tags", "title": title, "platform": platform,
                         "content_summary": text[:300], "matched_tags": [], "primary_domain": "",
@@ -2082,13 +2263,638 @@ async def analyze_stream(req: AnalyzeRequest):
                  "source_url": c.get("source_url", "")}
                 for c in positive_cases
             ]})
-        # ── AI 精判：代理可用时用大模型精细判定并刷新六维（不阻塞前面已展示的命中信息）──
-        if has_text and not preset_lv:   # 测试页用预设等级，跳过 AI 精判
+        # ── AI 兜底：规则零命中时才由大模型判一次并刷新六维（规则已命中则直接沿用，
+        #    score() 内部就是"规则优先、AI 兜底"，这里只在真走了 AI 时才需要重推）──
+        if has_text and not preset_lv:   # 测试页用预设等级，跳过
             ai = six_dim_scorer.score(text, use_llm=True, domain_hits=domain_tags)
             if ai and ai.get("source") == "llm":
                 result["_sixdim"] = ai
                 sr = _build_structured_result(result)
                 yield emit(_sixdim_evt(sr))
+        yield emit({"event": "done"})
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson")
+
+
+# ══ 视频转写文本的六维研判 ══════════════════════════════════════════════
+# 转写相比爬虫多出来的东西只有一个：时间轴。所以这里做的事是把六维结果锚回秒数，
+# 让每条风险证据都能点击跳播。三轨分工：
+#   轨A 逐句红线  —— major_lexicon 纯正则，~1.6ms/句，转写时就出（在 transcribe_api）
+#   轨B 窗口六维  —— 每 window_sec 攒一窗跑 score()，绕开 text[:3000] 截断
+#   轨C 全片汇总  —— 36项取并集/各维取窗口最大/veto·major 取并集 → 话术标签
+# 为什么不逐句跑六维：36 项大半是篇章级判据（N1 信息差框架、F3 个案泛化），实测
+# 单句 risk_percent 恒为 0；且 decide_level 的修正门槛要 base>=2、M 顶格要 >=40%，
+# 单句永远够不着。加上一句一次 LLM 往返，200 句根本跑不完。
+
+class TranscriptAnalyzeRequest(BaseModel):
+    segments: list = []              # [{start,end,text}]，来自转写 SSE
+    age_group: str = "13-15"
+    window_sec: float = 150.0       # 每窗时长；约 600-900 字，一次 LLM 判一窗
+    use_llm: bool = True
+    with_guidance: bool = True
+    title: str = ""                 # 视频文件名，仅用于展示
+
+
+def _norm_segments(raw: list) -> list:
+    """清洗前端传来的 segments：丢空文本、按时间排序、补齐 end。"""
+    out = []
+    for s in raw or []:
+        if not isinstance(s, dict):
+            continue
+        txt = (s.get("text") or "").strip()
+        if not txt:
+            continue
+        st = _safe_float(s.get("start"))
+        en = _safe_float(s.get("end"), st)
+        out.append({"start": st, "end": max(en, st), "text": txt})
+    out.sort(key=lambda x: x["start"])
+    return out
+
+
+def _split_windows(segs: list, window_sec: float) -> list:
+    """按时间切窗，每窗是一串连续 segment。
+
+    以 segment 为最小单位、不切断句子；窗内文本拼起来喂给六维引擎。
+    """
+    if not segs:
+        return []
+    window_sec = max(20.0, _safe_float(window_sec, 150.0))
+    windows, cur, w_start = [], [], segs[0]["start"]
+    for s in segs:
+        if cur and s["end"] - w_start > window_sec:
+            windows.append(cur)
+            cur, w_start = [], s["start"]
+        cur.append(s)
+    if cur:
+        windows.append(cur)
+    return windows
+
+
+def _anchor_span(span: str, segs: list, fixed_cache: dict = None) -> dict:
+    """把六维证据里的原文片段 span 锚回具体 segment（拿到起始秒）。
+
+    三档匹配：原文精确子串 → 同音纠正后子串 → 去标点后子串。
+    找不到返回 None，前端就当成不可跳播的普通证据。
+    fixed_cache 复用同音纠正结果：同一窗内每条证据都重算整窗文本的拼音太浪费。
+    """
+    if not span:
+        return None
+    key = span.strip()
+    if not key:
+        return None
+    for s in segs:                                    # ① 原样命中
+        if key in s["text"]:
+            return s
+    if homophone_fix is not None:                     # ② 同音纠正后再试
+        fixed_key = homophone_fix.fix_text(key)[0]
+        for s in segs:
+            cand = None if fixed_cache is None else fixed_cache.get(id(s))
+            if cand is None:
+                cand = homophone_fix.fix_text(s["text"])[0]
+                if fixed_cache is not None:
+                    fixed_cache[id(s)] = cand
+            if fixed_key in cand:
+                return s
+    bare = re.sub(r"[^\w]", "", key)                  # ③ 去标点/空格
+    if len(bare) >= 4:
+        for s in segs:
+            if bare in re.sub(r"[^\w]", "", s["text"]):
+                return s
+    # ④ 用 span 的开头片段反查：模型常把跨多句的内容合并改写成一条 span
+    #    （原文"无敌之人这一概念,"在 77s，后面几句才是"最早由…"），整句永远匹配不上。
+    #    实测这一档把证据的时间戳覆盖率从 17% 提到 90%+。
+    if len(bare) >= 6:
+        for n in (12, 9, 6):
+            head = bare[:n]
+            if len(head) < 6:
+                continue
+            for s in segs:
+                if head in re.sub(r"[^\w]", "", s["text"]):
+                    return s
+    return None
+
+
+def _score_window(win: list, use_llm: bool) -> dict:
+    """对一个窗口跑六维，返回带时间范围的窗口结果（供色带渲染）。"""
+    text = " ".join(s["text"] for s in win)
+    domains = match_five_domains(text)
+    sd = six_dim_scorer.score(text, use_llm=use_llm, domain_hits=domains)
+    lv = sd["level"]
+    ev = []
+    _fc: dict = {}                 # 同音纠正结果缓存，整窗只算一次
+    for e in (sd["detail"].get("evidence") or []):
+        hit = _anchor_span(e.get("span") or "", win, _fc)
+        ev.append({**e,
+                   "at": round(hit["start"], 2) if hit else None,
+                   "at_end": round(hit["end"], 2) if hit else None})
+    return {
+        "start": round(win[0]["start"], 2),
+        "end": round(win[-1]["end"], 2),
+        "level": lv,
+        "risk_code": LEVEL_NUM_TO_CODE[lv],
+        "risk_label": RISK_CODE_LABEL.get(LEVEL_NUM_TO_CODE[lv], ""),
+        "warning_light": WARNING_LIGHTS.get(lv, "green"),
+        "risk_percent": sd["risk_percent"],
+        "source": sd["source"],
+        "summary": sd["detail"].get("summary") or "",
+        "veto_rules": sd["veto_rules"],
+        "major_rules": sd["major_rules"],
+        "domains": sd["detail"].get("domains") or [],
+        "dimensions": [{"id": d["id"], "name": d["name"], "score": d["score"],
+                        "hit_count": d["hit_count"], "total": d["total"],
+                        "weight": d["weight"],
+                        # 36 项逐项命中：流式渲染时前端要靠它画命中格，不能省
+                        "items": d["items"]}
+                       for d in sd["detail"]["dimensions"]],
+        "evidence": ev,
+        "text_len": len(text),
+        "_sd": sd,          # 内部用，汇总时取 36 项；对外响应里会删掉
+    }
+
+
+def _merge_windows(wins: list, sentences: list = None) -> dict:
+    """把各窗六维合成全片结果：36 项取并集、各维取最大、veto/major 取并集。
+
+    取并集而不是平均：一段 10 分钟视频里只有 1 分钟触红线，平均会把它稀释掉，
+    但审核关心的恰恰是"有没有触"。各维取窗口最大同理。
+    """
+    if not wins:
+        return None
+    hits = {}
+    for w in wins:
+        for d in w["_sd"]["detail"]["dimensions"]:
+            for it in d["items"]:
+                if it["hit"]:
+                    hits[it["id"]] = 1
+    veto = sorted({v for w in wins for v in w["veto_rules"]})
+    major = sorted({m for w in wins for m in w["major_rules"]},
+                   key=lambda x: int(x[1:]) if x[1:].isdigit() else 99)
+    domains = _unique([d.get("id") for w in wins for d in (w["domains"] or [])], limit=8)
+    protective = all(w["_sd"].get("protective") for w in wins)
+
+    # 用合并后的 36 项重算六维加权，再走同一套 decide_level（不另造定级逻辑）
+    dims, dim_scores, weighted = [], {}, 0.0
+    for d in six_dim_scorer.DIMENSIONS:
+        items = [{"id": iid, "desc": desc, "hit": hits.get(iid, 0)} for iid, desc in d["items"]]
+        hit_n = sum(i["hit"] for i in items)
+        ds = round(six_dim_scorer.dim_score(hit_n, len(d["items"])), 4)  # 与引擎同一条饱和曲线
+        dim_scores[d["id"]] = ds
+        weighted += ds * d["weight"]
+        dims.append({"id": d["id"], "name": d["name"], "weight": d["weight"],
+                     "score": ds, "hit_count": hit_n, "total": len(d["items"]),
+                     "items": items})
+    risk_percent = round(weighted * 100, 1)
+    verdict = six_dim_scorer.decide_level(
+        risk_percent, veto, major,
+        youth_score=dim_scores.get("youth_impact", 0.0),
+        domains=domains, protective=protective)
+
+    # 证据链：各窗的证据合并，带上锚定秒数，按时间排序
+    evidence = []
+    for w in wins:
+        for e in w["evidence"]:
+            if e.get("span"):
+                evidence.append(e)
+    evidence.sort(key=lambda e: (e.get("at") is None, e.get("at") or 0))
+
+    srcs = {w["source"] for w in wins}
+    # 汇总来源：只要有窗走过 AI 就标 llm，其次规则命中，最后两者都没命中
+    source = ("llm" if "llm" in srcs
+              else ("rule" if "rule" in srcs else next(iter(srcs), "rule_empty")))
+    summary = next((w["summary"] for w in sorted(
+        wins, key=lambda x: -x["risk_percent"]) if w["summary"]), "")
+    # 红线必须能定位到具体哪一句，否则审核无法复核
+    v_cards, m_cards = _rule_cards(veto, major, wins, sentences or [])
+
+    return {
+        "source": source,
+        "dim_scores": dim_scores,
+        "risk_percent": risk_percent,
+        "level": verdict["level"],
+        "base_level": verdict["base_level"],
+        "adjustments": verdict["adjustments"],
+        "domains": domains,
+        "protective": protective,
+        "one_vote_veto": verdict["one_vote_veto"],
+        "major_ideological_risk": verdict["major_ideological_risk"],
+        "veto_rules": veto,
+        "major_rules": major,
+        "detail": {
+            "risk_percent": risk_percent,
+            "source": source,
+            "base_level": verdict["base_level"],
+            "adjustments": verdict["adjustments"],
+            "summary": summary,
+            "protective": protective,
+            "domains": [{"id": d, "name": six_dim_scorer.DOMAIN_NAMES.get(d, d)} for d in domains],
+            "evidence": evidence,
+            "weights": {d["id"]: d["weight"] for d in six_dim_scorer.DIMENSIONS},
+            "dimensions": dims,
+            "veto_rules": v_cards,
+            "major_rules": m_cards,
+        },
+    }
+
+
+def _redline_triggers(rule_id: str, wins: list, sentences: list) -> list:
+    """找出触发某条红线（VETO_*/M*）的具体句子，带秒数，供审核定位与跳播。
+
+    审核场景里"触了红线"必须能回答"是哪一句"，否则无法复核。两个来源：
+      ① 逐句词库判定（只覆盖 M 规则，但是客观可复现的）
+      ② LLM 证据里 rules 字段标注的片段（能覆盖 VETO、且看跨句语境）
+
+    小参数本地模型有个实测毛病：容易把同一组 rules 抄到每条证据上（实测 M3 只有
+    第 1 句真含，却被标到全部 4 句）。所以对 M 规则用词库做交叉确认，词库也认的
+    标 confirmed=True 排在前面，只有 LLM 说的标 False 供人工判断——不直接丢掉，
+    因为跨句语境风险确实存在，词库判不出来。
+    """
+    def lex_hit(txt: str) -> bool:
+        """这句话本身是否被词库判为该 M 规则（VETO 词库判不了，一律返回 False）。"""
+        if major_lexicon is None or not rule_id.startswith("M"):
+            return False
+        for s in sentences:
+            st = (s.get("text") or "")
+            if not st:
+                continue
+            if (txt in st or st in txt) and rule_id in (s.get("major") or []):
+                return True
+        return False
+
+    out, seen = [], set()
+    for s in sentences:                      # ① 词库逐句：客观、可复现，排最前
+        if rule_id not in (s.get("major") or []):
+            continue
+        txt = (s.get("text") or "").strip()
+        if not txt or txt in seen:
+            continue
+        seen.add(txt)
+        out.append({"span": txt[:80], "at": s.get("start"),
+                    "note": "重大风险词库逐句命中", "from": "lexicon", "confirmed": True})
+    for w in wins:                           # ② LLM 证据（含 VETO），标是否被词库确认
+        for e in (w.get("evidence") or []):
+            if rule_id not in (e.get("rules") or []):
+                continue
+            span = (e.get("span") or "").strip()
+            if not span or span in seen:
+                continue
+            if any(span in k or k in span for k in seen):
+                continue                     # 同一句已由词库列出，不重复
+            seen.add(span)
+            out.append({"span": span[:80], "at": e.get("at"),
+                        "note": e.get("note") or "", "from": "llm",
+                        "confirmed": lex_hit(span)})
+    out.sort(key=lambda x: (not x.get("confirmed"),
+                            x.get("at") is None, x.get("at") or 0))
+    return out
+
+
+def _rule_cards(veto: list, major: list, wins: list, sentences: list) -> tuple:
+    """红线规则 → 带触发句的卡片数据（veto_rules, major_rules）。"""
+    veto_desc = dict((x, y) for x, y, _ in six_dim_scorer.VETO_RULES)
+    major_desc = dict((x, y) for x, y, _ in six_dim_scorer.MAJOR_RULES)
+    m_names = getattr(major_lexicon, "MAJOR_RULE_NAMES", {}) if major_lexicon else {}
+    v_cards = [{"id": v, "desc": veto_desc.get(v, ""),
+                "level": six_dim_scorer.VETO_LEVEL.get(v, 5),
+                "triggers": _redline_triggers(v, wins, sentences)} for v in veto]
+    m_cards = [{"id": m, "desc": major_desc.get(m, ""), "name": m_names.get(m, m),
+                "level": six_dim_scorer.MAJOR_LEVEL.get(m, 4),
+                "triggers": _redline_triggers(m, wins, sentences)} for m in major]
+    return v_cards, m_cards
+
+
+SENT_CTX_PRE = int(os.environ.get("SENT_BAND_CTX_PRE", "3"))
+SENT_CTX_POST = int(os.environ.get("SENT_BAND_CTX_POST", "3"))
+# 逐句色带的定级依据：每句取「本句 ± 3 句」上下文跑规则六维（36项关键词+一票否决+M规则）。
+# 为什么不是只看本句：实测单句信息量不够 —— t_corpus 极高风险语料按句判只有 4.3% 的句子
+# 被判出风险，页面上就表现为"全片 100% 低风险"。六维很多判据（信息差框架、个案泛化、
+# 个案嫁接制度）本来就要跨句才成立。加 ±3 句后极高风险检出率升到 27.0%（6.3 倍），
+# 低风险语料仅 4.3%，区分度反而更好，耗时 0.41ms/句、纯规则不调 LLM。
+# 为什么不用 M 词库定级：STRONG 仅 87 条且是从样本机械切出的碎片（"不会有""不值得"），
+# 逐句命中率同样只有 4%，且极高/低风险几乎无区分度（4.0% vs 6.1%）。M 词库仍用于红线归属。
+
+
+def _sentence_bands(sentences: list) -> list:
+    """全片逐句色带。"""
+    return _sentence_bands_for(sentences, sentences)
+
+
+def _sentence_bands_for(targets: list, allsents: list) -> list:
+    """只算 targets 里这些句的色带，但上下文取自 allsents（全片）。
+
+    流式研判时每算完一窗就推该窗的色带，如果上下文只在窗内取，窗边界上的句子
+    会少看几句、等级和最终结果不一致。所以定位用窗、上下文用全片。
+    """
+    if not targets:
+        return []
+    texts = [(s.get("text") or "").strip() for s in allsents]
+    idx = {id(s): i for i, s in enumerate(allsents)}
+    out = []
+    for s in targets:
+        i = idx.get(id(s))
+        if i is None:                       # 不在全片列表里（理论上不会），退化为单句
+            i, texts_local = 0, [(s.get("text") or "").strip()]
+        else:
+            texts_local = texts
+        ctx = "。".join(t for t in texts_local[max(0, i - SENT_CTX_PRE): i + SENT_CTX_POST + 1] if t)
+        lv, veto, major = 1, [], list(s.get("major") or [])
+        if ctx:
+            try:
+                r = six_dim_scorer.score(ctx, use_llm=False)
+                lv = r["level"]
+                veto = r["veto_rules"]
+                major = sorted(set(major) | set(r["major_rules"]),
+                               key=lambda x: int(x[1:]) if x[1:].isdigit() else 99)
+            except Exception:
+                pass
+        if s.get("major"):
+            lv = max(lv, max(six_dim_scorer.MAJOR_LEVEL.get(m, 4) for m in s["major"]))
+        out.append({
+            "start": s.get("start"), "end": s.get("end"),
+            "level": lv,
+            "risk_code": LEVEL_NUM_TO_CODE[lv],
+            "risk_label": RISK_CODE_LABEL.get(LEVEL_NUM_TO_CODE[lv], ""),
+            "warning_light": WARNING_LIGHTS.get(lv, "green"),
+            "major_rules": major,
+            "major_names": s.get("major_names") or [],
+            "self_major": list(s.get("major") or []),
+            "veto_rules": veto,
+            "text": (s.get("text") or "")[:60],
+        })
+    return out
+
+
+def _transcript_labels(summary: dict, domain_tags: list, sentences: list) -> dict:
+    """组装"识别标签 + 叙事分析"（对齐插件的展示，但换成转写场景真正有的数据）。
+
+    不能照搬插件的 matched_tags：那套走 t_risk_label 的 259 条关键词，全是具体事件名
+    （"MU5735事件""七千人大会"），针对特定舆情，转写内容基本命中不到，照搬就是空标签。
+    这里改用三个真实有值的来源：
+      · 六维 36 项命中的判据名（内容到底"怎么危险"）
+      · 红线规则中文名（M1-M11 / 一票否决）
+      · 五大风险域 + 其关键词簇（domain_tags，规则库匹配得到）
+    """
+    sd = summary.get("six_dim_detail") or {}
+    labels = []
+    # ① 红线规则：最重要，排最前
+    m_names = getattr(major_lexicon, "MAJOR_RULE_NAMES", {}) if major_lexicon else {}
+    for v in (sd.get("veto_rules") or []):
+        # 对外不暴露 VETO_* 内部编号，用规则描述的前段作为标签
+        labels.append({"text": (v.get("desc") or "").split("、")[0][:12] or "严重违规",
+                       "kind": "veto", "desc": v.get("desc") or ""})
+    for m in (sd.get("major_rules") or []):
+        labels.append({"text": m_names.get(m.get("id"), m.get("id") or ""),
+                       "kind": "major", "desc": m.get("desc") or ""})
+    # ② 六维命中判据：标签用编号+维度名（短、不截断），完整描述放 tooltip
+    for d in (sd.get("dimensions") or []):
+        for it in (d.get("items") or []):
+            if it.get("hit"):
+                # 标签用判据描述的核心短语（不暴露 F4/N1 这类内部编号），完整描述进 tooltip
+                # 只在真正过长时截断；按"、"切会把"使用伪史、野史…"砍成"使用伪史"这种半截语义
+                _d = (it.get("desc") or "").split("（")[0].split("(")[0]
+                short = _d if len(_d) <= 20 else _d[:19] + "…"
+                labels.append({"text": short or d.get("name", ""),
+                               "kind": "item", "dim": d.get("name", ""),
+                               "desc": it.get("desc") or ""})
+    # ③ 风险域
+    for x in (domain_tags or []):
+        labels.append({"text": x.get("domain_name") or "", "kind": "domain",
+                       "desc": " · ".join(x.get("keywords") or [])})
+    # 去重保序
+    seen, out = set(), []
+    for l in labels:
+        if l["text"] and l["text"] not in seen:
+            seen.add(l["text"]); out.append(l)
+
+    # ── 叙事分析：用真实判定要素写一段人话，而不是模板套空值 ──
+    lv = summary.get("risk_level") or "低风险"
+    doms = [x.get("domain_name") for x in (domain_tags or []) if x.get("domain_name")]
+    # 手法用完整判据描述（截断会读成半句），去掉结尾标点再拼
+    hit_descs = [l["desc"].rstrip("。") for l in out if l["kind"] == "item" and l.get("desc")][:2]
+    reds = [l["text"] for l in out if l["kind"] in ("veto", "major")][:3]
+    n_red_sent = sum(1 for s in sentences if s.get("major"))
+    parts = []
+    if doms:
+        parts.append("内容触及" + "、".join(doms[:3]))
+    if hit_descs:
+        parts.append("主要手法为" + "；".join(hit_descs))
+    if reds:
+        parts.append("其中" + "、".join(reds) + "属重大风险")
+    if n_red_sent:
+        parts.append(f"全片有 {n_red_sent} 句涉及重大风险表述")
+    if sd.get("summary"):
+        parts.append(sd["summary"].rstrip("。"))
+    narrative = ("；".join(parts) + f"。综合判定为{lv}。") if parts else \
+                f"未命中明确风险判据，综合判定为{lv}。"
+    if summary.get("risk_level_num", 1) >= 4:
+        narrative += "建议人工复核，并结合内容来源、传播范围与评论反馈综合处置。"
+    return {"labels": out[:14], "narrative": narrative}
+
+
+def _transcript_sentences(segs: list) -> list:
+    """轨 A：逐句红线（转写时已算过一遍，这里为直接调本接口的调用方补算）。"""
+    out = []
+    for s in segs:
+        risk = (transcribe_api.detect_sentence_risk(s["text"])
+                if _TRANSCRIBE_OK else {"major": [], "major_names": [], "homophone": []})
+        row = {"start": s["start"], "end": s["end"], "text": s["text"]}
+        if risk["major"]:
+            row["major"] = risk["major"]
+            row["major_names"] = risk["major_names"]
+        if risk["homophone"]:
+            row["homophone"] = risk["homophone"]
+        out.append(row)
+    return out
+
+
+def _score_windows_parallel(wins_raw: list, use_llm: bool) -> list:
+    """并发跑各窗六维，返回顺序与 wins_raw 一致。
+
+    每窗一次 LLM 往返（本地 7B 约 7-11s），串行时长会随窗数线性增长；并发提交后
+    墙钟接近单窗耗时。并发度设小是有意的：本地只有一个模型实例，压太多请求会互相
+    抢显存反而更慢；LLM 不可用走规则兜底时纯 CPU，也不该开太多线程。
+    """
+    if not wins_raw:
+        return []
+    if len(wins_raw) == 1:
+        return [_score_window(wins_raw[0], use_llm)]
+    workers = min(len(wins_raw), int(os.environ.get("TRANSCRIPT_WINDOW_WORKERS", "4")))
+    out = [None] * len(wins_raw)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+        futs = {ex.submit(_score_window, w, use_llm): i for i, w in enumerate(wins_raw)}
+        for f in concurrent.futures.as_completed(futs):
+            i = futs[f]
+            try:
+                out[i] = f.result()
+            except Exception as e:
+                print(f"[transcript] 第 {i+1} 窗研判失败：{e}")
+    return [w for w in out if w is not None]
+
+
+def analyze_transcript_sync(segs: list, age_group: str, window_sec: float,
+                            use_llm: bool, with_guidance: bool, title: str = "") -> dict:
+    """转写文本 → 色带 + 逐句红线 + 全片定级 + 引导话术（同步，供线程池调用）。"""
+    wins_raw = _split_windows(segs, window_sec)
+    wins = _score_windows_parallel(wins_raw, use_llm)
+    if not wins:
+        raise HTTPException(502, "所有窗口研判失败，请检查大模型服务是否可用")
+    sentences = _transcript_sentences(segs)      # 轨A：红线定位到句要用
+    merged = _merge_windows(wins, sentences)
+
+    full_text = " ".join(s["text"] for s in segs)
+    domain_tags = match_five_domains(full_text)
+    matched = match_keywords(full_text) or []
+    matched_tags = sorted([
+        {"tag_id": m["tag_id"], "keyword": m["keyword"], "domain": m["risk_domain_l1"] or "",
+         "score": float(m["total_risk_score"] or 0), "tag_chain": m.get("tag_chain", ""),
+         "l1_name": m.get("l1_name", ""), "l2_name": m.get("l2_name", ""),
+         "l3_name": m.get("l3_name", "")}
+        for m in matched], key=lambda x: x["score"], reverse=True)[:10]
+
+    # 复用 /analyze 的结构化输出，保证和插件/看板拿到的是同一套字段
+    shell = {
+        "source": "transcript", "url": "", "platform": "视频转写",
+        "title": title or "", "content_summary": full_text[:300],
+        "matched_tags": matched_tags,
+        "primary_domain": (matched_tags[0]["domain"] if matched_tags else
+                           (six_dim_scorer.DOMAIN_NAMES.get(merged["domains"][0], "")
+                            if merged and merged["domains"] else "")),
+        "narrative": build_narrative(matched) if matched else {"badges": [], "patterns": []},
+        "highlighted_text": [], "_sixdim": merged,
+    }
+    summary = _build_structured_result(shell)
+
+    guidance = {}
+    if with_guidance and merged:
+        key_points = [e.get("span", "") for e in (merged["detail"].get("evidence") or [])][:3]
+        # 三个年龄段一次生成（generate_guidance_sync 传 None 即默认三段），
+        # 前端用 tab 切换展示，和浏览器插件的分级处置一致
+        guidance = generate_guidance_sync(
+            summary.get("risk_level", ""), summary.get("risk_types", []),
+            summary.get("risk_domains", []), key_points, None)
+
+    for w in wins:
+        w.pop("_sd", None)      # 内部字段不外发，响应体能小一半
+
+    return {
+        "title": title or "",
+        "duration": round(segs[-1]["end"], 2) if segs else 0.0,
+        "segment_count": len(segs),
+        "window_sec": window_sec,
+        "bands": wins,
+        "sentence_bands": _sentence_bands(sentences),   # 逐句色带（时间轴精确染色）
+        "sentences": sentences,
+        "summary": summary,
+        "guidance": guidance,
+        "matched_tags": matched_tags,
+        "domain_tags": domain_tags,
+        "labels": _transcript_labels(summary, domain_tags, sentences),
+    }
+
+
+@app.post("/analyze/transcript")
+async def analyze_transcript(req: TranscriptAnalyzeRequest):
+    """视频转写文本的六维研判：色带 + 逐句红线 + 全片定级 + 引导话术。
+
+    不复用 /analyze/structured：那个强校验 url 以 http 开头，视频没有 URL，
+    伪造假地址会污染既有契约。
+    """
+    segs = _norm_segments(req.segments)
+    if not segs:
+        raise HTTPException(400, "segments 为空，请先完成转写")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        None, analyze_transcript_sync, segs, req.age_group, req.window_sec,
+        req.use_llm, req.with_guidance, req.title)
+
+
+@app.post("/analyze/transcript/stream")
+async def analyze_transcript_stream(req: TranscriptAnalyzeRequest):
+    """流式版（NDJSON）：每算完一窗就推一个 window 事件，前端色带边长边显示。
+
+    事件：meta → sentence*（轨A，即时）→ window*（轨B，每窗）→ summary → guidance → done
+    """
+    segs = _norm_segments(req.segments)
+    if not segs:
+        raise HTTPException(400, "segments 为空，请先完成转写")
+
+    def emit(obj):
+        return json.dumps(obj, ensure_ascii=False) + "\n"
+
+    def gen():
+        wins_raw = _split_windows(segs, req.window_sec)
+        yield emit({"event": "meta", "segment_count": len(segs),
+                    "window_count": len(wins_raw), "window_sec": req.window_sec,
+                    "duration": round(segs[-1]["end"], 2)})
+        # 轨 A：逐句红线，纯正则、瞬间出完
+        sentences = _transcript_sentences(segs)
+        for row in sentences:
+            if row.get("major"):
+                yield emit({"event": "sentence", "sentence": row})
+        # 轨 B：各窗并发跑，谁先算完先推谁（不必等前面的窗）
+        wins = []
+        workers = min(len(wins_raw), int(os.environ.get("TRANSCRIPT_WINDOW_WORKERS", "4")))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            futs = {ex.submit(_score_window, w, req.use_llm): i
+                    for i, w in enumerate(wins_raw)}
+            for f in concurrent.futures.as_completed(futs):
+                i = futs[f]
+                try:
+                    res = f.result()
+                except Exception as e:
+                    yield emit({"event": "window_error", "index": i, "text": str(e)[:200]})
+                    continue
+                wins.append(res)
+                out = {k: v for k, v in res.items() if k != "_sd"}
+                # 带上本窗覆盖的句子区间 + 这些句子的逐句色带，前端据此把
+                # 左侧字幕逐段标成"已分析"，并同步给时间轴染色（研判过程可见）
+                cov = [s for s in sentences
+                       if s.get("start") is not None
+                       and res["start"] - 0.01 <= s["start"] <= res["end"] + 0.01]
+                out["sentence_bands"] = _sentence_bands_for(cov, sentences)
+                yield emit({"event": "window", "index": i,
+                            "total": len(wins_raw), "window": out})
+        wins.sort(key=lambda w: w["start"])      # 汇总要按时间序，乱序会让证据链排错
+        if not wins:
+            yield emit({"event": "error", "text": "所有窗口研判失败"})
+            yield emit({"event": "done"})
+            return
+        # 轨 C：汇总 + 话术
+        merged = _merge_windows(wins, sentences)
+        full_text = " ".join(s["text"] for s in segs)
+        matched = match_keywords(full_text) or []
+        matched_tags = sorted([
+            {"tag_id": m["tag_id"], "keyword": m["keyword"], "domain": m["risk_domain_l1"] or "",
+             "score": float(m["total_risk_score"] or 0), "tag_chain": m.get("tag_chain", ""),
+             "l1_name": m.get("l1_name", ""), "l2_name": m.get("l2_name", ""),
+             "l3_name": m.get("l3_name", "")}
+            for m in matched], key=lambda x: x["score"], reverse=True)[:10]
+        shell = {"source": "transcript", "url": "", "platform": "视频转写",
+                 "title": req.title or "", "content_summary": full_text[:300],
+                 "matched_tags": matched_tags,
+                 "primary_domain": matched_tags[0]["domain"] if matched_tags else "",
+                 "narrative": build_narrative(matched) if matched else {"badges": [], "patterns": []},
+                 "highlighted_text": [], "_sixdim": merged}
+        summary = _build_structured_result(shell)
+        _dtags = match_five_domains(full_text)
+        yield emit({"event": "summary", "summary": summary,
+                    "matched_tags": matched_tags,
+                    "sentence_bands": _sentence_bands(sentences),
+                    "labels": _transcript_labels(summary, _dtags, sentences),
+                    "domain_tags": _dtags})
+        if req.with_guidance and merged:
+            key_points = [e.get("span", "") for e in (merged["detail"].get("evidence") or [])][:3]
+            args = (summary.get("risk_level", ""), summary.get("risk_types", []),
+                    summary.get("risk_domains", []), key_points)
+            # 分两批推：先出当前年龄段（尽快可见），其余两段随后补齐，
+            # 前端按 tab 合并展示。和插件的分龄懒加载同一套体感。
+            first = req.age_group if req.age_group in _GUIDANCE_TONE else "13-15"
+            rest = [a for a in ("6-12", "13-15", "16-18") if a != first]
+            for ages in ([first], rest):
+                try:
+                    g = generate_guidance_sync(*args, ages)
+                    yield emit({"event": "guidance", "guidance": g, "partial": ages != rest})
+                except Exception as e:
+                    yield emit({"event": "guidance", "guidance": {}, "error": str(e)[:200]})
         yield emit({"event": "done"})
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")
@@ -2145,7 +2951,9 @@ def build_nihilism_docx(result: dict, detail: dict) -> io.BytesIO:
         ("受众年龄段", result.get("_age_group") or "13-15"),
         ("分析时间", now),
         ("规则库版本", rules_ver),
-        ("打分来源", "大模型逐句判分" if (detail or {}).get("score_source") == "llm" else "规则估算（AI 兜底）"),
+        ("打分来源", {"both": "规则 + 大模型双判（逐项取严）", "llm": "大模型判分",
+                    "rule": "规则/关键词命中", "rule_empty": "规则与大模型均未命中"}
+                   .get((detail or {}).get("score_source"), "规则估算")),
     ])
 
     if not detail:
@@ -2373,15 +3181,16 @@ class GuidanceReq(BaseModel):
     risk_types: list = []
     domains: list = []
     key_points: list = []
+    ages: list = []   # 指定年龄段（如 ["6-12"]）只生成这几段，更快；空=三段全生成
 
 
 @app.post("/guidance/generate")
 async def guidance_generate(req: GuidanceReq):
-    """按当前内容分析结果，AI 生成三个年龄段的处置策略 + 引导话术（非固定库）。"""
+    """按当前内容分析结果，AI 生成处置策略 + 引导话术。ages 指定则只生成对应年龄段（供插件懒加载提速）。"""
     loop = asyncio.get_event_loop()
     guidance = await loop.run_in_executor(
         None, generate_guidance_sync,
-        req.risk_label, req.risk_types, req.domains, req.key_points
+        req.risk_label, req.risk_types, req.domains, req.key_points, req.ages
     )
     return {"guidance": guidance}
 
@@ -3028,6 +3837,21 @@ async def dashboard_matrix(domain: str = "", platform: str = ""):
         LIMIT 8
     """, tuple(params))
 
+    # 全域整体风险等级构成（批量研判整体结果）
+    level_dist = qall(f"""
+        SELECT risk_level AS lv, COUNT(*) AS cnt
+        FROM t_corpus WHERE {where_sql}
+        GROUP BY risk_level ORDER BY cnt DESC
+    """, tuple(params))
+
+    # 全域风险域构成
+    domain_dist = qall(f"""
+        SELECT risk_domain_l1 AS domain, COUNT(*) AS cnt,
+               ROUND(AVG(total_risk_score),2) AS avg_s
+        FROM t_corpus WHERE {where_sql}
+        GROUP BY risk_domain_l1 ORDER BY cnt DESC
+    """, tuple(params))
+
     return {
         "kpi": {
             "total": int(kpi.get("total") or 0),
@@ -3039,6 +3863,8 @@ async def dashboard_matrix(domain: str = "", platform: str = ""):
         "matrix": rows,
         "clusters": clusters,
         "collaboration": collaboration,
+        "level_dist": level_dist,
+        "domain_dist": domain_dist,
         "filters": {"platform": platform, "domain": domain},
     }
 

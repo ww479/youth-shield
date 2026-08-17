@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视频转写 · 青年心盾</title>
+<style>
+:root {
+  --bg: #EEF2FF;
+  --card-bg: rgba(255,255,255,0.92);
+  --border: rgba(99,120,210,0.14);
+  --primary: #3D6FD4;
+  --primary-2: #6B9DFF;
+  --accent: #7C3AED;
+  --text: #0F172A;
+  --text-2: #334155;
+  --muted: #64748B;
+  --muted-2: #94A3B8;
+  --ok: #10B981;
+  --warn: #F59E0B;
+  --err: #EF4444;
+  --r: 20px;
+  --r-sm: 12px;
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.05),0 1px 2px rgba(15,23,42,.04);
+  --shadow-md: 0 4px 16px rgba(15,23,42,.08),0 2px 6px rgba(15,23,42,.05);
+  --shadow-lg: 0 16px 48px rgba(15,23,42,.12),0 4px 14px rgba(15,23,42,.06);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  font-family:'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;
+  background:
+    radial-gradient(ellipse 900px 560px at 12% -4%,rgba(61,111,212,.1) 0%,transparent 58%),
+    radial-gradient(ellipse 700px 480px at 88% 105%,rgba(124,58,237,.08) 0%,transparent 58%),
+    #EEF2FF;
+  color:var(--text);
+  /* 整页不滚动：三个区域各自内部滚动，信息始终在一屏内 */
+  height:100vh;overflow:hidden;display:flex;flex-direction:column;
+}
+
+/* ══ 一屏两栏布局：左上视频/上传 · 左下转录 · 右整列六维 ══ */
+.stage{
+  flex:1;min-height:0;display:grid;
+  grid-template-columns:minmax(400px,0.92fr) minmax(460px,1fr);
+  gap:12px;padding:12px 16px 14px;
+}
+/* 左栏：上半视频区按内容高度、下半转录占满剩余；转录至少留 34% 视口，别被挤没 */
+.col-left{
+  display:grid;
+  /* 视频区按内容高度但封顶 47vh（含播放器+文件名+色带+按钮），剩余全给转录区。
+     原来写 auto + minmax(34vh,1fr)：34vh 只是下限，视频区会先吃饱、转录区拿剩下的，
+     研判后色带出现又多占 ~90px，转录区被压到 300px 以下。 */
+  grid-template-rows:minmax(0,auto) minmax(30vh,1fr);
+  gap:12px;min-height:0;
+}
+#videoPanel{max-height:47vh;}
+.col-right{min-height:0;display:flex;}
+.panel{
+  background:var(--card-bg);border:1px solid var(--border);border-radius:16px;
+  box-shadow:var(--shadow-md);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;
+}
+.panel-head{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:11px 16px;border-bottom:1px solid rgba(200,215,245,.4);flex-shrink:0;
+}
+.panel-title{font-size:14px;font-weight:700;letter-spacing:-.2px;}
+.panel-note{font-size:11.5px;color:var(--muted);margin-left:auto;}
+.panel-body{flex:1;min-height:0;overflow-y:auto;padding:14px 16px;}
+.panel-body.tight{padding:10px 14px;}
+.panel-body::-webkit-scrollbar,.seg-list::-webkit-scrollbar{width:6px;}
+.panel-body::-webkit-scrollbar-thumb,.seg-list::-webkit-scrollbar-thumb{
+  background:rgba(99,120,210,.25);border-radius:99px;}
+
+/* 面板出现动画 */
+.panel,.rise{animation:rise .34s cubic-bezier(.4,0,.2,1);}
+@keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+/* ── 右栏子标签：六维内容太多，分页才能不用下滑 ── */
+.tabs{display:flex;gap:3px;padding:3px;background:rgba(99,120,210,.09);border-radius:44px;}
+.tabs button{
+  padding:6px 13px;border:none;background:transparent;border-radius:44px;cursor:pointer;
+  font-size:12px;font-family:inherit;color:var(--muted);font-weight:600;white-space:nowrap;
+  transition:all .18s;display:flex;align-items:center;gap:5px;
+}
+.tabs button.on{background:#fff;color:var(--primary);box-shadow:var(--shadow-sm);}
+.tabs button:disabled{opacity:.4;cursor:not-allowed;}
+.tab-dot{
+  min-width:15px;height:15px;border-radius:44px;font-size:9.5px;font-weight:800;
+  display:inline-flex;align-items:center;justify-content:center;padding:0 4px;
+  background:#d64541;color:#fff;
+}
+.pane{display:none;}
+.pane.on{display:flex;flex-direction:column;gap:9px;
+         animation:fadeSlide .26s cubic-bezier(.4,0,.2,1);}
+@keyframes fadeSlide{from{opacity:0;transform:translateX(6px);}to{opacity:1;transform:none;}}
+/* 卡片纵向铺开，别在长面板里挤在顶部留一大片空白 */
+.pane[data-pane="guide"] .guide,.pane[data-pane="redline"] .rl-rule,
+.pane[data-pane="evidence"] .ev{margin-top:0;}
+
+header{
+  padding:9px 18px;display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,0.78);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(200,215,245,0.35);
+  box-shadow:0 1px 0 rgba(255,255,255,.8),0 2px 10px rgba(15,23,42,.04);
+  flex-shrink:0;gap:14px;
+}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{
+  width:30px;height:30px;border-radius:9px;
+  background:linear-gradient(135deg,#3D6FD4,#7C3AED);
+  display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;
+  box-shadow:0 4px 12px rgba(61,111,212,.32),inset 0 1px 0 rgba(255,255,255,.2);
+}
+.logo-name{font-size:14px;font-weight:700;letter-spacing:-.2px;}
+.logo-sub{font-size:10.5px;color:var(--muted-2);margin-top:1px;}
+/* 顶栏实时指标：不用下滑就能看到进度与红线数 */
+.hdr-stats{display:flex;gap:16px;margin-left:auto;align-items:center;}
+.hdr-stat{text-align:right;}
+.hdr-v{font-size:16px;font-weight:800;letter-spacing:-.3px;line-height:1.15;}
+.hdr-l{font-size:10px;color:var(--muted-2);letter-spacing:.2px;}
+.env-chip{
+  font-size:11.5px;padding:5px 12px;border-radius:44px;white-space:nowrap;
+  background:rgba(255,255,255,.7);border:1px solid var(--border);color:var(--muted);
+}
+.env-chip.ok{color:var(--ok);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08);}
+.env-chip.bad{color:var(--err);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08);}
+
+.wrap{display:contents;}   /* 一屏布局：容器职责交给 .stage */
+.page-title{display:none;}  /* 标题信息已并入顶栏，省出垂直空间 */
+.page-sub{display:none;}
+
+.card{
+  background:var(--card-bg);border:1px solid var(--border);border-radius:var(--r);
+  box-shadow:var(--shadow-md);padding:26px;margin-top:22px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+
+/* ── 拖拽上传区（一屏布局下压缩高度）── */
+.drop{
+  border:2px dashed rgba(99,120,210,.32);border-radius:12px;
+  padding:18px 16px;text-align:center;cursor:pointer;
+  transition:all .22s cubic-bezier(.4,0,.2,1);
+  background:rgba(255,255,255,.5);
+}
+.drop:hover,.drop.over{
+  border-color:var(--primary);background:rgba(61,111,212,.06);
+  transform:translateY(-1px);box-shadow:var(--shadow-md);
+}
+.drop.busy{pointer-events:none;opacity:.55;}
+.drop-icon{font-size:24px;margin-bottom:6px;}
+.drop-main{font-size:13px;font-weight:600;color:var(--text-2);}
+.drop-hint{font-size:11px;color:var(--muted-2);margin-top:5px;line-height:1.6;}
+
+.file-row{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:7px 12px;border-radius:9px;
+  background:rgba(61,111,212,.05);border:1px solid var(--border);margin-top:8px;
+}
+.file-name{font-size:12.5px;font-weight:600;flex:1;min-width:140px;word-break:break-all;}
+.file-meta{font-size:11.5px;color:var(--muted);}
+
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+/* 面板固定底栏：始终可见可点 */
+.panel-foot{
+  flex-shrink:0;margin-top:0;padding:9px 16px;
+  border-top:1px solid rgba(200,215,245,.4);background:rgba(255,255,255,.55);
+}
+.btn{
+  padding:8px 18px;border-radius:44px;border:none;cursor:pointer;
+  font-size:12.5px;font-weight:600;font-family:inherit;
+  transition:all .2s cubic-bezier(.4,0,.2,1);
+}
+.btn-primary{
+  background:linear-gradient(135deg,#3D6FD4,#7C3AED);color:#fff;
+  box-shadow:0 4px 14px rgba(61,111,212,.3);
+}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(61,111,212,.4);}
+.btn-ghost{background:rgba(255,255,255,.8);border:1px solid var(--border);color:var(--text-2);}
+.btn-ghost:hover:not(:disabled){background:#fff;border-color:var(--primary-2);color:var(--primary);}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+
+.field-label{font-size:12px;color:var(--muted);margin-top:18px;display:block;}
+
+/* ── 进度 ── */
+/* 顶部通栏细进度条：贴在 header 下沿，任何时候都可见 */
+#topBar{height:3px;background:rgba(99,120,210,.14);flex-shrink:0;overflow:hidden;}
+.prog-head{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;}
+.prog-stage{font-weight:600;color:var(--text-2);}
+.prog-pct{font-size:20px;font-weight:700;color:var(--primary);letter-spacing:-.5px;}
+/* 字幕跟随开关 */
+.follow-chk{
+  font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;
+  cursor:pointer;user-select:none;
+}
+.follow-chk input{cursor:pointer;margin:0;}
+.bar{height:8px;border-radius:99px;background:rgba(99,120,210,.14);overflow:hidden;}
+.bar-fill{
+  height:100%;border-radius:0;width:0%;
+  background:linear-gradient(90deg,#3D6FD4,#7C3AED);
+  transition:width .4s cubic-bezier(.4,0,.2,1);
+}
+.bar-fill.indet{
+  width:35% !important;
+  animation:slide 1.3s ease-in-out infinite;
+}
+@keyframes slide{0%{margin-left:-35%;}100%{margin-left:100%;}}
+.stats{display:flex;gap:26px;flex-wrap:wrap;margin-top:16px;}
+.stat-v{font-size:19px;font-weight:700;letter-spacing:-.4px;}
+.stat-l{font-size:11px;color:var(--muted-2);margin-top:2px;}
+
+/* ── 字幕流 ── */
+.seg-list{flex:1;min-height:0;overflow-y:auto;padding:8px 14px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.seg-tx{font-size:13.5px;line-height:1.8;color:var(--text-2);flex:1;letter-spacing:.1px;}
+/* 正在播放到的那一句：自动高亮 + 跟随滚动，不用手动找 */
+.seg.playing{background:rgba(61,111,212,.09);border-radius:8px;}
+.seg.playing .seg-tx{color:var(--text);font-weight:600;}
+
+/* ── 左右联动：研判过的句子打标记，等级用左侧色条表示 ── */
+.seg{
+  display:flex;gap:11px;padding:9px 6px 9px 8px;position:relative;
+  border-bottom:1px solid rgba(200,215,245,.3);
+  border-left:3px solid transparent;
+  animation:fadeIn .32s cubic-bezier(.4,0,.2,1);
+  transition:background .2s,border-color .3s;
+}
+.seg.done{border-left-color:var(--lv,#cbd5e1);}
+.seg.done[data-level="1"]{border-left-color:rgba(46,158,91,.45);}
+.seg:not(.done) .seg-tx{color:var(--muted);}      /* 未研判：文字淡一档 */
+.seg.done .seg-tx{color:var(--text-2);}
+/* 等级小圆点，挂在时间戳后面 */
+.seg-lv{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  margin-left:5px;vertical-align:1px;
+}
+.seg-ts{
+  font-size:11px;color:var(--primary);font-variant-numeric:tabular-nums;
+  min-width:52px;padding-top:3px;font-weight:700;
+}
+/* 高风险句整行淡染，扫一眼就能定位 */
+.seg.done[data-level="4"]{background:rgba(214,69,65,.05);}
+.seg.done[data-level="5"]{background:rgba(142,68,173,.06);}
+/* 被右侧点选的句子：闪一下并加边框 */
+.seg.focus{background:rgba(61,111,212,.13);border-radius:8px;
+           box-shadow:inset 0 0 0 1px rgba(61,111,212,.35);}
+
+/* ── 六维增量渲染（研判进行中）── */
+.live-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;}
+.live-title{font-size:13px;font-weight:700;color:var(--text-2);}
+.live-prog{font-size:11.5px;color:var(--primary);font-weight:700;margin-left:auto;
+           font-variant-numeric:tabular-nums;}
+.dim-fill.pulse{animation:dimPulse .5s cubic-bezier(.4,0,.2,1);}
+@keyframes dimPulse{0%{filter:brightness(1.5)}100%{filter:none}}
+.live-red{
+  margin-top:12px;padding:10px 13px;border-radius:10px;
+  background:rgba(214,69,65,.07);border:1px solid rgba(214,69,65,.24);
+  font-size:12px;color:#B91C1C;line-height:1.9;
+}
+.rl-mini{
+  display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:44px;
+  background:#d64541;color:#fff;margin:0 4px 3px 0;
+}
+
+.fixed-badge{
+  display:inline-block;margin-left:8px;padding:1px 7px;border-radius:44px;
+  font-size:10px;font-weight:600;vertical-align:1px;cursor:help;
+  background:rgba(245,158,11,.14);color:#B45309;border:1px solid rgba(245,158,11,.3);
+}
+.plain{
+  font-size:14px;line-height:2;color:var(--text-2);
+  overflow-y:auto;white-space:pre-wrap;padding:8px 14px;
+}
+.empty{text-align:center;padding:26px 18px;color:var(--muted-2);font-size:12.5px;line-height:1.75;}
+.toggle{display:flex;gap:4px;padding:3px;background:rgba(99,120,210,.1);border-radius:44px;}
+.toggle button{
+  padding:6px 16px;border:none;background:transparent;border-radius:44px;
+  font-size:12px;font-family:inherit;cursor:pointer;color:var(--muted);font-weight:600;
+}
+.toggle button.on{background:#fff;color:var(--primary);box-shadow:var(--shadow-sm);}
+
+.alert{
+  padding:14px 18px;border-radius:var(--r-sm);font-size:13px;line-height:1.8;margin-top:16px;
+}
+.alert-err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#B91C1C;}
+.alert-warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);color:#B45309;}
+.alert code{
+  background:rgba(15,23,42,.07);padding:1px 6px;border-radius:5px;
+  font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.hide{display:none !important;}
+
+/* ══ 六维研判（视觉语言对齐浏览器插件的风险卡：五色分级 + 雷达 + 逐维条 + 证据链）══ */
+/* 五级五色：L0绿 L1黄 L2橙 L3红 L4紫，与插件 RR_LV_COLOR 一致 */
+.rk-l0{color:#2e9e5b}.rk-l1{color:#e0b400}.rk-l2{color:#e67e22}.rk-l3{color:#d64541}.rk-l4{color:#8e44ad}
+
+/* ── 视频播放器 + 风险色带 ── */
+.video-wrap{
+  position:relative;border-radius:var(--r-sm);overflow:hidden;background:#0b1020;
+  /* 容器跟着视频真实比例走（--ar 由 JS 在 loadedmetadata 时写入），宽度撑满、高度
+     按比例算，两侧就不会留黑边。封顶 28vh：竖屏视频（9:16）否则会高到把转录区挤没。
+     没拿到视频尺寸前用 16/9 占位，避免布局跳动。 */
+  width:100%;aspect-ratio:var(--ar, 16 / 9);max-height:21vh;
+  margin-inline:auto;display:flex;align-items:center;justify-content:center;
+}
+.video-wrap video{
+  width:100%;height:100%;display:block;background:#0b1020;object-fit:contain;
+}
+/* 纯音频文件：只留播放条，不占画面高度 */
+.video-wrap.audio-only{aspect-ratio:auto;height:auto;max-height:none;background:transparent;}
+.video-wrap.audio-only video{height:44px;}
+.band-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin:10px 0 5px;font-size:11.5px;color:var(--muted);
+}
+.band-head b{font-size:13px;color:var(--text-2);}
+/* 色带：整条 = 全片时长，每段 = 一个研判窗口 */
+.band{
+  position:relative;height:20px;border-radius:6px;overflow:hidden;
+  background:rgba(99,120,210,.1);cursor:pointer;
+}
+.band-seg{
+  position:absolute;top:0;bottom:0;transition:opacity .18s;
+}
+.band-seg:hover{opacity:.78;}
+/* 副带：六维按窗研判（篇章级），比主带矮，作参考 */
+.band.win{height:6px;margin-top:3px;border-radius:3px;}
+/* 图例：跟在刻度后面，别和按钮抢一行 */
+.band-legend{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto;
+             font-size:10px;color:var(--muted-2);align-items:center;}
+/* 播放头 */
+.band-cursor{
+  position:absolute;top:-3px;bottom:-3px;width:2px;background:#0F172A;
+  box-shadow:0 0 0 1px rgba(255,255,255,.9);pointer-events:none;transition:left .2s linear;
+}
+.band-ticks{
+  display:flex;justify-content:space-between;font-size:9.5px;
+  color:var(--muted-2);margin-top:3px;font-variant-numeric:tabular-nums;
+}
+.band-legend span{display:flex;align-items:center;gap:5px;}
+.band-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+
+/* ── 综合定级条 ── */
+.verdict{
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  padding:16px 18px;border-radius:var(--r-sm);margin-bottom:18px;
+  border:1px solid var(--border);background:rgba(255,255,255,.6);
+}
+.verdict-lv{font-size:24px;font-weight:800;letter-spacing:-.5px;}
+.verdict-num{font-size:34px;font-weight:800;line-height:1;letter-spacing:-1.2px;}
+.verdict-of{font-size:13px;font-weight:400;color:var(--muted);}
+.verdict-meta{font-size:12.5px;color:var(--muted);line-height:1.85;flex:1;min-width:220px;}
+.scale5{display:flex;gap:4px;margin-top:8px;}
+.scale5 div{flex:1;text-align:center;}
+.scale5 .s5bar{height:5px;border-radius:99px;background:#e6eaf1;}
+.scale5 .s5lb{font-size:9.5px;color:var(--muted-2);margin-top:4px;}
+
+/* ── 红线提示（一票否决 / 重大风险）── */
+.redline{
+  padding:13px 16px;border-radius:var(--r-sm);margin-bottom:16px;
+  background:rgba(214,69,65,.06);border:1px solid rgba(214,69,65,.25);
+}
+.redline-h{font-size:13px;font-weight:700;color:#B91C1C;margin-bottom:8px;}
+.redline-item{
+  font-size:12px;color:#7f1d1d;line-height:1.75;padding-left:12px;position:relative;
+}
+.redline-item::before{content:'·';position:absolute;left:2px;}
+/* 红线触发句：审核必须能定位到"是哪一句"，可点击跳播 */
+.rl-rule{
+  background:rgba(255,255,255,.66);border:1px solid rgba(214,69,65,.2);
+  border-radius:9px;padding:10px 12px;margin-top:8px;
+}
+.rl-rule-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.rl-id{
+  font-size:10px;font-weight:800;padding:2px 7px;border-radius:44px;
+  background:#d64541;color:#fff;letter-spacing:.3px;
+}
+.rl-id.veto{background:#8e44ad;}
+.rl-desc{font-size:13px;font-weight:700;color:#7f1d1d;flex:1;min-width:180px;line-height:1.55;}
+.rl-lv{font-size:10.5px;color:var(--muted);}
+.rl-trigs{margin-top:7px;}
+.rl-trig{
+  display:flex;gap:9px;align-items:flex-start;padding:6px 8px;border-radius:7px;
+  cursor:pointer;transition:background .15s;
+}
+.rl-trig:hover{background:rgba(214,69,65,.07);}
+.rl-at{
+  font-size:11px;font-weight:800;color:#B91C1C;font-variant-numeric:tabular-nums;
+  min-width:46px;padding-top:2px;
+}
+.rl-span{font-size:13px;line-height:1.75;color:var(--text-2);flex:1;}
+.rl-from{
+  font-size:9.5px;padding:1px 6px;border-radius:44px;vertical-align:1px;
+  background:rgba(99,120,210,.1);color:var(--muted);margin-left:6px;
+}
+.rl-none{font-size:11.5px;color:var(--muted-2);margin-top:6px;padding-left:8px;}
+
+/* ── 雷达 + 逐维 ── */
+.six-grid{display:grid;grid-template-columns:1fr;gap:14px;align-items:start;}
+.radar-box{
+  border:1px solid var(--border);border-radius:var(--r-sm);padding:6px;
+  background:rgba(255,255,255,.5);display:flex;justify-content:center;
+}
+/* 限高：SVG 会按容器宽度撑满，右栏够宽时雷达会独占一屏、把逐维明细挤到下面 */
+.radar-box svg{width:auto;height:24vh;max-width:100%;}
+.dim-row{padding:6px 0;border-top:1px solid rgba(200,215,245,.35);}
+.dim-row:first-child{border-top:0;}
+.dim-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+.dim-name{font-size:12.5px;font-weight:700;color:var(--text-2);}
+.dim-cnt{font-size:11.5px;font-weight:700;}
+.dim-w{font-size:10px;color:var(--muted-2);font-weight:400;}
+.dim-track{height:5px;border-radius:99px;background:rgba(99,120,210,.12);overflow:hidden;}
+.dim-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1);}
+.dim-items{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.dim-item{
+  font-size:9.5px;padding:1.5px 5px;border-radius:4px;cursor:help;
+  background:rgba(99,120,210,.08);color:var(--muted-2);border:1px solid transparent;
+}
+.dim-item.hit{background:rgba(214,69,65,.1);color:#B91C1C;border-color:rgba(214,69,65,.28);font-weight:700;}
+/* 命中格点亮时弹一下，让"分析在推进"看得见 */
+.dim-item.pop{animation:itemPop .42s cubic-bezier(.34,1.56,.64,1);}
+@keyframes itemPop{0%{transform:scale(1)}45%{transform:scale(1.28)}100%{transform:scale(1)}}
+
+/* ── 证据链（可点击跳播）── */
+.ev{
+  padding:11px 14px;border-radius:var(--r-sm);margin-top:9px;
+  background:rgba(255,255,255,.62);border:1px solid var(--border);
+  cursor:pointer;transition:all .18s;
+}
+.ev:hover{border-color:var(--primary-2);box-shadow:var(--shadow-sm);transform:translateY(-1px);}
+.ev-at{
+  font-size:11px;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums;
+  margin-right:8px;
+}
+.ev-span{font-size:13.5px;line-height:1.85;color:var(--text-2);}
+.ev-meta{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.ev-tag{
+  font-size:10px;padding:2px 7px;border-radius:44px;
+  background:rgba(61,111,212,.09);color:var(--primary);
+}
+.ev-note{font-size:11px;color:var(--muted);}
+
+/* ── 逐句红线角标（轨A）── */
+.seg.risky{background:rgba(214,69,65,.045);border-radius:7px;}
+.seg-m{
+  display:inline-block;margin-left:8px;padding:1px 7px;border-radius:44px;
+  font-size:10px;font-weight:700;vertical-align:1px;cursor:help;
+  background:rgba(214,69,65,.12);color:#B91C1C;border:1px solid rgba(214,69,65,.3);
+}
+.seg-tx.clickable{cursor:pointer;}
+.seg-tx.clickable:hover{color:var(--primary);}
+
+/* ── 引导话术 ── */
+.guide{
+  padding:15px 18px;border-radius:var(--r-sm);margin-top:12px;
+  background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.22);
+}
+.guide-age{font-size:12px;font-weight:700;color:#047857;margin-bottom:8px;}
+/* 分龄 tab：对齐插件的青少年分级处置 */
+.age-tabs{display:flex;gap:6px;margin-bottom:4px;}
+.age-tab{
+  flex:1;padding:7px 10px;border-radius:9px;cursor:pointer;font-family:inherit;
+  font-size:12px;font-weight:700;border:1px solid var(--border);
+  background:rgba(255,255,255,.7);color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:5px;transition:all .18s;
+}
+.age-tab:hover{border-color:rgba(16,185,129,.4);color:#047857;}
+.age-tab.on{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.45);color:#047857;}
+/* 未生成完的年龄段显示一个小转圈 */
+.age-wait{
+  width:9px;height:9px;border:1.5px solid rgba(100,116,139,.3);border-top-color:var(--muted);
+  border-radius:50%;display:inline-block;animation:sp .7s linear infinite;
+}
+.guide-k{font-size:11px;color:var(--muted);margin-top:9px;}
+.guide-v{font-size:13.5px;line-height:1.9;color:var(--text-2);margin-top:4px;}
+.tag-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.tag-chip{
+  font-size:11px;padding:4px 11px;border-radius:44px;
+  background:rgba(61,111,212,.08);color:var(--primary);border:1px solid rgba(61,111,212,.18);
+}
+.tag-chip.dom{background:rgba(124,58,237,.08);color:#6D28D9;border-color:rgba(124,58,237,.18);}
+/* 标签按类型着色：红线红、判据蓝、风险域紫 */
+.tag-chip.k-veto,.tag-chip.k-major{
+  background:rgba(214,69,65,.1);color:#B91C1C;border-color:rgba(214,69,65,.28);font-weight:700;}
+.tag-chip.k-item{background:rgba(61,111,212,.07);color:var(--primary);border-color:rgba(61,111,212,.16);}
+.tag-chip.k-domain{background:rgba(124,58,237,.08);color:#6D28D9;border-color:rgba(124,58,237,.2);}
+.tag-chip.empty{background:rgba(148,163,184,.1);color:var(--muted-2);border-color:transparent;}
+/* 小节标题 */
+.sub-h2{
+  font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.3px;
+  margin:8px 0 5px;padding-bottom:3px;border-bottom:1px solid rgba(200,215,245,.45);
+}
+.sub-h2:first-child{margin-top:0;}
+/* 风险域 + 关键词簇 */
+.dtags{display:flex;flex-direction:column;gap:4px;}
+.dtag{
+  display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;
+  padding:5px 10px;border-radius:8px;
+  background:rgba(124,58,237,.05);border:1px solid rgba(124,58,237,.16);
+}
+.dtag-name{font-size:12.5px;font-weight:700;color:#6D28D9;}
+.dtag-kw{font-size:11px;color:var(--muted);}
+/* 叙事分析 */
+.narrative{
+  font-size:12.5px;line-height:1.8;color:var(--text-2);
+  padding:9px 12px;border-radius:10px;
+  background:rgba(255,255,255,.62);border:1px solid var(--border);
+}
+.six-note{font-size:11.5px;color:var(--muted-2);line-height:1.8;margin-top:6px;}
+.sub-h{
+  font-size:13px;font-weight:700;color:var(--text-2);
+  margin:20px 0 4px;display:flex;align-items:center;gap:7px;
+}
+.spin{
+  width:13px;height:13px;border:2px solid rgba(61,111,212,.25);border-top-color:var(--primary);
+  border-radius:50%;animation:sp .7s linear infinite;display:inline-block;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(max-width:900px){.six-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎬</div>
+    <div>
+      <div class="logo-name">视频转写 · 青年心盾</div>
+      <div class="logo-sub">语音智能识别 · 意识形态风险研判</div>
+    </div>
+  </div>
+  <div class="hdr-stats" id="hdrStats">
+    <div class="hdr-stat"><div class="hdr-v" id="progPct">—</div><div class="hdr-l" id="progStage">待上传</div></div>
+    <div class="hdr-stat"><div class="hdr-v" id="stSeg">0</div><div class="hdr-l">句数</div></div>
+    <div class="hdr-stat"><div class="hdr-v rk-l3" id="stMajor">0</div><div class="hdr-l">高风险句</div></div>
+    <div class="hdr-stat"><div class="hdr-v" id="stElapsed">0s</div><div class="hdr-l">已用时</div></div>
+  </div>
+  <div class="env-chip" id="envChip">检测环境…</div>
+</header>
+
+<div class="bar" id="topBar"><div class="bar-fill" id="barFill"></div></div>
+
+<div class="stage">
+  <!-- ═══ 左栏 ═══ -->
+  <div class="col-left">
+    <!-- 左上：视频 + 上传 + 风险色带 -->
+    <div class="panel" id="videoPanel">
+      <div class="panel-head">
+        <span class="panel-title">视频与风险时间轴</span>
+        <span class="panel-note" id="bandStatus">待上传</span>
+      </div>
+      <div class="panel-body tight" id="videoBody">
+        <div class="alert alert-warn hide" id="envAlert"></div>
+
+        <!-- 上传态：选完文件后收起，把空间让给播放器 -->
+        <div id="uploadZone">
+          <div class="drop" id="drop">
+            <div class="drop-icon">📤</div>
+            <div class="drop-main">点击选择，或把视频拖到页面任意处</div>
+            <div class="drop-hint">mp4 / mov / mkv / webm 及 mp3 / wav / m4a 等 · 上限 500MB</div>
+          </div>
+          <input type="file" id="fileInput" class="hide"
+                 accept="video/*,audio/*,.mp4,.mov,.mkv,.avi,.flv,.webm,.ts,.m4v,.mp3,.wav,.m4a,.aac,.flac,.ogg">
+        </div>
+
+        <!-- 播放器：选了文件才显示 -->
+        <div class="video-wrap hide" id="videoWrap">
+          <video id="player" controls preload="metadata"></video>
+        </div>
+
+        <div class="file-row hide" id="fileRow">
+          <span class="file-name" id="fName"></span>
+          <span class="file-meta" id="fMeta"></span>
+        </div>
+
+
+        <!-- 风险色带 -->
+        <div id="bandZone" class="hide">
+          <div class="band-head">
+            <b>风险时间轴</b><span>按语句标注风险等级，点击定位播放</span>
+          </div>
+          <div class="band" id="band"><div class="band-cursor hide" id="bandCursor"></div></div>
+          <div class="band win hide" id="winBand"></div>
+          <div class="band-ticks" id="bandTicks"></div>
+        </div>
+
+        <div class="alert alert-err hide" id="errBox"></div>
+      </div>
+      <!-- 按钮固定在面板底部（不进滚动区），否则内容一多就被滚出视野点不到 -->
+      <div class="controls panel-foot">
+        <button class="btn btn-primary" id="btnStart" disabled>开始转写</button>
+        <button class="btn btn-ghost hide" id="btnStop">停止</button>
+        <button class="btn btn-ghost hide" id="btnTxt">TXT</button>
+        <button class="btn btn-ghost hide" id="btnSrt">SRT</button>
+        <button class="btn btn-ghost hide" id="btnReset">换一个</button>
+        <div class="band-legend" id="bandLegend">
+          <span><i style="background:#2e9e5b"></i>低</span>
+          <span><i style="background:#e0b400"></i>轻度</span>
+          <span><i style="background:#e67e22"></i>中度</span>
+          <span><i style="background:#d64541"></i>高</span>
+          <span><i style="background:#8e44ad"></i>极高</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 左下：转录文字 -->
+    <div class="panel" id="segCard">
+      <div class="panel-head">
+        <span class="panel-title">转写结果</span>
+        <div class="toggle" style="margin-left:auto">
+          <button id="tabSeg" class="on">分句</button>
+          <button id="tabPlain">纯文本</button>
+        </div>
+        <label class="follow-chk" title="勾选后播放时自动滚动到当前句；不勾只高亮、不打扰你翻看">
+          <input type="checkbox" id="chkFollow">自动滚动
+        </label>
+      </div>
+      <div class="seg-list" id="segList"></div>
+      <div class="plain hide" id="plainBox"></div>
+      <div class="empty" id="segEmpty">
+        等待识别结果…<br>模型加载约十几秒，之后按解析速度逐句出现
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 右栏：六维研判（分页，避免下滑）═══ -->
+  <div class="col-right">
+    <div class="panel" style="flex:1">
+      <div class="panel-head">
+        <span class="panel-title">意识形态风险研判</span>
+        <div class="tabs" id="sixTabs" style="margin-left:auto">
+          <button data-pane="verdict" class="on">总览</button>
+          <button data-pane="redline">风险红线<span class="tab-dot hide" id="dotRed">0</span></button>
+          <button data-pane="dims">六维画像</button>
+          <button data-pane="evidence">风险语句</button>
+          <button data-pane="guide">引导话术</button>
+        </div>
+        <span class="panel-note" id="sixSrc"></span>
+      </div>
+      <div class="panel-body" id="sixBody">
+        <div class="empty" id="sixEmpty">
+          转写完成后自动完成风险研判，输出六维画像、风险等级与分龄引导建议<br>
+          <span style="font-size:11px;color:var(--muted-2)">
+            重大风险语句在转写过程中即时标注
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 后端地址：走 http(s) 打开时同源；用 file:// 直接打开时 location.origin 是 "null"，
+// 请求会发到 null/api/... 直接 Load failed，所以回退到本机 8000（主服务，含六维研判）。
+const API = (location.protocol === 'http:' || location.protocol === 'https:')
+  ? location.origin
+  : 'http://127.0.0.1:8000';
+
+// 研判窗口时长（秒）：六维 36 项大半是篇章级判据，逐句判分恒为 0，
+// 所以攒够一窗（约 600-900 字）再判；同时绕开 LLM 提示词 text[:3000] 的截断。
+const WINDOW_SEC = 150;
+const AGE_GROUP = '13-15';
+
+// 五级五色，与浏览器插件的风险卡配色一致（L0绿 L1黄 L2橙 L3红 L4紫）
+const LV_COLOR = ['#2e9e5b','#2e9e5b','#e0b400','#e67e22','#d64541','#8e44ad'];
+const LV_LABEL = ['','低风险','轻度风险','中度风险','高风险','极高风险'];
+
+let file = null, taskId = null, es = null;
+let segments = [], startedAt = 0, timer = null, duration = 0, fixedCount = 0;
+let videoURL = null, riskResult = null, majorCount = 0, filteredCount = 0;
+// 左右联动用：句起始秒(×100取整) → 字幕行元素 / 该句研判结果
+let segRows = {}, sentBandMap = {}, winResults = [];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtTime = s => {
+  s = Math.max(0, Math.floor(s));
+  const m = Math.floor(s / 60), ss = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+};
+const fmtMB = b => (b / 1024 / 1024).toFixed(1) + 'MB';
+const lvColor = n => LV_COLOR[Math.max(1, Math.min(5, n || 1))];
+// 判定来源对外统一表述：客户关心结论，不需要知道走的是规则还是模型
+const SRC_LABEL = { both:'智能研判', rule:'智能研判', llm:'智能研判',
+                    rule_empty:'未检出风险信号' };
+const srcLabel = s => SRC_LABEL[s] || '智能研判';
+// 定级修正项：引擎内部标记（插件/看板共用，不动引擎）→ 对客户的业务说法
+const ADJ_LABEL = {
+  '多域叠加+1':'涉及多个风险领域', '青少年高曝光+1':'青少年高触达场景',
+  '保护性语境-1':'存在正当语境（已下调）', '≥3域不低于4级':'跨多领域风险',
+  '重大风险规则':'触及重大风险', '重大风险(提示)':'涉及重大风险倾向',
+  '一票否决':'触及严重违规红线',
+};
+const adjLabel = a => ADJ_LABEL[a] || a;
+
+// ── 环境自检 ──
+fetch(`${API}/api/transcribe/health`).then(r => r.json()).then(d => {
+  const chip = $('envChip');
+  if (d.ok) {
+    chip.textContent = '✓ 转写环境就绪';
+    chip.className = 'env-chip ok';
+  } else {
+    chip.textContent = '✕ 依赖缺失';
+    chip.className = 'env-chip bad';
+    $('envAlert').classList.remove('hide');
+    $('envAlert').innerHTML = '缺少以下依赖，转写无法进行：<br>' +
+      d.missing.map(m => '· ' + m).join('<br>');
+  }
+}).catch(() => {
+  $('envChip').textContent = '✕ 后端未连接';
+  $('envChip').className = 'env-chip bad';
+});
+
+// ── 选文件 ──
+const OK_EXT = ['mp4','mov','mkv','avi','flv','webm','ts','m4v',
+                'mp3','wav','m4a','aac','flac','ogg'];
+
+$('drop').onclick = () => $('fileInput').click();
+$('fileInput').onchange = e => e.target.files[0] && pick(e.target.files[0]);
+
+// 必须在 document 上兜住 dragover/drop：否则拖拽落点稍微偏出虚线框，
+// 浏览器就走默认行为——直接用当前标签页打开这个视频，页面被顶掉。
+['dragenter','dragover','drop'].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault()));
+
+['dragenter','dragover'].forEach(ev =>
+  $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave','drop'].forEach(ev =>
+  $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+
+// 整页都收拖拽，不必精确瞄准虚线框
+document.addEventListener('drop', e => {
+  if ($('drop').classList.contains('busy')) return;
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) pick(f);
+});
+
+function pick(f) {
+  const ext = (f.name.split('.').pop() || '').toLowerCase();
+  if (!OK_EXT.includes(ext)) {
+    showErr(`不支持的格式 .${ext}　支持：${OK_EXT.join(' / ')}`);
+    return;
+  }
+  if (f.size > 500 * 1024 * 1024) {
+    showErr(`文件 ${fmtMB(f.size)}，超过 500MB 上限`);
+    return;
+  }
+  file = f;
+  $('fileRow').classList.remove('hide');
+  $('fName').textContent = f.name;
+  $('fMeta').textContent = fmtMB(f.size);
+  $('btnStart').disabled = false;
+  $('errBox').classList.add('hide');
+
+  // 本地预览：createObjectURL 直接放本地文件，不用再从后端下一遍
+  if (videoURL) URL.revokeObjectURL(videoURL);
+  videoURL = URL.createObjectURL(f);
+  $('player').src = videoURL;
+  $('videoWrap').classList.remove('hide');
+  $('uploadZone').classList.add('hide');    // 选完就收起上传区，空间让给播放器
+}
+
+function showErr(msg) {
+  $('errBox').classList.remove('hide');
+  $('errBox').textContent = msg;
+}
+
+// ── 开始 ──
+$('btnStart').onclick = async () => {
+  if (!file) return;
+  segments = [];
+  fixedCount = 0;
+  majorCount = 0;
+  riskResult = null;                 // 重新转写 → 清掉上次研判，避免显示旧结论
+  segRows = {}; sentBandMap = {}; winResults = [];
+  $('stMajor').textContent = '0';
+  resetSixPanes();
+  $('bandStatus').textContent = '研判未开始';
+  $('band').querySelectorAll('.band-seg').forEach(n => n.remove());
+  $('bandCursor').classList.add('hide');
+  $('segList').innerHTML = '';
+  $('plainBox').textContent = '';
+  $('segEmpty').classList.remove('hide');
+  $('errBox').classList.add('hide');
+  $('btnStart').disabled = true;
+  $('drop').classList.add('busy');
+  ['btnTxt','btnSrt','btnReset'].forEach(i => $(i).classList.add('hide'));
+  $('progStage').textContent = '上传中…';
+  $('progPct').textContent = '—';
+  $('barFill').classList.add('indet');
+
+  // 上传
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(`${API}/api/transcribe/upload`, { method:'POST', body:fd });
+    // 先看状态码：后端返回非 JSON（代理拦截、502）时 r.json() 会自己抛错、把真实原因吞掉
+    const raw = await r.text();
+    let d = {};
+    try { d = JSON.parse(raw); } catch { /* 非 JSON，下面用 raw 报错 */ }
+    if (!r.ok) throw new Error(d.detail || `HTTP ${r.status} ${raw.slice(0,200)}`);
+    taskId = d.task_id;
+    duration = d.duration || 0;
+    $('fMeta').textContent = `${fmtMB(d.size)} · 时长 ${fmtTime(duration)}`;
+  } catch (e) {
+    const hint = /Failed to fetch|NetworkError|Load failed/i.test(e.message)
+      ? '（请求没到后端：确认服务在 8000 运行，且浏览器代理没拦截 127.0.0.1）'
+      : '';
+    showErr('上传失败：' + e.message + hint);
+    reset(); return;
+  }
+
+  // 开流
+  startedAt = Date.now();
+  timer = setInterval(tick, 500);
+  $('btnStop').classList.remove('hide');
+
+  // 不传 prompt：后端会用内置提示词（其中"输出标点"是断句的前提，不能省）
+  es = new EventSource(`${API}/api/transcribe/stream?task_id=${taskId}`);
+  es.onmessage = ev => {
+    let d;
+    try { d = JSON.parse(ev.data); } catch { return; }
+    if (d.type === 'heartbeat') return;
+
+    if (d.type === 'stage') {
+      $('progStage').textContent = d.text;
+    } else if (d.type === 'progress') {
+      $('barFill').classList.remove('indet');
+      $('barFill').style.width = d.percent + '%';
+      $('progPct').textContent = d.percent + '%';
+      $('progStage').textContent = d.percent >= 100 ? '识别完成' : '正在识别…';
+    } else if (d.type === 'segment') {
+      addSeg(d);
+    } else if (d.type === 'filtered') {
+      // 后端丢掉的无人声段幻觉（复读提示词、字幕组残留、重复句）
+      filteredCount = d.count || 0;
+    } else if (d.type === 'error') {
+      showErr(d.text);
+    } else if (d.type === 'done') {
+      finish();
+    }
+  };
+  es.onerror = () => {
+    if (es) { es.close(); es = null; }
+    if (segments.length === 0) showErr('连接中断，未收到识别结果');
+    finish();
+  };
+};
+
+function addSeg(d) {
+  segments.push(d);
+  $('segEmpty').classList.add('hide');
+
+  const row = document.createElement('div');
+  row.className = 'seg' + (d.major && d.major.length ? ' risky' : '');
+  const ts = document.createElement('span');
+  ts.className = 'seg-ts';
+  ts.textContent = fmtTime(d.start);
+  const tx = document.createElement('span');
+  tx.className = 'seg-tx clickable';
+  tx.textContent = d.text;
+  tx.title = '点击跳到该句';
+  tx.onclick = () => seekTo(d.start);
+  if (d.raw) {                       // 后端做过同音错字纠正，标出来并留原文可查
+    const b = document.createElement('span');
+    b.className = 'fixed-badge';
+    b.textContent = '已纠正';
+    b.title = '原文：' + d.raw;
+    tx.appendChild(b);
+    fixedCount++;
+  }
+  // 轨 A：这一句命中的重大风险红线（M1-M11），转写时就已算好，随字幕即时标出
+  if (d.major && d.major.length) {
+    const m = document.createElement('span');
+    m.className = 'seg-m';
+    m.textContent = '红线 ' + (d.major_names || d.major).join('·');
+    m.title = '命中重大意识形态风险规则：' + d.major.join('、')
+      + (d.homophone && d.homophone.length
+          ? '\n同音纠正：' + d.homophone.map(p => p[0] + '→' + p[1]).join('，')
+          : '');
+    tx.appendChild(m);
+    majorCount++;
+    $('stMajor').textContent = majorCount;
+  }
+  row.append(ts, tx);
+  segRows[Math.round((d.start || 0) * 100)] = row;   // 供研判结果回标
+  row.dataset.at = d.start;
+
+  const list = $('segList');
+  const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+  list.appendChild(row);
+  if (atBottom) list.scrollTop = list.scrollHeight;   // 只在用户没往上翻时自动跟随
+
+  $('plainBox').textContent = segments.map(s => s.text).join('\n');
+  $('stSeg').textContent = segments.length;
+
+  // 没有 progress 事件时用解析位置兜底算进度
+  if (duration > 0 && !$('progPct').textContent.endsWith('%')) {
+    const pct = Math.min(99, Math.round(d.end / duration * 100));
+    $('barFill').classList.remove('indet');
+    $('barFill').style.width = pct + '%';
+    $('progPct').textContent = pct + '%';
+  }
+}
+
+function tick() {
+  const el = (Date.now() - startedAt) / 1000;
+  $('stElapsed').textContent = el < 60 ? Math.round(el) + 's'
+    : `${Math.floor(el/60)}m${String(Math.round(el%60)).padStart(2,'0')}s`;
+
+}
+
+// ══ 跳播 ══
+function seekTo(sec) {
+  const v = $('player');
+  if (!v || !v.src || !isFinite(sec)) return;
+  v.currentTime = Math.max(0, sec);
+  v.play().catch(()=>{});          // 自动播放被拦就只跳位置，不报错
+  highlightPlaying(sec);
+  focusSentence(sec);              // 右侧点哪条，左侧就把对应句子高亮出来
+}
+
+// ══ 右→左联动：把时间点对应的字幕行滚出来并闪一下 ══
+function focusSentence(sec) {
+  // 找起始时间最接近且不晚于 sec 的那一行
+  let best = null, bestAt = -1;
+  for (const k in segRows) {
+    const at = Number(k) / 100;
+    if (at <= sec + 0.4 && at > bestAt) { bestAt = at; best = segRows[k]; }
+  }
+  if (!best) return;
+  document.querySelectorAll('.seg.focus').forEach(n => n.classList.remove('focus'));
+  best.classList.add('focus');
+  scrollRowIntoView(best, $('segList'));
+  setTimeout(() => best.classList.remove('focus'), 2200);
+}
+
+// 播放头跟着视频走
+// 拿到视频真实尺寸后把比例写进容器：容器随之按比例收高，两侧不再留黑边。
+// 竖屏/方形视频再限一下宽度，否则容器会被 32vh 封顶、宽度仍撑满而重新出现黑边。
+$('player').addEventListener('loadedmetadata', () => {
+  const v = $('player'), wrap = $('videoWrap');
+  // 纯音频没有画面，撑到 28vh 只是一大块黑；压成播放条高度，空间留给下面的按钮
+  if (!v.videoWidth || !v.videoHeight) {
+    wrap.classList.add('audio-only');
+    wrap.style.removeProperty('--ar');
+    wrap.style.maxWidth = '';
+    return;
+  }
+  wrap.classList.remove('audio-only');
+  const ar = v.videoWidth / v.videoHeight;
+  wrap.style.setProperty('--ar', `${v.videoWidth} / ${v.videoHeight}`);
+  // 高度被封顶时按比例反推最大宽度，让容器整体缩小而不是重新留出黑边
+  wrap.style.maxWidth = ar < 1.2 ? `calc(21vh * ${ar})` : '';
+});
+
+$('player').addEventListener('timeupdate', () => {
+  const v = $('player'), total = duration || v.duration || 0;
+  if (total && riskResult) {
+    const cur = $('bandCursor');
+    cur.classList.remove('hide');
+    cur.style.left = Math.min(100, v.currentTime / total * 100) + '%';
+  }
+  highlightPlaying(v.currentTime);
+});
+
+// ══ 当前播放句高亮 + 自动滚到可见位置（不用手动找）══
+let _lastHi = -1;
+// 把某一行滚到列表中间。用 offsetTop 差值算：行的 offsetParent 是 .panel 而不是
+// segList（segList 没设 position），直接减 list.offsetTop 会重复扣一次、算出错的位置。
+function scrollRowIntoView(row, list) {
+  if (!row || !list) return;
+  const rTop = row.getBoundingClientRect().top - list.getBoundingClientRect().top
+               + list.scrollTop;
+  list.scrollTo({ top: Math.max(0, rTop - list.clientHeight / 2 + row.offsetHeight / 2),
+                  behavior: 'smooth' });
+}
+
+function highlightPlaying(sec) {
+  if (!segments.length) return;
+  let idx = -1;
+  for (let i = 0; i < segments.length; i++) {
+    if (sec >= segments[i].start - 0.25) idx = i; else break;
+  }
+  if (idx < 0 || idx === _lastHi) return;
+  _lastHi = idx;
+  const rows = $('segList').children;
+  for (let i = 0; i < rows.length; i++) rows[i].classList.toggle('playing', i === idx);
+  // 只有勾了"跟随"才滚动列表。默认不勾：播放时自动滚会把用户正在看的
+  // 其他句子拽走，想往上翻都翻不了。高亮当前句本身不受开关影响。
+  if (!$('chkFollow').checked) return;
+  const row = rows[idx], list = $('segList');
+  if (row) {
+    // 只在当前句已滚出视野时才移动，句子本来就看得见就别乱动
+    const rt = row.getBoundingClientRect(), lt = list.getBoundingClientRect();
+    if (rt.top < lt.top || rt.bottom > lt.bottom) scrollRowIntoView(row, list);
+  }
+}
+
+// ══ 风险色带 ══
+// 主色带 = 逐句粒度（词库判定，定位到句）；下方细带 = 窗口六维粒度（篇章级研判）
+function renderBand(bands, total, sentBands) {
+  const el = $('band');
+  el.querySelectorAll('.band-seg').forEach(n => n.remove());
+  if (!total) return;
+  const rows = (sentBands && sentBands.length) ? sentBands : bands;
+  const isSent = !!(sentBands && sentBands.length);
+  rows.forEach(b => {
+    const d = document.createElement('div');
+    d.className = 'band-seg';
+    const st = b.start || 0, en = (b.end != null ? b.end : st);
+    d.style.left  = (st / total * 100) + '%';
+    // 逐句时每条很窄，给个最小宽度免得看不见
+    d.style.width = Math.max(isSent ? 0.7 : 0.4, (en - st) / total * 100) + '%';
+    d.style.background = lvColor(b.level);
+    if (isSent) {
+      d.title = `${fmtTime(st)}　${b.risk_label}`
+        + (b.major_names && b.major_names.length ? `\n红线：${b.major_names.join('、')}` : '')
+        + (b.text ? `\n「${b.text}」` : '');
+      if (b.level <= 1) d.style.opacity = '.4';   // 无风险句压暗，让红线句跳出来
+    } else {
+      d.title = `${fmtTime(st)}–${fmtTime(en)}　${b.risk_label}　风险分 ${b.risk_percent}/100`
+        + (b.major_rules && b.major_rules.length ? `\n重大风险：${b.major_rules.join('、')}` : '')
+        + (b.summary ? `\n${b.summary}` : '')
+        + `\n（${srcLabel(b.source)}）`;
+    }
+    d.onclick = () => seekTo(st);
+    el.appendChild(d);
+  });
+  // 窗口带：六维按窗研判的结果，作为副带并排展示
+  const wb = $('winBand');
+  wb.querySelectorAll('.band-seg').forEach(n => n.remove());
+  if (isSent && bands && bands.length) {
+    wb.classList.remove('hide');
+    bands.forEach(b => {
+      const d = document.createElement('div');
+      d.className = 'band-seg';
+      d.style.left  = (b.start / total * 100) + '%';
+      d.style.width = Math.max(0.4, (b.end - b.start) / total * 100) + '%';
+      d.style.background = lvColor(b.level);
+      d.title = `${fmtTime(b.start)}–${fmtTime(b.end)}　${b.risk_label}　${b.risk_percent}/100`
+        + `\n（${srcLabel(b.source)}·六维按窗）`;
+      d.onclick = () => seekTo(b.start);
+      wb.appendChild(d);
+    });
+  } else {
+    wb.classList.add('hide');
+  }
+  $('bandTicks').innerHTML = [0, .25, .5, .75, 1]
+    .map(f => `<span>${fmtTime(total * f)}</span>`).join('');
+}
+
+// ══ 六维雷达（内联 SVG，不引图表库）══
+function radar6(dims, color) {
+  const N = dims.length || 6, cx = 150, cy = 145, R = 78;
+  const ang = i => (-90 + i * (360 / N)) * Math.PI / 180;
+  const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
+  let grid = '';
+  for (let g = 1; g <= 5; g++) {
+    const r = R * g / 5;
+    grid += `<polygon points="${dims.map((_, i) => pt(i, r).map(v => v.toFixed(1)).join(',')).join(' ')}"
+             fill="none" stroke="${g === 5 ? '#c2d0d8' : '#e6edf1'}" stroke-width="1"/>`;
+  }
+  let spokes = '', labels = '', dots = '';
+  const poly = dims.map((d, i) =>
+    pt(i, R * Math.max(0.02, d.score || 0)).map(v => v.toFixed(1)).join(',')).join(' ');
+  dims.forEach((d, i) => {
+    const [ex, ey] = pt(i, R);
+    spokes += `<line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}"
+               stroke="#e6edf1" stroke-width="1"/>`;
+    const [lx, ly] = pt(i, R + 17);
+    const c = Math.cos(ang(i)), s = Math.sin(ang(i));
+    const anchor = Math.abs(c) < 0.3 ? 'middle' : (c > 0 ? 'start' : 'end');
+    const dy = s < -0.3 ? -1 : (s > 0.3 ? 11 : 4);
+    labels += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" dy="${dy}"
+               font-size="10.5" font-weight="700" fill="#48596a">${esc(d.name)}<tspan dx="3"
+               font-size="10" font-weight="800" fill="${color}">${d.hit_count}/${d.total}</tspan></text>`;
+    const [px, py] = pt(i, R * Math.max(0.02, d.score || 0));
+    dots += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2.6" fill="${color}"/>`;
+  });
+  return `<svg viewBox="0 0 300 292" role="img" aria-label="六维雷达图">${grid}${spokes}
+    <polygon points="${poly}" fill="${color}" fill-opacity="0.16" stroke="${color}"
+             stroke-width="2" stroke-linejoin="round"/>${dots}${labels}</svg>`;
+}
+
+// ══ 红线卡片：规则 + 触发它的具体句子（可点击跳播复核）══
+function ruleCard(r, isVeto) {
+  const trigs = r.triggers || [];
+  const nOK = trigs.filter(t => t.confirmed).length;
+  const body = trigs.length
+    ? `<div class="rl-trigs">${trigs.map(t => {
+        const at = (t.at != null)
+          ? `<span class="rl-at">[${fmtTime(t.at)}]</span>`
+          : '<span class="rl-at" style="color:var(--muted-2)">—</span>';
+        // 词库交叉确认过的标"已核"，只有 AI 说的标"待核"——小模型会把同一规则
+        // 抄到多条证据上，不加区分会让审核被误导
+        // 内部区分"词库确认/仅模型判定"，对外只用强弱表示可信度
+        const badge = t.confirmed
+          ? '<span class="rl-from" style="background:rgba(214,69,65,.14);color:#B91C1C">高置信</span>'
+          : '<span class="rl-from">待复核</span>';
+        const click = (t.at != null) ? `onclick="seekTo(${t.at})" title="点击跳到该句"` : '';
+        return `<div class="rl-trig" ${click}>${at}<span class="rl-span">“${esc(t.span)}”`
+          + `${badge}</span></div>`;
+      }).join('')}</div>`
+    : '<div class="rl-none">未能定位到具体句子（该判定基于全窗语境综合得出）</div>';
+  return `<div class="rl-rule">
+    <div class="rl-rule-h">
+      <span class="rl-id ${isVeto ? 'veto' : ''}">${isVeto ? '严重违规' : '重大风险'}</span>
+      <span class="rl-desc">${esc(r.name ? r.name + '：' : '')}${esc(r.desc || '')}</span>
+      <span class="rl-lv">${isVeto ? '严重违规' : '重大风险'} · ${r.level || 5} 级${
+        trigs.length ? `　涉及 ${trigs.length} 句` : ''}</span>
+    </div>
+    ${body}
+  </div>`;
+}
+
+// ══ 六维增量渲染：先摆骨架，每到一窗就把命中并进去、条形长一点 ══
+const DIM_DEF = [
+  ['fact_handling','事实处理方式',0.20,['F1','F2','F3','F4','F5','F6']],
+  ['narrative_frame','叙事框架',0.20,['N1','N2','N3','N4','N5','N6']],
+  ['emotional_mobilization','情绪动员',0.15,['E1','E2','E3','E4','E5','E6']],
+  ['value_orientation','价值导向',0.20,['V1','V2','V3','V4','V5','V6']],
+  ['expression_packaging','表达包装',0.10,['P1','P2','P3','P4','P5','P6']],
+  ['youth_impact','青少年影响',0.15,['Y1','Y2','Y3','Y4','Y5','Y6']]];
+let liveDims = {}, liveMajor = new Set(), liveVeto = new Set(), liveItems = {};
+
+function initSixSkeleton() {
+  liveDims = {}; liveMajor = new Set(); liveVeto = new Set(); liveItems = {};
+  DIM_DEF.forEach(([id]) => liveDims[id] = { hit:0, total:6 });
+  const dimsHtml = DIM_DEF.map(([id,nm,w,ids]) => `
+    <div class="dim-row" data-dim="${id}">
+      <div class="dim-top">
+        <span class="dim-name">${nm}</span>
+        <span class="dim-cnt" id="cnt-${id}">0/6<span class="dim-w"> · 权重 ${Math.round(w*100)}%</span></span>
+      </div>
+      <div class="dim-track"><div class="dim-fill" id="fill-${id}" style="width:0%;background:#cbd5e1"></div></div>
+      <div class="dim-items">${ids.map(x =>
+        `<span class="dim-item" id="it-${x}" title="待分析">${ids.indexOf(x)+1}</span>`).join('')}</div>
+    </div>`).join('');
+  $('sixBody').innerHTML = `
+    <div class="pane on" data-pane="verdict">
+      <div class="live-head">
+        <span class="live-title">研判进行中</span>
+        <span class="live-prog" id="liveProg">0 / ? 窗</span>
+      </div>
+      <div id="liveRed" class="live-red hide"></div>
+      <div class="six-note" style="margin-top:2px">
+        分析结果实时汇入六维画像（见「六维画像」标签），左侧字幕会同步标记已分析的语句。
+      </div>
+    </div>
+    <div class="pane" data-pane="redline">
+      <div class="empty" id="redlinePending">尚未发现红线，研判进行中…</div>
+    </div>
+    <div class="pane" data-pane="dims">${dimsHtml}</div>
+    <div class="pane" data-pane="evidence"><div class="empty">研判进行中，证据链稍后出现…</div></div>
+    <div class="pane" data-pane="guide"><div class="empty">全片研判完成后生成分龄引导话术…</div></div>`;
+  document.querySelectorAll('#sixTabs button').forEach((b,i) => b.classList.toggle('on', i===0));
+  $('dotRed').classList.add('hide');
+}
+
+function pushWindowIntoSix(w, n, tot) {
+  const prog = $('liveProg');
+  if (prog) prog.textContent = `${n} / ${tot || '?'} 窗`;
+  // 各维取窗口最大命中数（和后端汇总口径一致）
+  (w.dimensions || []).forEach(d => {
+    const cur = liveDims[d.id] || (liveDims[d.id] = { hit:0, total:d.total||6 });
+    if ((d.hit_count||0) > cur.hit) cur.hit = d.hit_count;
+    const cnt = $(`cnt-${d.id}`), fill = $(`fill-${d.id}`);
+    if (cnt && fill) {
+      const pct = Math.round(cur.hit / (cur.total||6) * 100);
+      const wEl = cnt.querySelector('.dim-w');
+      cnt.innerHTML = `${cur.hit}/${cur.total||6}` + (wEl ? wEl.outerHTML : '');
+      fill.style.width = pct + '%';
+      fill.style.background = cur.hit ? lvColor(Math.min(5, 1 + Math.ceil(cur.hit/1.5))) : '#cbd5e1';
+      if (cur.hit) { fill.classList.remove('pulse'); void fill.offsetWidth; fill.classList.add('pulse'); }
+    }
+    // 36 项：命中的格子逐个点亮（取并集，窗口之间累积）
+    (d.items || []).forEach(it => {
+      if (!it.hit || liveItems[it.id]) return;
+      liveItems[it.id] = 1;
+      const el = $(`it-${it.id}`);
+      if (el) {
+        el.classList.add('hit','pop');
+        el.title = it.desc || '';
+      }
+    });
+  });
+  (w.major_rules || []).forEach(m => liveMajor.add(m));
+  (w.veto_rules || []).forEach(v => liveVeto.add(typeof v === 'string' ? v : v.id));
+  const nRed = liveMajor.size + liveVeto.size;
+  if (nRed) {
+    const el = $('liveRed');
+    if (el) {
+      el.classList.remove('hide');
+      el.innerHTML = `<b>⚠ 已发现红线 ${nRed} 项</b>　`
+        + [...liveVeto, ...liveMajor].map(x => `<span class="rl-mini">${esc(x)}</span>`).join('');
+    }
+    const pend = $('redlinePending');
+    if (pend) pend.textContent = `已发现红线 ${nRed} 项，逐句归属在全片研判完成后给出…`;
+    const dot = $('dotRed');
+    dot.textContent = nRed; dot.classList.remove('hide');
+  }
+}
+
+// ══ 分龄引导话术：三个年龄段 tab（对齐插件的青少年分级处置）══
+const AGES = [['6-12','6-12岁'],['13-15','13-15岁'],['16-18','16-18岁']];
+let guideData = {}, curAge = AGE_GROUP;
+
+function buildGuidePane(g) {
+  guideData = Object.assign({}, guideData, g || {});
+  if (!AGES.some(([k]) => k === curAge)) curAge = '13-15';
+  const tabs = AGES.map(([k,lbl]) => {
+    const has = !!guideData[k];
+    return `<button class="age-tab${k===curAge?' on':''}" data-age="${k}">`
+      + `${lbl}${has ? '' : '<span class="age-wait"></span>'}</button>`;
+  }).join('');
+  const v = guideData[curAge];
+  const body = v ? `
+    <div class="guide">
+      <div class="guide-age">${esc(curAge)} 岁 · ${v.source === 'ai' ? 'AI 生成' : '话术库匹配'}</div>
+      <div class="guide-k">处置策略</div>
+      <div class="guide-v">${esc(v.strategy || '—')}</div>
+      <div class="guide-k">引导话术</div>
+      <div class="guide-v">${esc(v.script || '—')}</div>
+    </div>`
+    : `<div class="empty"><span class="spin"></span>　${esc(curAge)} 岁话术生成中…</div>`;
+  return `<div class="age-tabs">${tabs}</div><div id="guideBody">${body}</div>`;
+}
+
+// 事件委托绑在 sixBody 上：pane 内容会被重渲染，直接绑按钮会失效
+$('sixBody').addEventListener('click', e => {
+  const b = e.target.closest('.age-tab');
+  if (!b || !b.dataset.age) return;
+  curAge = b.dataset.age;
+  const pane = document.querySelector('#sixBody .pane[data-pane="guide"]');
+  if (pane) pane.innerHTML = buildGuidePane({});
+});
+
+// 话术分批到达时只刷新话术页，不重画整个面板（免得打断用户正在看的标签）
+function mergeGuidance(g) {
+  guideData = Object.assign({}, guideData, g || {});
+  if (riskResult) riskResult.guidance = guideData;
+  const pane = document.querySelector('#sixBody .pane[data-pane="guide"]');
+  if (pane) pane.innerHTML = buildGuidePane({});
+}
+
+function renderSix(res) {
+  const sm = res.summary || {}, sd = sm.six_dim_detail;
+  if (!sd) {
+    $('sixBody').innerHTML = '<div class="empty">未产出六维结果</div>';
+    return;
+  }
+  const n = sm.risk_level_num || 1, color = lvColor(n);
+  const dims = sd.dimensions || [];
+  const hits = dims.reduce((a, d) => a + (d.hit_count || 0), 0);
+  const major = sd.major_rules || [], veto = sd.veto_rules || [];
+  const ev = (sd.evidence || []);
+  const src = srcLabel(sd.source);
+  $('sixSrc').textContent = src;
+
+  const dimRows = dims.map(d => `
+    <div class="dim-row">
+      <div class="dim-top">
+        <span class="dim-name">${esc(d.name)}</span>
+        <span class="dim-cnt" style="color:${d.hit_count ? color : '#94A3B8'}">
+          ${d.hit_count}/${d.total}<span class="dim-w"> · 权重 ${Math.round((d.weight||0)*100)}%</span>
+        </span>
+      </div>
+      <div class="dim-track"><div class="dim-fill"
+        style="width:${Math.round((d.score||0)*100)}%;background:${d.hit_count ? color : '#cbd5e1'}"></div></div>
+      <div class="dim-items">${(d.items||[]).map((it,i) =>
+        `<span class="dim-item ${it.hit ? 'hit' : ''}" title="${esc(it.desc)}">${i+1}</span>`
+      ).join('')}</div>
+    </div>`).join('');
+
+  const evHtml = ev.length ? ev.map(e => {
+    const at = (e.at != null) ? `<span class="ev-at">[${fmtTime(e.at)}]</span>` : '';
+    const tags = (e.item_descs || []).map(x => x.desc).filter(Boolean)
+      .map(t => `<span class="ev-tag">${esc(t)}</span>`).join('');
+    // 这条证据自己触了红线的，直接标出规则编号
+    // 多条红线只标一个角标，具体规则在「风险红线」页展开
+    const rules = (e.rules || []).length
+      ? `<span class="ev-tag" style="background:rgba(214,69,65,.12);color:#B91C1C">风险红线</span>` : '';
+    return `<div class="ev" ${e.at != null ? `onclick="seekTo(${e.at})" title="点击跳到该处"` : ''}>
+      <div class="ev-span">${at}“${esc(e.span)}”</div>
+      <div class="ev-meta">${rules}${tags}${e.note ? `<span class="ev-note">${esc(e.note)}</span>` : ''}</div>
+    </div>`;
+  }).join('') : '<div class="empty">未提取到明显风险片段</div>';
+
+  const guideHtml = buildGuidePane(res.guidance || {});
+
+  // 识别标签 + 叙事分析（对齐插件的展示，数据换成转写场景真正有值的来源）
+  const L = res.labels || {};
+  const labs = L.labels || [];
+  const KIND = { veto:'风险红线', major:'风险红线', item:'风险特征', domain:'风险类型' };
+  const dtags = res.domain_tags || [];
+  const tagHtml = `
+    ${dtags.length ? `<div class="sub-h2">潜在意识形态风险类型</div>
+      <div class="dtags">${dtags.map(x => `<div class="dtag">
+        <span class="dtag-name">${esc(x.domain_name || '')}</span>
+        ${(x.keywords||[]).length ? `<span class="dtag-kw">${(x.keywords||[]).slice(0,6).map(esc).join(' · ')}</span>` : ''}
+      </div>`).join('')}</div>` : ''}
+    <div class="sub-h2">识别标签</div>
+    <div class="tag-chips">${labs.length
+      ? labs.map(l => `<span class="tag-chip k-${esc(l.kind)}" title="${esc(KIND[l.kind]||'')}${l.desc ? '　'+esc(l.desc) : ''}">${esc(l.text)}</span>`).join('')
+      : '<span class="tag-chip empty">未命中明确标签</span>'}</div>
+    ${L.narrative ? `<div class="sub-h2">叙事分析</div>
+      <div class="narrative">${esc(L.narrative)}</div>` : ''}`;
+
+  // 拆成 5 个 pane，切标签就能看到各部分，不必在右栏里长距离下滑
+  $('sixBody').innerHTML = `
+    <div class="pane on" data-pane="verdict">
+      <div class="verdict">
+        <div>
+          <div class="verdict-lv" style="color:${color}">${esc(sm.risk_level || LV_LABEL[n])}</div>
+          <div class="scale5">${[1,2,3,4,5].map(i => `<div>
+            <div class="s5bar" style="background:${i === n ? lvColor(i) : '#e6eaf1'}"></div>
+            <div class="s5lb" style="${i === n ? 'color:'+lvColor(i)+';font-weight:700' : ''}">${LV_LABEL[i].replace('风险','')}</div>
+          </div>`).join('')}</div>
+        </div>
+        <div>
+          <span class="verdict-num" style="color:${color}">${sm.risk_percent}</span>
+          <span class="verdict-of">/100</span>
+        </div>
+        <div class="verdict-meta">
+          风险特征 <b>${hits}</b> 项　·　${src}<br>
+          ${sd.summary ? esc(sd.summary) + '<br>' : ''}
+          ${(sd.adjustments||[]).length ? '判定依据：' + esc((sd.adjustments||[]).map(adjLabel).join('、')) : ''}
+        </div>
+      </div>
+      ${(major.length || veto.length) ? `<div class="redline" style="margin-bottom:2px">
+        <div class="redline-h" style="margin-bottom:0">⚠ 触及风险红线 ${veto.length + major.length} 项　—　详情见「风险红线」标签</div>
+      </div>` : '<div class="six-note" style="margin-top:0">未发现触及风险红线的内容。</div>'}
+      ${tagHtml}
+      <div class="six-note">
+        说明：时间轴按语句标注风险等级，可点击定位复核；全片等级由各时段风险汇总，
+        并结合风险红线综合判定。识别文本已自动校正同音错字。
+      </div>
+    </div>
+
+    <div class="pane" data-pane="redline">
+      ${(major.length || veto.length) ? `
+        <div class="redline-h" style="margin-bottom:10px">
+          ⚠ ${veto.length ? `严重违规 ${veto.length} 项　` : ''}${major.length ? `重大风险 ${major.length} 项` : ''}
+          　—　点击语句可定位播放复核
+        </div>
+        ${veto.map(v => ruleCard(v, true)).join('')}
+        ${major.map(m => ruleCard(m, false)).join('')}`
+      : '<div class="empty">未发现触及风险红线的内容</div>'}
+    </div>
+
+    <div class="pane" data-pane="dims">
+      <div class="six-grid">
+        <div class="radar-box">${radar6(dims, color)}</div>
+        <div>${dimRows}</div>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="evidence">${evHtml}</div>
+
+    <div class="pane" data-pane="guide">${guideHtml}</div>`;
+
+  // 红线数量角标
+  const nRed = veto.length + major.length;
+  const dot = $('dotRed');
+  dot.textContent = nRed;
+  dot.classList.toggle('hide', !nRed);
+  // 有红线就直接切到红线页——审核最关心的就是这个
+  showPane(nRed ? 'redline' : 'verdict');
+}
+
+// ══ 右栏分页切换 ══
+function showPane(name) {
+  document.querySelectorAll('#sixBody .pane').forEach(p =>
+    p.classList.toggle('on', p.dataset.pane === name));
+  document.querySelectorAll('#sixTabs button').forEach(b =>
+    b.classList.toggle('on', b.dataset.pane === name));
+  $('sixBody').scrollTop = 0;
+}
+
+$('sixTabs').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (b && b.dataset.pane) showPane(b.dataset.pane);
+});
+
+function resetSixPanes() {
+  $('sixBody').innerHTML = `<div class="empty">转写完成后自动研判…</div>`;
+  $('dotRed').classList.add('hide');
+  $('sixSrc').textContent = '';
+  document.querySelectorAll('#sixTabs button').forEach((b, i) =>
+    b.classList.toggle('on', i === 0));
+}
+
+// ══ 触发研判 ══
+// ══ 流式研判：逐窗到达就增量渲染，不做"分析中"占位 ══
+async function runAnalysis() {
+  if (!segments.length) return;
+  winResults = []; sentBandMap = {}; guideData = {}; curAge = AGE_GROUP;
+  $('bandZone').classList.remove('hide');
+  $('bandZone').classList.add('rise');
+  initSixSkeleton();                    // 先把六维骨架摆出来，之后逐窗填充
+  $('bandStatus').innerHTML = '<span class="spin"></span> 研判中 0/?';
+  const total = duration || 0;
+  try {
+    const r = await fetch(`${API}/analyze/transcript/stream`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        segments: segments.map(s => ({ start:s.start, end:s.end, text:s.text })),
+        age_group: AGE_GROUP, window_sec: WINDOW_SEC,
+        with_guidance: true, title: (file && file.name) || ''
+      })
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status} ${(await r.text()).slice(0,160)}`);
+    // NDJSON：一行一个事件，边收边渲染
+    const rd = r.body.getReader(), dec = new TextDecoder();
+    let buf = '', nWin = 0, totWin = 0;
+    for (;;) {
+      const { value, done } = await rd.read();
+      if (done) break;
+      buf += dec.decode(value, { stream:true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const ln of lines) {
+        if (!ln.trim()) continue;
+        let ev; try { ev = JSON.parse(ln); } catch { continue; }
+        if (ev.event === 'meta') {
+          totWin = ev.window_count || 0;
+          $('bandStatus').innerHTML = `<span class="spin"></span> 研判中 0/${totWin}`;
+        } else if (ev.event === 'sentence') {
+          markSentence(ev.sentence, 'redline');      // 逐句红线：秒出
+        } else if (ev.event === 'window') {
+          nWin++;
+          winResults.push(ev.window);
+          (ev.window.sentence_bands || []).forEach(b => {
+            sentBandMap[Math.round(b.start * 100)] = b;
+            markSentence(b, 'analyzed');             // 该句已被研判 → 打标记
+          });
+          renderBand(winResults, total, Object.values(sentBandMap));
+          pushWindowIntoSix(ev.window, nWin, totWin); // 六维一点点长出来
+          $('bandStatus').innerHTML = `<span class="spin"></span> 研判中 ${nWin}/${totWin}`;
+        } else if (ev.event === 'summary') {
+          riskResult = { summary: ev.summary, bands: winResults,
+                         matched_tags: ev.matched_tags || [],
+                         sentence_bands: ev.sentence_bands || [],
+                         labels: ev.labels || {},
+                         domain_tags: ev.domain_tags || [],
+                         window_sec: WINDOW_SEC, duration: total };
+          (ev.sentence_bands || []).forEach(b => {
+            sentBandMap[Math.round(b.start * 100)] = b;
+            markSentence(b, 'analyzed');
+          });
+          renderBand(winResults, total, Object.values(sentBandMap));
+          renderSix(riskResult);                     // 全片定级：替换成完整面板
+          const n = ev.summary.risk_level_num || 1;
+          $('bandStatus').innerHTML = `全片定级 <b style="color:${lvColor(n)}">`
+            + esc(ev.summary.risk_level || '') + '</b>';
+        } else if (ev.event === 'guidance') {
+          mergeGuidance(ev.guidance);        // 分批到达，合并后只刷话术页
+        } else if (ev.event === 'error') {
+          throw new Error(ev.text || '研判失败');
+        }
+      }
+    }
+  } catch (e) {
+    $('sixBody').innerHTML = `<div class="alert alert-err">研判失败：${esc(e.message)}</div>`;
+    $('bandStatus').textContent = '研判失败';
+  }
+}
+
+// ══ 左右联动：把研判结果标回左侧字幕行 ══
+function markSentence(b, kind) {
+  const key = Math.round((b.start || 0) * 100);
+  const row = segRows[key];
+  if (!row) return;
+  if (kind === 'analyzed') {
+    row.classList.add('done');
+    const lv = b.level || 1;
+    row.style.setProperty('--lv', lvColor(lv));
+    row.dataset.level = lv;
+    let tag = row.querySelector('.seg-lv');
+    if (!tag) {
+      tag = document.createElement('span');
+      tag.className = 'seg-lv';
+      row.querySelector('.seg-ts').appendChild(tag);
+    }
+    tag.style.background = lvColor(lv);
+    tag.title = `${b.risk_label || ''}`
+      + ((b.major_names && b.major_names.length) ? `　红线：${b.major_names.join('、')}` : '');
+  }
+}
+
+
+function finish() {
+  if (es) { es.close(); es = null; }
+  if (timer) { clearInterval(timer); timer = null; }
+  $('btnStop').classList.add('hide');
+  $('barFill').classList.remove('indet');
+  $('drop').classList.remove('busy');
+  $('btnStart').disabled = false;
+  $('btnReset').classList.remove('hide');
+  if (segments.length) {
+    $('btnTxt').classList.remove('hide');
+    $('btnSrt').classList.remove('hide');
+    if (!$('progStage').textContent.includes('完成'))
+      $('progStage').textContent = '已结束';
+    if (filteredCount) {
+      $('segEmpty').classList.remove('hide');
+      $('segEmpty').innerHTML = `已过滤 ${filteredCount} 条无人声段的误识别内容`
+        + `<br><span style="font-size:11px">无人声片段（静音、纯音乐）的误识别内容已自动剔除</span>`;
+    }
+  } else if (filteredCount) {
+    // 整片都是幻觉：明确告诉用户音频里没有可识别人声
+    $('segEmpty').classList.remove('hide');
+    $('segEmpty').innerHTML = `未识别到有效人声<br>`
+      + `<span style="font-size:11px">已过滤 ${filteredCount} 条误识别内容（静音或纯音乐段 whisper 会硬凑输出）</span>`;
+  }
+  if (taskId) {
+    fetch(`${API}/api/transcribe/task/${taskId}`, { method:'DELETE' }).catch(()=>{});
+    taskId = null;
+  }
+  // 全片转写完 → 触发六维研判（轨B窗口 + 轨C汇总话术）
+  if (segments.length && !riskResult) runAnalysis();
+}
+
+$('btnStop').onclick = () => {
+  $('progStage').textContent = '已手动停止';
+  finish();
+};
+
+$('btnReset').onclick = reset;
+function reset() {
+  if (es) { es.close(); es = null; }
+  if (timer) { clearInterval(timer); timer = null; }
+  file = null; segments = []; duration = 0; fixedCount = 0;
+  majorCount = 0; riskResult = null; filteredCount = 0;
+  segRows = {}; sentBandMap = {}; winResults = [];
+  if (videoURL) { URL.revokeObjectURL(videoURL); videoURL = null; }
+  $('player').removeAttribute('src'); $('player').load();
+  $('fileInput').value = '';
+  $('fileRow').classList.add('hide');
+
+  $('segCard').classList.add('hide');
+  $('videoWrap').classList.add('hide');
+  $('uploadZone').classList.remove('hide');
+  $('bandZone').classList.add('hide');
+  resetSixPanes();
+  $('segList').innerHTML = '';
+  $('segEmpty').classList.remove('hide');
+  $('bandCursor').classList.add('hide');
+  $('bandStatus').textContent = '研判未开始';
+  $('drop').classList.remove('busy');
+  $('btnStart').disabled = true;
+  ['btnStop','btnTxt','btnSrt','btnReset'].forEach(i => $(i).classList.add('hide'));
+  ['stSeg','stMajor'].forEach(i => $(i).textContent = '0');
+  $('progPct').textContent = '—';
+  $('progStage').textContent = '待上传';
+  $('stElapsed').textContent = '0s';
+  $('barFill').style.width = '0%';
+}
+
+// ── 视图切换 ──
+$('tabSeg').onclick = () => {
+  $('tabSeg').classList.add('on'); $('tabPlain').classList.remove('on');
+  $('segList').classList.remove('hide'); $('plainBox').classList.add('hide');
+};
+$('tabPlain').onclick = () => {
+  $('tabPlain').classList.add('on'); $('tabSeg').classList.remove('on');
+  $('plainBox').classList.remove('hide'); $('segList').classList.add('hide');
+};
+
+// ── 导出 ──
+async function dl(fmt) {
+  const r = await fetch(`${API}/api/transcribe/export`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ segments, format: fmt })
+  });
+  const d = await r.json();
+  const blob = new Blob([d.content], { type:'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `transcript.${fmt}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+$('btnTxt').onclick = () => dl('txt');
+$('btnSrt').onclick = () => dl('srt');
+</script>
+</body>
+</html>

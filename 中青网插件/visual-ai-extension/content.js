@@ -746,11 +746,11 @@ function rrGuidanceHTML(d){
 function rrRefreshGuideBlocks(){
   if(!_rrGuideState) return;
   const g = _rrGuideState.generated[_rrGuideState.curAge];
+  const done = _rrGuideState.done && _rrGuideState.done.has(_rrGuideState.curAge);
   const disEl = reviewRoot?.querySelector('#rr-guide-disposal');
   const scEl  = reviewRoot?.querySelector('#rr-guide-script');
-  const loaded = _rrGuideState.loaded;
-  if(disEl) disEl.textContent = (g && g.strategy) || (loaded ? '本次未生成处置策略。' : 'AI 生成中…');
-  if(scEl)  scEl.textContent  = (g && g.script)   || (loaded ? '本次未生成引导话术。' : 'AI 生成中…');
+  if(disEl) disEl.textContent = (g && g.strategy) || (done ? '本次未生成处置策略。' : 'AI 生成中…');
+  if(scEl)  scEl.textContent  = (g && g.script)   || (done ? '本次未生成引导话术。' : 'AI 生成中…');
 }
 
 // 年龄段 tab 切换（处置策略 + 引导话术同步切换）
@@ -760,24 +760,38 @@ function rrSwitchGuideAge(btn, age){
   (btn.parentElement?.querySelectorAll('.rr-cd-tab') || []).forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   rrRefreshGuideBlocks();
+  // 若该年龄段还没生成、也不在生成中，即时按需拉一次
+  const inflight = _rrGuideState.inflight && _rrGuideState.inflight.has(age);
+  if(_rrGuideState.done && !_rrGuideState.done.has(age) && !inflight) _rrFetchGuidanceAges([age]);
 }
 
-// 注入 DOM 后触发：调用后端 AI 按当前分析结果生成三个年龄段的处置策略+引导话术
-async function rrInitGuidance(){
-  if(!_rrGuideState) return;
+// 拉取指定年龄段的处置策略+引导话术，合并进状态并刷新
+async function _rrFetchGuidanceAges(ages){
+  if(!_rrGuideState || !ages || !ages.length) return;
+  ages.forEach(a => (_rrGuideState.inflight ||= new Set()).add(a));
   try{
     const res = await fetch('http://localhost:8000/guidance/generate', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         risk_label: _rrGuideState.label, risk_types: _rrGuideState.types,
-        domains: _rrGuideState.domains, key_points: _rrGuideState.points,
+        domains: _rrGuideState.domains, key_points: _rrGuideState.points, ages,
       }),
       signal: AbortSignal.timeout(50000),
     });
-    if(res.ok) _rrGuideState.generated = (await res.json()).guidance || {};
+    if(res.ok) Object.assign(_rrGuideState.generated, (await res.json()).guidance || {});
   }catch(e){ /* 生成失败静默，走空态 */ }
-  _rrGuideState.loaded = true;
+  (_rrGuideState.done ||= new Set()); ages.forEach(a => _rrGuideState.done.add(a));
   rrRefreshGuideBlocks();
+}
+
+// 注入 DOM 后触发：先只生成「当前年龄段」（秒出），其余两段后台补生成（懒加载提速）
+async function rrInitGuidance(){
+  if(!_rrGuideState) return;
+  _rrGuideState.done = new Set();
+  const cur = _rrGuideState.curAge || '6-12';
+  const rest = ['6-12','13-15','16-18'].filter(a => a !== cur);
+  await _rrFetchGuidanceAges([cur]);   // 当前年龄段优先，尽快显示
+  _rrFetchGuidanceAges(rest);          // 其余后台补，不阻塞
 }
 
 // 相关案例（正向）：可点击卡片，点击后在插件内跳转到详情页（不开新标签）

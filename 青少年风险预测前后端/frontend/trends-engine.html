@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>批量态势研判 · 青年心盾</title>
+<script src="lib/chart.umd.min.js"></script>
+<script src="lib/lucide.min.js"></script>
+<style>
+:root{
+  --bg:#f5f7fb; --panel:#ffffff; --panel-2:#f9fbff; --line:#dde4f0; --line-soft:#e8edf5;
+  --text:#172033; --sub:#526073; --muted:#8a97aa;
+  --blue:#2563eb; --green:#16a34a; --amber:#f5b301; --orange:#ea6a1e; --red:#dc2626; --violet:#7c3aed;
+  --radius:8px; --shadow:0 10px 28px rgba(15,23,42,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",Arial,sans-serif;color:var(--text);background:var(--bg)}
+a{text-decoration:none;color:inherit}
+button,select{font:inherit}
+.topbar{height:56px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:20;backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:12px;min-width:230px}
+.brand-mark{width:36px;height:36px;border-radius:8px;background:#172033;color:#fff;display:grid;place-items:center}
+.brand-title{font-size:15px;font-weight:800}.brand-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.page-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800}
+.page-title i{width:18px;height:18px;color:var(--blue)}
+.top-actions{display:flex;align-items:center;gap:10px}
+.nav-link,.btn{height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;color:var(--sub);font-size:13px;cursor:pointer}
+.nav-link i,.btn i{width:15px;height:15px}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.nav-link:hover,.btn:hover{border-color:#b7c4d8;color:var(--text)}
+.btn.primary:hover{color:#fff;background:#1d4ed8}
+.layout{max-width:1560px;margin:0 auto;padding:12px 24px 28px}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase}
+.headline{font-size:20px;font-weight:850;margin:3px 0 4px}
+.desc{font-size:12.5px;color:var(--sub);max-width:840px;line-height:1.55}
+.filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.select{height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 10px;color:var(--text);font-size:13px;min-width:120px}
+.grid{display:grid;gap:12px}
+.row-2{grid-template-columns:1.55fr 1fr}
+.row-2b{grid-template-columns:1fr 1fr}
+.card{background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);box-shadow:0 1px 2px rgba(15,23,42,.03);padding:12px 14px;min-width:0}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.card-title{font-size:13.5px;font-weight:850;display:flex;align-items:center;gap:8px}
+.card-title i{width:16px;height:16px;color:var(--blue)}
+.card-sub{font-size:11px;color:var(--muted)}
+.chart-wrap{height:250px;position:relative}
+/* 整体研判 hero */
+.overview{margin-bottom:12px;display:grid;grid-template-columns:190px minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:center;padding:18px 20px;background:linear-gradient(180deg,#ffffff 0%,#f7f9fe 100%)}
+.ov-left{text-align:center;position:relative}
+.ov-left::after{content:"";position:absolute;right:-11px;top:8%;height:84%;width:1px;background:var(--line-soft)}
+.ov-gauge{position:relative;width:130px;height:130px;margin:0 auto}
+.ov-gauge svg{transform:rotate(-90deg);display:block}
+.ov-gauge-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ov-gauge-word{font-size:32px;font-weight:900;line-height:1}
+.ov-gauge-cap{font-size:10.5px;color:var(--muted);margin-top:3px}
+.ov-avg2{font-size:12px;color:var(--sub);margin-top:10px}
+.ov-hchip{display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:3px 11px;border-radius:999px;background:#fef2f2;border:1px solid #fbcaca;color:#b91c1c;font-size:11.5px;font-weight:750}
+.ov-hchip i{width:12px;height:12px}
+.ov-mid{min-width:0;position:relative}
+.ov-mid::after{content:"";position:absolute;right:-11px;top:8%;height:84%;width:1px;background:var(--line-soft)}
+.ov-h{font-size:11px;font-weight:750;color:var(--muted);margin-bottom:9px;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.ov-h i{width:13px;height:13px;color:var(--blue)}
+.stackbar{display:flex;gap:3px;height:36px}
+.stackseg{border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12.5px;font-weight:800;min-width:3px;white-space:nowrap;box-shadow:inset 0 -6px 10px rgba(0,0,0,.10),inset 0 2px 3px rgba(255,255,255,.28)}
+.stack-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.stack-legend span{font-size:11.5px;color:var(--text);display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border:1px solid var(--line-soft);border-radius:999px;background:#fff}
+.stack-legend b{color:var(--sub);font-weight:800}
+.stack-legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.ov-right{min-width:0}
+.dombars{display:grid;gap:8px}
+.dombar-row{display:grid;grid-template-columns:minmax(0,1fr) 38px;gap:9px;align-items:center}
+.dombar-name{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dombar-track{height:9px;background:#eef1f6;border-radius:999px;overflow:hidden;margin-top:4px}
+.dombar-fill{height:100%;border-radius:999px;box-shadow:inset 0 -2px 3px rgba(0,0,0,.12)}
+.dombar-pct{font-size:11.5px;font-weight:800;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums}
+/* 风险热力矩阵（正式报表风） */
+.hm{display:flex;flex-direction:column;gap:6px}
+.hm-row{display:grid;gap:6px;align-items:stretch}
+.hm-colh{font-size:12px;color:var(--sub);font-weight:750;text-align:center;padding:2px 0 4px;display:flex;align-items:center;justify-content:center;gap:5px}
+.hm-colh .pd{width:8px;height:8px;border-radius:50%;display:inline-block}
+.hm-rowh{font-size:11.5px;font-weight:750;color:var(--text);display:flex;align-items:center;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-cell{border-radius:7px;padding:11px 6px 9px;text-align:center;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line-soft);background:#fff;transition:.12s}
+.hm-cell:hover{background:#fafbfe;box-shadow:0 2px 8px rgba(15,23,42,.07)}
+.hm-cell .v{font-size:17px;font-weight:850;line-height:1;font-variant-numeric:tabular-nums}
+.hm-cell .s{font-size:10.5px;color:var(--muted);margin-top:4px}
+.hm-cell.empty{background:#f7f8fb;border-top:3px solid var(--line-soft)!important}
+.hm-cell.empty .v{color:#c3ccd8;font-size:15px}
+.heat-legend{display:flex;align-items:center;gap:12px;margin-top:11px;font-size:11px;color:var(--sub);flex-wrap:wrap}
+.heat-legend .grp{display:inline-flex;align-items:center;gap:5px}
+.heat-legend .sw{width:20px;height:10px;border-radius:2px;display:inline-block}
+/* 聚类 */
+.clist{display:grid;gap:8px;max-height:300px;overflow:auto}
+.crow{display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:10px;align-items:center}
+.cname{font-size:11.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cdom{font-size:10px;color:var(--muted);margin-bottom:3px}
+.ctrack{height:8px;background:#edf2f8;border-radius:999px;overflow:hidden;margin-top:4px}
+.cbar{height:100%;border-radius:999px}
+.ccount{font-size:11.5px;font-weight:750;color:var(--sub);text-align:right}
+/* 协同 */
+.collab{display:grid;gap:8px;max-height:300px;overflow:auto}
+.collab-item{border:1px solid var(--line-soft);border-radius:8px;padding:9px 11px}
+.collab-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.collab-name{font-size:12px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.collab-badge{flex-shrink:0;height:20px;border-radius:999px;background:#fef2f2;border:1px solid #fdd3d3;color:#b91c1c;font-size:11px;font-weight:800;padding:0 8px;display:inline-flex;align-items:center;gap:4px}
+.collab-meta{font-size:11px;color:var(--muted);margin-top:5px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pd{width:8px;height:8px;border-radius:50%;display:inline-block}
+/* 账号榜 */
+.rank-list{display:grid;gap:7px;max-height:340px;overflow:auto}
+.rank-row{display:grid;grid-template-columns:26px minmax(0,1fr) 42px;gap:10px;align-items:center;padding:7px 9px;border:1px solid var(--line-soft);border-radius:8px;cursor:pointer;transition:.15s}
+.rank-row:hover{border-color:#b9c6db;background:#f8fbff}
+.rank-no{font-size:12px;font-weight:850;color:var(--muted);text-align:center}
+.rank-name{font-size:12.5px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-meta{font-size:10.5px;color:var(--muted);margin-top:3px}
+.rank-grade{font-size:18px;font-weight:900;text-align:center}
+/* 热点 */
+.hot-list{display:grid;gap:8px;max-height:340px;overflow:auto}
+.hot{display:block;border:1px solid var(--line-soft);border-left:3px solid var(--red);border-radius:8px;padding:9px 11px;color:inherit;transition:.15s}
+.hot:hover{background:#fff7f7;border-color:#f0b4b4}
+.hot-title{font-size:12.5px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hot-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.pill{height:20px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:0 7px;display:inline-flex;align-items:center;font-size:10.5px;color:var(--sub)}
+.pill.lvl{color:#fff;border:none;font-weight:750}
+.empty,.error{padding:26px;text-align:center;color:var(--muted);font-size:12.5px}
+.error{color:#b91c1c}
+.skeleton{height:120px;background:linear-gradient(90deg,#eef3f9 25%,#f7faff 50%,#eef3f9 75%);background-size:800px 100%;animation:shimmer 1.4s infinite linear;border-radius:8px}
+@keyframes shimmer{from{background-position:-400px 0}to{background-position:400px 0}}
+@media(max-width:1180px){.row-2,.row-2b{grid-template-columns:1fr}.overview{grid-template-columns:1fr}.ov-left::after,.ov-mid::after{display:none}.ov-left,.ov-mid{border-bottom:1px solid var(--line-soft);padding-bottom:14px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="home.html">
+    <div class="brand-mark"><i data-lucide="shield-check"></i></div>
+    <div><div class="brand-title">青年心盾</div><div class="brand-sub">Youth Risk Intelligence Platform</div></div>
+  </a>
+  <div class="page-title"><i data-lucide="radar"></i><span>批量态势研判</span></div>
+  <div class="top-actions">
+    <a class="nav-link" href="account-engine.html"><i data-lucide="user-round-search"></i>账号画像</a>
+    <a class="nav-link" href="index.html"><i data-lucide="search-check"></i>内容研判</a>
+    <a class="nav-link" href="trends.html"><i data-lucide="history"></i>旧版</a>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="section-head">
+    <div>
+      <div class="eyebrow">Situation Overview</div>
+      <h1 class="headline">全域批量态势研判</h1>
+      <div class="desc">跨平台全域批量研判，一屏掌握整体风险态势。</div>
+    </div>
+    <div class="filters">
+      <select id="domain-filter" class="select"><option value="">全部风险域</option><option>制度认同风险</option><option>历史认知风险</option><option>心理韧性风险</option><option>认知闭合风险</option><option>网络素养风险</option></select>
+      <select id="platform-filter" class="select"><option value="">全部平台</option><option>微博</option><option>抖音</option><option>小红书</option><option>百度</option></select>
+      <button class="btn primary" id="refresh-btn"><i data-lucide="refresh-cw"></i>刷新</button>
+    </div>
+  </section>
+
+  <section class="card overview" id="overview"><div class="skeleton" style="height:110px"></div></section>
+
+  <section class="grid row-2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="card-head"><div class="card-title"><i data-lucide="trending-up"></i>认知导向漂移曲线</div><div class="card-sub">全域高危内容占比 · 月度走势</div></div>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title"><i data-lucide="grid-2x2"></i>风险域 × 平台矩阵</div><div class="card-sub">圆越大占比越高 · 颜色越深风险越高</div></div>
+      <div id="matrix-wrap"><div class="skeleton"></div></div>
+      <div class="heat-legend" id="heat-legend"></div>
+    </div>
+  </section>
+
+  <section class="grid row-2b" style="margin-bottom:12px">
+    <div class="card"><div class="card-head"><div class="card-title"><i data-lucide="layers"></i>叙事聚类分布</div><div class="card-sub">二级风险类型 Top</div></div><div id="clusters" class="clist"><div class="skeleton"></div></div></div>
+    <div class="card"><div class="card-head"><div class="card-title"><i data-lucide="share-2"></i>跨平台协同叙事</div><div class="card-sub">同一叙事跨 ≥2 平台传播</div></div><div id="collab" class="collab"><div class="skeleton"></div></div></div>
+  </section>
+
+  <section class="grid row-2b">
+    <div class="card"><div class="card-head"><div class="card-title"><i data-lucide="list-ordered"></i>账号风险榜</div><a class="card-sub" href="account-engine.html" style="color:var(--blue)">查看账号画像 →</a></div><div id="rank" class="rank-list"><div class="skeleton"></div></div></div>
+    <div class="card"><div class="card-head"><div class="card-title"><i data-lucide="flame"></i>热点风险预警</div><div class="card-sub">高风险内容流</div></div><div id="hotspots" class="hot-list"><div class="skeleton"></div></div></div>
+  </section>
+</main>
+
+<script>
+const API='http://localhost:8000';
+const PLATFORM_COLORS={'微博':'#2a78d6','抖音':'#4a3aa7','小红书':'#e87ba4','百度':'#1baf7a'};
+const DOMAIN_COLORS={'制度认同风险':'#2563eb','历史认知风险':'#ea580c','心理韧性风险':'#7c3aed','认知闭合风险':'#0891b2','网络素养风险':'#059669','未匹配':'#94a3b8'};
+const CORP_LEVEL_COLOR={'低风险':'#16a34a','中风险':'#ea6a1e','高风险':'#dc2626','极高风险':'#7c3aed'};
+const HEAT_BANDS=[{max:1.5,c:'#16a34a',t:'低'},{max:2.5,c:'#ea6a1e',t:'中'},{max:3.3,c:'#dc2626',t:'高'},{max:99,c:'#7c3aed',t:'极高'}];
+const heatColor=v=>{for(const b of HEAT_BANDS)if(v<=b.max)return b.c;return '#7c3aed';};
+const heatBand=v=>{for(const b of HEAT_BANDS)if(v<=b.max)return b;return HEAT_BANDS[HEAT_BANDS.length-1];};
+const hexA=(hex,a)=>{const n=parseInt(hex.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;};
+const bandOf=avg=>avg<1.5?{w:'低',c:'#16a34a'}:avg<2.2?{w:'中',c:'#ea6a1e'}:avg<2.8?{w:'中高',c:'#dc2626'}:{w:'高',c:'#7c3aed'};
+
+let charts=[];
+Chart.defaults.font.family="'PingFang SC','Microsoft YaHei','Noto Sans SC',Arial,sans-serif";
+Chart.defaults.color='#526073';Chart.defaults.font.size=11;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const icons=()=>{try{lucide.createIcons();}catch(e){}};
+function killCharts(){charts.forEach(c=>{try{c.destroy();}catch(e){}});charts=[];}
+async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+const domain=()=>$('#domain-filter').value, platform=()=>$('#platform-filter').value;
+const qs=(x={})=>new URLSearchParams(Object.assign({domain:domain(),platform:platform()},x));
+
+function loadAll(){killCharts();loadMatrixBundle();loadTrend();loadRank();loadHotspots();}
+
+async function loadMatrixBundle(){
+  let d;
+  try{d=await getJSON(`${API}/dashboard/matrix?${qs()}`);}
+  catch(e){$('#matrix-wrap').innerHTML=`<div class="error">无法连接后端<br><span style="font-size:11px">请先启动 ${API}</span></div>`;return;}
+  renderOverview(d);renderMatrix(d.matrix||[]);renderClusters(d.clusters||[]);renderCollab(d.collaboration||[]);
+}
+function renderOverview(d){
+  const k=d.kpi||{},total=k.total||0,hiRate=total?k.high_count/total*100:0,band=bandOf(k.avg_score||0);
+  const order=['低风险','中风险','高风险','极高风险'],short={'低风险':'低','中风险':'中','高风险':'高','极高风险':'极高'};
+  const ld=d.level_dist||[],sum=ld.reduce((a,x)=>a+(x.cnt||0),0)||1,lm=Object.fromEntries(ld.map(x=>[x.lv,x.cnt]));
+  const segs=order.filter(l=>lm[l]).map(l=>({l,pct:lm[l]/sum*100,c:CORP_LEVEL_COLOR[l]||'#94a3b8'}));
+  const dd=d.domain_dist||[],domSum=dd.reduce((a,x)=>a+(x.cnt||0),0)||1,domMax=Math.max(...dd.map(x=>x.cnt||0),1);
+  const R=56,C=2*Math.PI*R,pct=Math.max(0,Math.min(1,(k.avg_score||0)/4)),off=C*(1-pct);
+  $('#overview').innerHTML=`
+    <div class="ov-left">
+      <div class="ov-gauge"><svg width="130" height="130" viewBox="0 0 130 130">
+        <circle cx="65" cy="65" r="${R}" fill="none" stroke="#eef1f6" stroke-width="12"/>
+        <circle cx="65" cy="65" r="${R}" fill="none" stroke="${band.c}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+      </svg><div class="ov-gauge-c"><div class="ov-gauge-word" style="color:${band.c}">${band.w}</div><div class="ov-gauge-cap">整体风险区间</div></div></div>
+      <div class="ov-avg2">平均风险分 <b style="color:var(--text)">${(k.avg_score||0).toFixed(2)}</b> / 4</div>
+      <div class="ov-hchip"><i data-lucide="triangle-alert"></i>高危占比 ${hiRate.toFixed(1)}%</div>
+    </div>
+    <div class="ov-mid">
+      <div class="ov-h"><i data-lucide="layers"></i>整体风险等级构成</div>
+      <div class="stackbar">${segs.map(s=>`<div class="stackseg" style="flex:${s.pct};background:${s.c}" title="${esc(s.l)} ${s.pct.toFixed(1)}%">${s.pct>=7?s.pct.toFixed(0)+'%':''}</div>`).join('')}</div>
+      <div class="stack-legend">${segs.map(s=>`<span><i style="background:${s.c}"></i>${short[s.l]} <b>${s.pct.toFixed(1)}%</b></span>`).join('')}</div>
+    </div>
+    <div class="ov-right">
+      <div class="ov-h"><i data-lucide="radar"></i>风险域构成</div>
+      <div class="dombars">${dd.map(x=>{const c=DOMAIN_COLORS[x.domain]||'#64748b';return `<div class="dombar-row"><div style="min-width:0"><div class="dombar-name" title="${esc(x.domain)}">${esc(x.domain)}</div><div class="dombar-track"><div class="dombar-fill" style="width:${Math.round((x.cnt||0)/domMax*100)}%;background:linear-gradient(90deg,${hexA(c,.7)},${c})"></div></div></div><div class="dombar-pct">${(x.cnt/domSum*100).toFixed(0)}%</div></div>`;}).join('')}</div>
+    </div>`;
+  icons();
+}
+function renderMatrix(cells){
+  if(!cells.length){$('#matrix-wrap').innerHTML='<div class="empty">暂无矩阵数据</div>';return;}
+  const domains=[...new Set(cells.map(c=>c.domain))],plats=[...new Set(cells.map(c=>c.platform))];
+  const grand=cells.reduce((a,c)=>a+(c.cnt||0),0)||1;
+  const map={};cells.forEach(c=>map[c.domain+'|'+c.platform]=c);
+  const cols=`120px repeat(${plats.length},minmax(0,1fr))`;
+  let h='<div class="hm">';
+  h+=`<div class="hm-row" style="grid-template-columns:${cols}"><div></div>${plats.map(p=>`<div class="hm-colh"><span class="pd" style="background:${PLATFORM_COLORS[p]||'#94a3b8'}"></span>${esc(p)}</div>`).join('')}</div>`;
+  domains.forEach(dom=>{
+    h+=`<div class="hm-row" style="grid-template-columns:${cols}"><div class="hm-rowh" title="${esc(dom)}">${esc(dom)}</div>`;
+    plats.forEach(p=>{const c=map[dom+'|'+p];
+      if(!c||!c.cnt){h+=`<div class="hm-cell empty" style="border-top:3px solid var(--line-soft)"><div class="v">–</div></div>`;return;}
+      const b=heatBand(c.avg_s||0),col=b.c,vc=col==='#f5b301'?'#a16207':col,share=c.cnt/grand*100;
+      h+=`<div class="hm-cell" style="border-top:4px solid ${col}" title="${esc(dom)} · ${esc(p)}：占比 ${share.toFixed(1)}%，平均风险 ${b.t}"><div class="v">${share.toFixed(1)}%</div><div class="s" style="color:${vc};font-weight:750">${b.t}风险</div></div>`;});
+    h+='</div>';});
+  h+='</div>';
+  $('#matrix-wrap').innerHTML=h;
+  $('#heat-legend').innerHTML=`<span class="grp"><b style="color:var(--sub)">底色数字=占比 · 色条=风险等级</b></span>${HEAT_BANDS.map(b=>`<span class="grp"><span class="sw" style="background:${b.c}"></span>${b.t}</span>`).join('')}`;
+}
+function renderClusters(cl){
+  const el=$('#clusters');
+  if(!cl.length){el.innerHTML='<div class="empty">暂无聚类数据</div>';return;}
+  const sum=cl.reduce((a,c)=>a+(c.cnt||0),0)||1,arr=[...cl].sort((a,b)=>(b.cnt||0)-(a.cnt||0)).slice(0,12),max=Math.max(...arr.map(c=>c.cnt||0),1);
+  el.innerHTML=arr.map(c=>{const col=DOMAIN_COLORS[c.domain]||'#64748b',share=(c.cnt||0)/sum*100;
+    return `<div class="crow"><div style="min-width:0"><div class="cdom" style="color:${col}">${esc(c.domain||'')}</div><div class="cname" title="${esc(c.rtype||'')}">${esc(c.rtype||'（未分类）')}</div><div class="ctrack"><div class="cbar" style="width:${Math.round((c.cnt||0)/max*100)}%;background:${col}"></div></div></div><div class="ccount">${share.toFixed(1)}%<br><span style="font-size:10px;color:var(--muted)">均${(c.avg_s||0).toFixed(1)}</span></div></div>`;}).join('');
+}
+function renderCollab(cb){
+  const el=$('#collab');
+  if(!cb.length){el.innerHTML='<div class="empty">暂无跨平台协同叙事</div>';return;}
+  el.innerHTML=cb.map(c=>{const plats=(c.platforms||'').split('、').filter(Boolean);
+    const dots=plats.map(p=>`<span class="pd" style="background:${PLATFORM_COLORS[p]||'#94a3b8'}" title="${esc(p)}"></span>`).join('');
+    return `<div class="collab-item"><div class="collab-top"><div class="collab-name" title="${esc(c.rtype||'')}">${esc(c.rtype||'')}</div><span class="collab-badge"><i data-lucide="share-2" style="width:12px;height:12px"></i>${c.platform_cnt||plats.length} 平台</span></div><div class="collab-meta"><span>${dots} ${esc(c.platforms||'')}</span><span>平均风险分 ${(c.avg_s||0).toFixed(2)}</span></div></div>`;}).join('');
+  icons();
+}
+async function loadTrend(){
+  let d;try{d=await getJSON(`${API}/dashboard/trends?${qs()}`);}catch(e){return;}
+  const series=d.series||[],agg={};
+  series.forEach(s=>{const m=s.month;if(!m)return;if(!agg[m])agg[m]={c:0,h:0};agg[m].c+=s.cnt||0;agg[m].h+=s.high_cnt||0;});
+  const recent=Object.keys(agg).sort().slice(-15),data=recent.map(m=>agg[m].c?+(agg[m].h/agg[m].c*100).toFixed(1):0);
+  const ctx=$('#trendChart').getContext('2d'),g=ctx.createLinearGradient(0,0,0,250);
+  g.addColorStop(0,'rgba(220,38,38,.30)');g.addColorStop(1,'rgba(220,38,38,0)');
+  charts.push(new Chart($('#trendChart'),{type:'line',data:{labels:recent,datasets:[{label:'高危内容占比',data,borderColor:'#dc2626',backgroundColor:g,borderWidth:2.6,fill:true,tension:.4,pointRadius:2.5,pointHoverRadius:5,pointBackgroundColor:'#dc2626',pointBorderColor:'#fff',pointBorderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{beginAtZero:true,grid:{color:'#eef2f8'},ticks:{callback:v=>v+'%'},title:{display:true,text:'高危内容占比',font:{size:10}}},x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:8}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` 高危占比 ${c.raw}%`}}}}}));
+}
+async function loadRank(){
+  let d;try{d=await getJSON(`${API}/dashboard/accounts/rank?limit=12&${qs()}`);}catch(e){$('#rank').innerHTML='<div class="error">账号榜加载失败</div>';return;}
+  const gc={A:'#16a34a',B:'#d97706',C:'#ea6a1e',D:'#dc2626'},accs=d.accounts||[];
+  if(!accs.length){$('#rank').innerHTML='<div class="empty">暂无账号数据</div>';return;}
+  $('#rank').innerHTML=accs.map((a,i)=>`<a class="rank-row" href="account-engine.html"><div class="rank-no">${i+1}</div><div style="min-width:0"><div class="rank-name">${esc(a.author||'（无名主体）')}</div><div class="rank-meta">${esc(a.platform||'-')} · 高危 ${Math.round((a.high_rate||0)*100)}% · 均分 ${(a.avg_score||0).toFixed(1)}</div></div><div class="rank-grade" style="color:${gc[a.grade]||'#526073'}">${a.grade||'-'}</div></a>`).join('');
+}
+async function loadHotspots(){
+  let d;try{d=await getJSON(`${API}/dashboard/hotspots?limit=12&${qs()}`);}catch(e){$('#hotspots').innerHTML='<div class="error">热点加载失败</div>';return;}
+  const hs=d.hotspots||[];
+  if(!hs.length){$('#hotspots').innerHTML='<div class="empty">暂无高风险内容</div>';return;}
+  $('#hotspots').innerHTML=hs.map(h=>{const col=CORP_LEVEL_COLOR[h.lv]||'#dc2626',href=(h.url&&/^https?:/.test(h.url))?h.url:'#';
+    return `<a class="hot" href="${esc(href)}" target="_blank" rel="noopener" style="border-left-color:${col}"><div class="hot-title">${esc(h.title||'（无标题）')}</div><div class="hot-meta"><span class="pill lvl" style="background:${col}">${esc(h.lv||'')} ${(h.score||0).toFixed(1)}</span><span class="pill">${esc(h.domain||'')}</span><span class="pill">${esc(h.platform||'')}${h.author?' · '+esc(h.author):''}</span></div></a>`;}).join('');
+}
+
+$('#refresh-btn').onclick=loadAll;
+$('#domain-filter').onchange=loadAll;
+$('#platform-filter').onchange=loadAll;
+icons();loadAll();
+</script>
+</body>
+</html>

@@ -21,6 +21,7 @@ import json
 import os
 import re
 import concurrent.futures
+import threading
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")   # 走本地缓存，避免联网拉 embedding 模型
 
@@ -55,6 +56,17 @@ ENABLE_LEVEL_SHIFT = os.environ.get("ENABLE_NIHILISM_LEVEL_SHIFT", "false") == "
 _OPENAI_BASE_URL = os.environ.get("NIHILISM_OPENAI_BASE_URL", "")   # 配自己的 OpenAI 兼容中转地址
 _OPENAI_MODEL = os.environ.get("NIHILISM_OPENAI_MODEL", "gpt-5.5")
 _OPENAI_KEY_FILE = os.environ.get("NIHILISM_OPENAI_KEY_FILE", os.path.expanduser("~/.codex/auth.json"))
+# 出海代理：本机需翻墙才能访问海外端点时配置（如 Clash 的 http://127.0.0.1:7897）。
+# 优先读 NIHILISM_LLM_PROXY，退回标准 HTTPS_PROXY/ALL_PROXY。留空则直连（默认行为不变）。
+_OPENAI_PROXY = (os.environ.get("NIHILISM_LLM_PROXY")
+                 or os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+                 or os.environ.get("ALL_PROXY") or os.environ.get("all_proxy") or "")
+# 本地端点判定（Ollama/vLLM 等）：本地推理无需代理、无需真实密钥。
+_LLM_IS_LOCAL = ("localhost" in _OPENAI_BASE_URL) or ("127.0.0.1" in _OPENAI_BASE_URL)
+# 生成接口风格：chat = OpenAI 兼容 chat.completions（Ollama/vLLM 用）；responses = 官方/中转 Responses API。
+# 未显式配置时：本地端点默认 chat，其余默认 responses。
+_LLM_API = (os.environ.get("NIHILISM_LLM_API", "").lower()
+            or ("chat" if _LLM_IS_LOCAL else "responses"))
 _openai_client = None
 _openai_ready = None   # None=未初始化 / True=可用 / False=不可用（缓存，避免每次重试）
 
@@ -298,17 +310,34 @@ def _parse_llm_judgment(raw: str, candidate_ids: set) -> dict:
             "evidence": evidence, "reason": reason}
 
 
+_openai_init_lock = threading.Lock()
+
+
 def _get_openai_client():
-    """惰性构建 OpenAI 兼容客户端，密钥从 ~/.codex/auth.json 读取。不可用返回 None。"""
+    """惰性构建 OpenAI 兼容客户端，密钥从 ~/.codex/auth.json 读取。不可用返回 None。
+
+    加锁：转写按窗并发研判时多个线程会同时首调，无锁会各建一个客户端
+    （日志里能看到初始化横幅打印多次），白白多开连接池。
+    """
     global _openai_client, _openai_ready
     if _openai_ready is not None:
         return _openai_client
+    with _openai_init_lock:
+        if _openai_ready is not None:      # 等锁期间别的线程已经建好了
+            return _openai_client
+        return _init_openai_client()
+
+
+def _init_openai_client():
+    global _openai_client, _openai_ready
     key = os.environ.get("NIHILISM_OPENAI_API_KEY")
     if not key:
         try:
             key = json.load(open(_OPENAI_KEY_FILE, encoding="utf-8")).get("OPENAI_API_KEY")
         except Exception:
             key = None
+    if not key and _LLM_IS_LOCAL:
+        key = "ollama"   # 本地端点（Ollama/vLLM）不校验密钥，给个占位即可
     if not key:
         _openai_ready = False
         return None
@@ -318,14 +347,43 @@ def _get_openai_client():
         # trust_env=False：绕过 Windows 系统代理（注册表 WinINET 代理）。
         # 系统若配过已关闭的本地代理，httpx 默认会把请求塞去该端口 → ConnectionRefused，
         # 表现为 six_dim_scorer 的 "Connection error." 熔断兜底。
-        _http_client = httpx.Client(trust_env=False, timeout=NIHILISM_LLM_TIMEOUT)
+        # 但海外端点（gpt-5.5 中转）在需翻墙的机器上必须显式走代理，否则直连被墙 → 挂死。
+        # 因此：显式配了 _OPENAI_PROXY 就走它（不受 trust_env 影响），没配才纯直连。
+        # 本地端点（Ollama/vLLM）绝不走代理，否则会把 localhost 也塞进代理导致连不上。
+        _hc_kwargs = dict(trust_env=False, timeout=httpx.Timeout(NIHILISM_LLM_TIMEOUT, connect=15.0))
+        if _OPENAI_PROXY and not _LLM_IS_LOCAL:
+            _hc_kwargs["proxy"] = _OPENAI_PROXY
+        _http_client = httpx.Client(**_hc_kwargs)
         _openai_client = OpenAI(base_url=(_OPENAI_BASE_URL or None), api_key=key, http_client=_http_client)
         _openai_ready = True
-        print(f"✓ 历史虚无六维判分接入 OpenAI 兼容接口：{_OPENAI_MODEL} @ {_OPENAI_BASE_URL or 'openai官方'}")
+        _via = (f"经代理 {_OPENAI_PROXY}" if (_OPENAI_PROXY and not _LLM_IS_LOCAL)
+                else ("本地直连" if _LLM_IS_LOCAL else "直连"))
+        print(f"✓ 历史虚无六维判分接入 OpenAI 兼容接口：{_OPENAI_MODEL} @ {_OPENAI_BASE_URL or 'openai官方'}"
+              + f"（{_via}·{_LLM_API}）")
     except Exception as e:
         print(f"[nihilism_scorer] OpenAI 客户端初始化失败: {e}")
         _openai_client, _openai_ready = None, False
     return _openai_client
+
+
+def llm_generate(client, prompt: str, *, timeout: float = None, max_retries: int = 1) -> str:
+    """统一文本生成入口：按 _LLM_API 选择 chat.completions（Ollama/vLLM）或 responses（官方/中转）。
+    返回模型输出文本（去空白）。异常向上抛出，由各调用点自行兜底/熔断。"""
+    to = NIHILISM_LLM_TIMEOUT if timeout is None else timeout
+    c = client.with_options(timeout=to, max_retries=max_retries)
+    if _LLM_API == "chat":
+        r = c.chat.completions.create(
+            model=_OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+        return ((r.choices[0].message.content if r.choices else "") or "").strip()
+    r = c.responses.create(
+        model=_OPENAI_MODEL,
+        input=[{"role": "user", "content": prompt}],
+        reasoning={"effort": "low"},
+    )
+    return (r.output_text or "").strip()
 
 
 def score_dimensions_with_openai(text: str, hit_subtypes: set) -> dict:
@@ -335,13 +393,8 @@ def score_dimensions_with_openai(text: str, hit_subtypes: set) -> dict:
         return None
     prompt = _build_prompt(text, hit_subtypes)
     try:
-        # input 必须传消息列表（proxy 在并发下会拒绝纯字符串: "Input must be a list"）
-        r = client.with_options(timeout=NIHILISM_LLM_TIMEOUT, max_retries=0).responses.create(
-            model=_OPENAI_MODEL,
-            input=[{"role": "user", "content": prompt}],
-            reasoning={"effort": "low"},
-        )
-        return _parse_llm_judgment((r.output_text or "").strip(), hit_subtypes)
+        raw = llm_generate(client, prompt, max_retries=1)
+        return _parse_llm_judgment(raw, hit_subtypes)
     except Exception as e:
         print(f"[nihilism_scorer] OpenAI 六维判分失败: {e}")
         return None
@@ -429,12 +482,8 @@ def rejudge_zero_dimensions(text: str, zero_dims: list, *, ai_client=None,
     client = _get_openai_client()
     if client is not None:
         try:
-            r = client.with_options(timeout=NIHILISM_LLM_TIMEOUT, max_retries=0).responses.create(
-                model=_OPENAI_MODEL,
-                input=[{"role": "user", "content": prompt}],
-                reasoning={"effort": "low"},
-            )
-            return _parse_rejudge((r.output_text or "").strip(), zero_dims)
+            raw = llm_generate(client, prompt, max_retries=1)
+            return _parse_rejudge(raw, zero_dims)
         except Exception as e:
             print(f"[nihilism_scorer] OpenAI 零维重判失败: {e}")
 

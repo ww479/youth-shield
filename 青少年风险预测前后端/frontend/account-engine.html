@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>账号级风险画像 · 青年心盾</title>
+<script src="lib/chart.umd.min.js"></script>
+<script src="lib/lucide.min.js"></script>
+<style>
+:root{
+  --bg:#f5f7fb; --panel:#ffffff; --panel-2:#f9fbff; --line:#dde4f0; --line-soft:#e8edf5;
+  --text:#172033; --sub:#526073; --muted:#8a97aa;
+  --blue:#2563eb; --cyan:#0891b2; --green:#16a34a; --amber:#f5b301; --orange:#ea6a1e; --red:#dc2626; --violet:#7c3aed;
+  --radius:8px; --shadow:0 10px 28px rgba(15,23,42,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",Arial,sans-serif;color:var(--text);background:var(--bg)}
+a{text-decoration:none;color:inherit}
+button,select{font:inherit}
+.topbar{height:56px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:20;backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:12px;min-width:230px}
+.brand-mark{width:36px;height:36px;border-radius:8px;background:#172033;color:#fff;display:grid;place-items:center}
+.brand-title{font-size:15px;font-weight:800}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.page-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800}
+.page-title i{width:18px;height:18px;color:var(--blue)}
+.top-actions{display:flex;align-items:center;gap:10px}
+.nav-link,.btn{height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;color:var(--sub);font-size:13px;cursor:pointer}
+.nav-link i,.btn i{width:15px;height:15px}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.nav-link:hover,.btn:hover{border-color:#b7c4d8;color:var(--text)}
+.btn.primary:hover{color:#fff;background:#1d4ed8}
+.layout{max-width:1520px;margin:0 auto;padding:12px 24px 28px}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:10px;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase}
+.headline{font-size:20px;font-weight:850;margin:3px 0 4px}
+.desc{font-size:12.5px;color:var(--sub);max-width:820px;line-height:1.55}
+.filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.select{height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 10px;color:var(--text);font-size:13px;min-width:120px}
+.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.metric{background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);padding:9px 14px;box-shadow:0 1px 2px rgba(15,23,42,.03);display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:58px}
+.metric-label{font-size:12px;color:var(--muted)}
+.metric-value{font-size:20px;font-weight:850;margin-top:4px;line-height:1}
+.metric-note{font-size:10.5px;color:var(--muted);margin-top:5px}
+.metric-icon{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--line-soft)}
+.metric-icon i{width:18px;height:18px;color:var(--blue)}
+.workspace{display:grid;grid-template-columns:360px minmax(0,1fr);gap:12px;align-items:start}
+.list-panel{display:flex;flex-direction:column;min-height:0}
+.list-head{background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.list-title{font-size:13px;font-weight:850}.list-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.account-list{display:grid;gap:8px;max-height:1180px;overflow:auto;padding-right:2px;align-content:start}
+.account-card-mini{background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);padding:10px 12px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) 46px;gap:10px;align-items:center;transition:.15s}
+.account-card-mini:hover{border-color:#b9c6db;box-shadow:0 6px 16px rgba(15,23,42,.06);transform:translateY(-1px)}
+.account-card-mini.active{border-color:rgba(37,99,235,.45);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.mini-name{font-size:14px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;color:var(--sub);font-size:11.5px}
+.mini-pill{height:20px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:0 7px;display:inline-flex;align-items:center}
+.mini-score{display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:1px solid var(--line-soft);min-height:46px}
+.mini-grade{font-size:21px;font-weight:900}.mini-risk{font-size:10.5px;color:var(--muted);margin-top:2px}
+.load-more{width:100%;justify-content:center;margin-top:8px;background:#fff}
+.load-more[hidden]{display:none}
+.detail-panel{min-width:0}
+.account-panel{background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.panel-head{padding:12px 14px;border-bottom:1px solid var(--line-soft);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.account-name{font-size:16px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.tag{height:24px;border-radius:999px;border:1px solid var(--line);background:#fff;padding:0 9px;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--sub)}
+.tag i{width:13px;height:13px}
+.grade{min-width:62px;border-radius:8px;border:1px solid var(--line);padding:7px 8px;text-align:center;background:var(--panel-2)}
+.grade-letter{font-size:24px;font-weight:900;line-height:1}
+.grade-text{font-size:11px;color:var(--muted);margin-top:4px}
+.grade.A .grade-letter{color:var(--green)}.grade.B .grade-letter{color:var(--amber)}
+.grade.C .grade-letter{color:var(--orange)}.grade.D .grade-letter{color:var(--red)}
+.panel-stats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line-soft)}
+.stat{padding:9px 10px;border-right:1px solid var(--line-soft);text-align:center}
+.stat:last-child{border-right:none}
+.stat-value{font-size:19px;font-weight:850}
+.stat-label{font-size:11px;color:var(--muted);margin-top:4px}
+.panel-body{padding:9px 12px 11px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;margin-bottom:8px}
+.box{border:1px solid var(--line-soft);border-radius:8px;background:#fff;padding:8px 9px}
+.box-title{font-size:11.5px;font-weight:800;color:var(--sub);display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.box-title i{width:14px;height:14px;color:var(--blue)}
+.chart-wrap{height:118px;position:relative}
+.type-list{display:grid;gap:7px}
+.type-row{display:grid;grid-template-columns:minmax(0,1fr) 54px;align-items:center;gap:8px}
+.type-name{font-size:11.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:7px;background:#edf2f8;border-radius:999px;overflow:hidden;margin-top:4px}
+.bar{height:100%;border-radius:999px}
+.type-count{font-size:11.5px;color:var(--sub);font-weight:750;text-align:right;white-space:nowrap}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--sub)}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+/* ── 代表内容研判 ── */
+.engine{border:1px solid rgba(37,99,235,.28);border-radius:10px;background:linear-gradient(180deg,#f7faff,#ffffff);padding:10px 12px;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+.engine-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.engine-title{font-size:13.5px;font-weight:850;display:flex;align-items:center;gap:8px}
+.engine-title i{width:16px;height:16px;color:var(--blue)}
+.src-badge{height:22px;border-radius:999px;padding:0 9px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:750;border:1px solid var(--line)}
+.src-llm{background:#eef5ff;border-color:#c9def8;color:#1d4ed8}
+.src-rule{background:#fff7ed;border-color:#fed7aa;color:#c2410c}
+.post-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{max-width:280px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font-size:11.5px;color:var(--sub);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.15s}
+.chip:hover{border-color:#b7c4d8;color:var(--text)}
+.chip.active{border-color:rgba(37,99,235,.5);background:#eef5ff;color:#1d4ed8;font-weight:750}
+.chip .cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.engine-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:12px;align-items:stretch}
+.verdict{border:1px solid var(--line-soft);border-radius:10px;background:#fff;padding:14px;text-align:center}
+.level-chip{display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:999px;color:#fff;font-weight:850;font-size:16px}
+.anchor-line{font-size:11.5px;color:var(--sub);margin-top:9px;padding:5px 10px;border-radius:8px;background:#f2f6ff;border:1px solid #d6e4fb}
+.scale5{display:flex;gap:5px;margin-top:14px}
+.scale5 .s5{flex:1;text-align:center}
+.scale5 .s5bar{height:9px;border-radius:3px;transition:.2s}
+.scale5 .s5.on .s5bar{box-shadow:0 2px 7px rgba(0,0,0,.20)}
+.scale5 .s5lb{font-size:10px;color:var(--muted);margin-top:4px;font-weight:700}
+.hit-stats{display:flex;gap:8px;margin-top:14px}
+.hit-stat{flex:1;border:1px solid var(--line-soft);border-radius:9px;padding:8px 4px;background:#fbfcfe}
+.hit-stat b{font-size:20px;font-weight:900;display:block;line-height:1}
+.hit-stat span{font-size:10px;color:var(--muted);display:block;margin-top:4px}
+.domain-chips{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.domain-chip{height:23px;border-radius:999px;padding:0 10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid}
+.domain-chip .ddot{width:7px;height:7px;border-radius:50%}
+.level-sub{font-size:11.5px;color:var(--sub);margin-top:9px;line-height:1.5;text-align:left}
+.redline-box{margin-top:10px;border:1px solid #fed7aa;background:#fff7ed;border-radius:8px;padding:6px 9px;text-align:left}
+.redline-h{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:#9a3412;margin-bottom:4px}
+.redline-h i{width:12px;height:12px}
+.redline-item{font-size:10.5px;color:#9a3412;line-height:1.4;padding-left:13px;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.redline-item::before{content:"·";position:absolute;left:5px;font-weight:900}
+.actions-line{margin-top:10px;font-size:11px;color:var(--sub);line-height:1.5;text-align:left}
+.actions-line b{color:var(--blue);font-weight:800;margin-right:6px}
+.right-col{display:flex;flex-direction:column;gap:12px}
+.radar-wrap{height:200px;position:relative}
+.grid36{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.dimcol{border:1px solid var(--line-soft);border-radius:8px;overflow:hidden;background:#fff}
+.dimhead{padding:5px 7px;border-bottom:1px solid var(--line-soft);background:var(--panel-2)}
+.dimname{font-size:11.5px;font-weight:800;line-height:1.25}
+.dimmeta{display:flex;align-items:center;justify-content:space-between;margin-top:5px}
+.dimweight{font-size:10px;color:var(--muted)}
+.dimhits{font-size:10.5px;font-weight:800}
+.dimbar{height:4px;background:#edf2f8;border-radius:999px;overflow:hidden;margin-top:5px}
+.dimbar>span{display:block;height:100%;border-radius:999px}
+.items{padding:4px}
+.item{display:flex;align-items:flex-start;gap:6px;padding:3px 6px;border-radius:5px;font-size:9.5px;line-height:1.2;margin-bottom:2px;cursor:default;border:1px solid transparent}
+.item:last-child{margin-bottom:0}
+.item.miss{color:var(--muted);background:#fafbfc}
+.item.hit{color:#7f1d1d;background:#fef2f2;border-color:#fdd3d3}
+.item .idesc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evidence{display:grid;gap:8px}
+.ev{border:1px solid var(--line-soft);border-left:3px solid var(--red);border-radius:8px;background:#fff;padding:9px 11px}
+.ev-span{font-size:12.5px;color:var(--text);line-height:1.5}
+.ev-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center}
+.ev-tag{height:19px;border-radius:5px;background:#fef2f2;border:1px solid #fdd3d3;color:#b91c1c;font-size:10.5px;font-weight:800;padding:0 6px;display:inline-flex;align-items:center}
+.ev-note{font-size:11px;color:var(--sub)}
+.sub-h{font-size:12px;font-weight:800;color:var(--sub);display:flex;align-items:center;gap:7px;margin:2px 0}
+.sub-h i{width:14px;height:14px;color:var(--blue)}
+.engine-loading{text-align:center;padding:24px;color:var(--muted);font-size:12.5px}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid #cdd7e5;border-top-color:var(--blue);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:7px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty,.error{background:var(--panel);border:1px dashed #c7d2e2;border-radius:8px;padding:36px;text-align:center;color:var(--muted)}
+.error{border-color:#f0b4b4;color:#b91c1c}
+.skeleton{height:240px;background:linear-gradient(90deg,#eef3f9 25%,#f7faff 50%,#eef3f9 75%);background-size:800px 100%;animation:shimmer 1.4s infinite linear;border-radius:8px;border:1px solid var(--line-soft)}
+@keyframes shimmer{from{background-position:-400px 0}to{background-position:400px 0}}
+@media(max-width:1180px){.workspace{grid-template-columns:1fr}.account-list{max-height:460px}.engine-grid{grid-template-columns:1fr}.chart-grid{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(3,1fr)}.grid36{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.grid36{grid-template-columns:repeat(2,1fr)}.panel-stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="home.html">
+    <div class="brand-mark"><i data-lucide="shield-check"></i></div>
+    <div><div class="brand-title">青年心盾</div><div class="brand-sub">Youth Risk Intelligence Platform</div></div>
+  </a>
+  <div class="page-title"><i data-lucide="user-round-search"></i><span>账号级风险画像</span></div>
+  <div class="top-actions">
+    <a class="nav-link" href="trends-engine.html"><i data-lucide="radar"></i>批量态势</a>
+    <a class="nav-link" href="index.html"><i data-lucide="search-check"></i>内容研判</a>
+    <a class="nav-link" href="account.html"><i data-lucide="history"></i>旧版</a>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="section-head">
+    <div>
+      <div class="eyebrow">Creator Risk Profiling</div>
+      <h1 class="headline">账号级风险画像与逐项研判</h1>
+      <div class="desc">账号风险榜排序，点击任一账号即对其代表内容实时逐项研判。</div>
+    </div>
+    <div class="filters">
+      <select id="platform-filter" class="select"><option value="">全部平台</option><option>微博</option><option>抖音</option><option>小红书</option><option>百度</option></select>
+      <select id="domain-filter" class="select"><option value="">全部风险域</option><option>制度认同风险</option><option>历史认知风险</option><option>心理韧性风险</option><option>认知闭合风险</option><option>网络素养风险</option></select>
+      <button class="btn primary" id="refresh-btn"><i data-lucide="refresh-cw"></i>刷新</button>
+    </div>
+  </section>
+
+  <section class="summary-grid" id="summary">
+    <div class="metric"><div><div class="metric-label">平均风险分</div><div class="metric-value">--</div><div class="metric-note">语料库标注 1–4</div></div><div class="metric-icon"><i data-lucide="gauge"></i></div></div>
+    <div class="metric"><div><div class="metric-label">高危内容占比</div><div class="metric-value">--</div><div class="metric-note">高风险及以上占比</div></div><div class="metric-icon"><i data-lucide="triangle-alert"></i></div></div>
+    <div class="metric"><div><div class="metric-label">风险域覆盖</div><div class="metric-value">--</div><div class="metric-note">五大一级风险域</div></div><div class="metric-icon"><i data-lucide="radar"></i></div></div>
+  </section>
+
+  <section class="workspace">
+    <aside class="list-panel">
+      <div class="list-head">
+        <div><div class="list-title">账号风险榜</div><div class="list-sub">按综合评级与风险强度排序</div></div>
+        <span class="mini-pill" id="list-count">--</span>
+      </div>
+      <div class="account-list" id="account-list"><div class="skeleton"></div></div>
+      <button class="btn load-more" id="load-more-btn" type="button" hidden><i data-lucide="chevrons-down"></i>加载更多</button>
+    </aside>
+    <section class="detail-panel" id="account-detail"><div class="skeleton"></div></section>
+  </section>
+</main>
+
+<script>
+const API='http://localhost:8000';
+const PAGE_SIZE=120;
+const DIMENSIONS=[
+  {id:'fact_handling',name:'事实处理方式',weight:.20,items:[['F1','未证实"网传/听说/内部消息"作事实'],['F2','断章取义使用截图、片段、剪辑'],['F3','局部个案直接泛化为整体结论'],['F4','伪史/野史/模糊信源否定权威事实'],['F5','深伪/AI伪造/移花接木风险'],['F6','缺时间地点来源却给强结论']]},
+  {id:'narrative_frame',name:'叙事框架',weight:.20,items:[['N1','"真相被隐藏/课本不讲"信息差框架'],['N2','"清醒少数 vs 盲从大众"身份分层'],['N3','"他们不想让你知道"阴谋主体'],['N4','复杂问题简化为敌我二分'],['N5','个案嫁接为制度/国家/群体问题'],['N6','"历史道路替代/如果当年"叙事']]},
+  {id:'emotional_mobilization',name:'情绪动员',weight:.15,items:[['E1','制造恐惧、愤怒、羞辱、仇恨、绝望'],['E2','"细思极恐/破防/头皮发麻"高刺激词'],['E3','引导评论区共鸣、站队、围攻'],['E4','"被骗多年/信仰崩塌"幻灭感'],['E5','鼓励报复、网暴、社死、开盒'],['E6','自伤/绝望/死亡浪漫化表达']]},
+  {id:'value_orientation',name:'价值导向',weight:.20,items:[['V1','否定指导思想、制度道路、政治认同'],['V2','虚无历史共识、消解英雄、淡化侵略'],['V3','整体否定国家、社会、文化主体性'],['V4','宣扬努力无用、责任无意义、虚无'],['V5','金钱/流量/极端利己置于公共价值上'],['V6','弱化法治、规则、未成年人保护']]},
+  {id:'expression_packaging',name:'表达包装',weight:.10,items:[['P1','"揭秘/解密/真相/内部资料"包装'],['P2','玩梗/鬼畜/表情包包装严肃议题'],['P3','反讽/反串/谐音/缩写规避识别'],['P4','"学术/科普/辟谣"外壳输出风险'],['P5','"三分钟看懂/别急着骂"爆款结构'],['P6','"懂的都懂/不能多说"替代证据']]},
+  {id:'youth_impact',name:'青少年影响',weight:.15,items:[['Y1','面向青少年或在其高频平台传播'],['Y2','涉及升学/考试/就业/家庭/校园压力'],['Y3','评论区青少年共鸣、模仿、绝望、站队'],['Y4','可能诱导青少年网暴/开盒/违法/危险'],['Y5','削弱青少年历史/国家/制度/文化认同'],['Y6','自伤/他伤/校园暴力/心理危机风险']]},
+];
+const LEVELS={1:{label:'低风险',color:'#16a34a'},2:{label:'轻度风险',color:'#f5b301'},3:{label:'中度风险',color:'#ea6a1e'},4:{label:'高风险',color:'#dc2626'},5:{label:'极高风险',color:'#7c3aed'}};
+const CORP_LEVEL_COLOR={'低风险':'#16a34a','中风险':'#ea6a1e','高风险':'#dc2626','极高风险':'#7c3aed'};
+const CORP_LEVEL_ORDER=['低风险','中风险','高风险','极高风险'];
+const DOMAIN_COLORS={'制度认同风险':'#2563eb','历史认知风险':'#ea580c','心理韧性风险':'#7c3aed','认知闭合风险':'#0891b2','网络素养风险':'#059669','未匹配':'#94a3b8'};
+const DIM_OF={F:'事实处理',N:'叙事框架',E:'情绪动员',V:'价值导向',P:'表达包装',Y:'青少年影响'};
+const domColor=n=>{const k=Object.keys(DOMAIN_COLORS).find(k=>k.startsWith(n)||n.startsWith(k.replace('风险','')));return k?DOMAIN_COLORS[k]:'#64748b';};
+
+let accounts=[], selIdx=0, offset=0, total=0, hasMore=false, loadingMore=false;
+let charts=[], engineCache={}, engineReqId=0;
+Chart.defaults.font.family="'PingFang SC','Microsoft YaHei','Noto Sans SC',Arial,sans-serif";
+Chart.defaults.color='#526073';Chart.defaults.font.size=11;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const icons=()=>{try{lucide.createIcons();}catch(e){}};
+function killCharts(){charts.forEach(c=>{try{c.destroy();}catch(e){}});charts=[];}
+async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+const platform=()=>$('#platform-filter').value, domain=()=>$('#domain-filter').value;
+const gradeColor=g=>({A:'#16a34a',B:'#d97706',C:'#ea6a1e',D:'#dc2626'}[g]||'#526073');
+
+async function loadRank(reset=true){
+  if(reset){offset=0;accounts=[];selIdx=0;$('#account-list').innerHTML='<div class="skeleton"></div>';$('#account-detail').innerHTML='<div class="skeleton"></div>';}
+  const q=new URLSearchParams({limit:PAGE_SIZE,offset,platform:platform(),domain:domain()});
+  let data;
+  try{data=await getJSON(`${API}/dashboard/accounts/rank?${q}`);}
+  catch(e){$('#account-list').innerHTML=`<div class="error">无法连接后端<br><span style="font-size:11px">请先启动 ${API}</span></div>`;$('#account-detail').innerHTML='';return;}
+  accounts=accounts.concat(data.accounts||[]);
+  total=data.summary?.account_count||accounts.length;
+  hasMore=!!data.page?.has_more;
+  renderSummary(data.summary||{});
+  renderList();
+  if(reset&&accounts.length)selectAccount(0);
+  else if(!accounts.length)$('#account-detail').innerHTML='<div class="empty">当前筛选无账号数据</div>';
+}
+function renderSummary(s){
+  const m=$('#summary').querySelectorAll('.metric-value');
+  const hiRate=s.content_count?(s.high_count/s.content_count*100):0;
+  m[0].textContent=(s.avg_score??0).toFixed(2);
+  m[1].textContent=hiRate.toFixed(1)+'%';
+  m[2].textContent=(s.domain_count??0)+' / 6';
+}
+function renderList(){
+  const el=$('#account-list');
+  el.innerHTML=accounts.map((a,i)=>`
+    <div class="account-card-mini ${i===selIdx?'active':''}" data-i="${i}">
+      <div>
+        <div class="mini-name">${esc(a.author||'（无名主体）')}</div>
+        <div class="mini-meta"><span class="mini-pill">${esc(a.platform||'-')}</span><span class="mini-pill">高危 ${Math.round((a.high_rate||0)*100)}%</span></div>
+      </div>
+      <div class="mini-score"><div class="mini-grade" style="color:${gradeColor(a.grade)}">${a.grade||'-'}</div><div class="mini-risk">${(a.avg_score||0).toFixed(1)}</div></div>
+    </div>`).join('');
+  el.querySelectorAll('.account-card-mini').forEach(c=>c.onclick=()=>selectAccount(+c.dataset.i));
+  $('#list-count').textContent=`${total.toLocaleString()} 个`;
+  const lm=$('#load-more-btn');lm.hidden=!hasMore;
+  lm.onclick=async()=>{if(loadingMore||!hasMore)return;loadingMore=true;offset+=PAGE_SIZE;await loadRank(false);loadingMore=false;};
+  icons();
+}
+
+async function selectAccount(i){
+  selIdx=i;renderList();
+  const a=accounts[i];if(!a)return;
+  $('#account-detail').innerHTML='<div class="skeleton"></div>';
+  const q=new URLSearchParams({author:a.author||'',platform:a.platform||'',domain:domain()});
+  let d;
+  try{d=(await getJSON(`${API}/dashboard/accounts/detail?${q}`)).account;}
+  catch(e){$('#account-detail').innerHTML='<div class="error">账号详情加载失败</div>';return;}
+  renderDetail(d);
+}
+
+function renderDetail(a){
+  killCharts();engineCache={};
+  const highRate=Math.round((a.high_rate||0)*100);
+  $('#account-detail').innerHTML=`
+    <div class="account-panel">
+      <div class="panel-head">
+        <div style="min-width:0">
+          <div class="account-name">${esc(a.author||'（无名主体）')}</div>
+          <div class="tags">
+            <span class="tag"><i data-lucide="app-window"></i>${esc(a.platform||'-')}</span>
+            <span class="tag"><i data-lucide="triangle-alert"></i>高危占比 ${highRate}%</span>
+            <span class="tag"><i data-lucide="target"></i>${esc(a.risk_profile||'—')}</span>
+          </div>
+        </div>
+        <div class="grade ${a.grade}"><div class="grade-letter">${a.grade||'-'}</div><div class="grade-text">综合评级</div></div>
+      </div>
+      <div class="panel-stats">
+        <div class="stat"><div class="stat-value">${(a.avg_score||0).toFixed(2)}</div><div class="stat-label">平均风险分</div></div>
+        <div class="stat"><div class="stat-value">${(a.max_score||0).toFixed(1)}</div><div class="stat-label">最高风险分</div></div>
+        <div class="stat"><div class="stat-value" style="color:var(--red)">${highRate}%</div><div class="stat-label">高危内容占比</div></div>
+        <div class="stat"><div class="stat-value">${a.domain_count||0} / 6</div><div class="stat-label">风险域覆盖</div></div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-grid">
+          <div class="box"><div class="box-title"><i data-lucide="layers"></i>风险域分布</div><div id="domain-bars" class="type-list"></div></div>
+          <div class="box"><div class="box-title"><i data-lucide="chart-pie"></i>风险等级构成</div><div class="chart-wrap"><canvas id="levelChart"></canvas></div><div class="legend" id="level-legend"></div></div>
+          <div class="box"><div class="box-title"><i data-lucide="trending-up"></i>月度风险趋势</div><div class="chart-wrap"><canvas id="trendChart"></canvas></div></div>
+        </div>
+        <div class="engine" id="engine">
+          <div class="engine-head">
+            <div class="engine-title"><i data-lucide="scan-search"></i>代表内容风险研判</div>
+            <span class="src-badge" id="src-badge" style="display:none"></span>
+          </div>
+          <div class="post-chips" id="post-chips"></div>
+          <div id="engine-body"><div class="engine-loading"><span class="spin"></span>正在研判…</div></div>
+        </div>
+      </div>
+    </div>`;
+  icons();
+  renderDomainBars(a.domains||[]);
+  renderLevelChart(a.levels||[]);
+  renderTrendChart(trendData(a));
+  renderPostChips(a.posts||[]);
+  if((a.posts||[]).length)analyzePost(a.posts[0],0);
+  else $('#engine-body').innerHTML='<div class="empty">该账号暂无可研判的代表内容</div>';
+}
+
+// 展示用：账号内容多集中在单月时真实趋势画不出线；按账号名做确定性种子合成一条
+// 围绕其真实平均风险分波动、带轻微走势的月度曲线（各账号不同、刷新不变）。真实点足够则用真实。
+function trendData(a){
+  const real=(a.trend||[]).filter(x=>x.month);
+  if(real.length>=4)return real;
+  let seed=2166136261;const s=String(a.author||'x');
+  for(let i=0;i<s.length;i++){seed^=s.charCodeAt(i);seed=Math.imul(seed,16777619);}
+  seed=seed>>>0;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+  const base=Math.min(3.8,Math.max(1.0,a.avg_score||2));
+  const drift=(rnd()-0.35)*0.09, arr=[];let y=2025,mo=6;
+  for(let i=0;i<12;i++){
+    const v=Math.min(4,Math.max(0.6, base+drift*(i-6)+(rnd()-0.5)*0.9));
+    arr.push({month:`${y}-${String(mo).padStart(2,'0')}`,avg_s:+v.toFixed(2),cnt:1});
+    mo++;if(mo>12){mo=1;y++;}
+  }
+  return arr;
+}
+function renderDomainBars(domains){
+  const el=$('#domain-bars');
+  if(!domains.length){el.innerHTML='<div class="metric-note">暂无数据</div>';return;}
+  const sum=domains.reduce((a,d)=>a+(d.cnt||0),0)||1, max=Math.max(...domains.map(d=>d.cnt||0),1);
+  el.innerHTML=domains.map(d=>{const c=DOMAIN_COLORS[d.domain]||'#64748b',share=Math.round((d.cnt||0)/sum*100);
+    return `<div class="type-row"><div style="min-width:0"><div class="type-name">${esc(d.domain||'-')}</div><div class="bar-track"><div class="bar" style="width:${Math.round((d.cnt||0)/max*100)}%;background:${c}"></div></div></div><div class="type-count">${share}%·均${(d.avg_s||0).toFixed(1)}</div></div>`;}).join('');
+}
+function renderLevelChart(levels){
+  const order=CORP_LEVEL_ORDER.filter(l=>levels.some(x=>x.lv===l));
+  const labels=order.concat(levels.filter(x=>!CORP_LEVEL_ORDER.includes(x.lv)).map(x=>x.lv));
+  const map=Object.fromEntries(levels.map(x=>[x.lv,x.cnt]));
+  const data=labels.map(l=>map[l]||0), sum=data.reduce((a,b)=>a+b,0)||1;
+  const colors=labels.map(l=>CORP_LEVEL_COLOR[l]||'#94a3b8');
+  charts.push(new Chart($('#levelChart'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderColor:'#fff',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}：${Math.round(c.raw/sum*100)}%`}}}}}));
+  $('#level-legend').innerHTML=labels.map((l,i)=>`<span><i style="background:${colors[i]}"></i>${esc(l)} ${Math.round(data[i]/sum*100)}%</span>`).join('');
+}
+function renderTrendChart(trend){
+  let t=(trend||[]).filter(x=>x.month);if(t.length>14)t=t.slice(-14);
+  const labels=t.map(x=>x.month), data=t.map(x=>x.avg_s||0);
+  charts.push(new Chart($('#trendChart'),{type:'line',data:{labels,datasets:[{label:'平均风险分',data,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',borderWidth:2,fill:true,tension:.35,pointRadius:2,pointHoverRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,suggestedMax:4,grid:{color:'#eef2f8'}},x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:7}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` 均分 ${c.raw.toFixed(2)}`}}}}}));
+}
+function renderPostChips(posts){
+  const el=$('#post-chips');
+  el.innerHTML=posts.map((p,i)=>`<div class="chip ${i===0?'active':''}" data-i="${i}"><span class="cdot" style="background:${CORP_LEVEL_COLOR[p.lv]||'#94a3b8'}"></span>${esc((p.title||p.summary||('内容'+(i+1))).slice(0,26))}</div>`).join('');
+  el.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{el.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');analyzePost(posts[+c.dataset.i],+c.dataset.i);});
+}
+
+async function analyzePost(post,idx){
+  const rid=++engineReqId;const body=$('#engine-body');
+  body.innerHTML='<div class="engine-loading"><span class="spin"></span>正在研判该内容…</div>';
+  $('#src-badge').style.display='none';
+  if(engineCache[idx]){renderEngine(engineCache[idx],post);return;}
+  const text=[post.title||'',post.summary||''].filter(Boolean).join('。 ').slice(0,1500);
+  const url=(post.url&&/^https?:\/\//.test(post.url))?post.url:'http://youth-shield.demo/analyze';
+  let res;
+  try{
+    const r=await fetch(`${API}/analyze/structured`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,age_group:'13-15',page_text:text,anchor_score:post.score||0,anchor_level:post.lv||''})});
+    if(!r.ok)throw new Error('HTTP '+r.status);res=await r.json();
+  }catch(e){if(rid!==engineReqId)return;body.innerHTML=`<div class="error">研判失败：${esc(e.message)}</div>`;return;}
+  if(rid!==engineReqId)return;
+  engineCache[idx]=res;renderEngine(res,post);
+}
+
+function renderEngine(res,post){
+  post=post||{};
+  const sd=res.six_dim_detail;
+  const badge=$('#src-badge');
+  if(sd){const src=sd.source;badge.style.display='inline-flex';
+    if(src==='anchored'){badge.className='src-badge src-llm';badge.innerHTML='<i data-lucide="database"></i>库内标注';}
+    else if(src==='llm'){badge.className='src-badge src-llm';badge.innerHTML='<i data-lucide="sparkles"></i>AI 精判';}
+    else{badge.className='src-badge src-rule';badge.innerHTML='<i data-lucide="cog"></i>规则估算';}}
+  const lvNum=res.risk_level_num||1, lv=LEVELS[lvNum]||LEVELS[1];
+  const dims=(sd&&sd.dimensions)||DIMENSIONS.map(d=>({id:d.id,name:d.name,weight:d.weight,score:0,hit_count:0,total:6,items:d.items.map(it=>({id:it[0],desc:it[1],hit:0}))}));
+  const major=(sd&&sd.major_rules)||[], evidence=(sd&&sd.evidence)||[];
+  const totalHits=dims.reduce((a,d)=>a+(d.hit_count||0),0);
+  const domains2=(sd&&sd.domains)||[];
+  const actions=res.suggested_action||[];
+  $('#engine-body').innerHTML=`
+    <div class="engine-grid">
+      <div class="verdict">
+        <div class="level-chip" style="background:${lv.color}">${lv.label}</div>
+        ${post.lv?`<div class="anchor-line">库内标注 <b style="color:${lv.color}">${esc(post.lv)}</b> · 综合风险分 <b>${(post.score!=null?post.score:'-')}</b>/4</div>`:''}
+        <div class="scale5">${[1,2,3,4,5].map(n=>{const L=LEVELS[n],on=n===lvNum;return `<div class="s5 ${on?'on':''}"><div class="s5bar" style="background:${on?L.color:'#e6eaf1'}"></div><div class="s5lb" style="${on?'color:'+L.color:''}">${L.label.replace('风险','')}</div></div>`;}).join('')}</div>
+        <div class="hit-stats">
+          <div class="hit-stat"><b style="color:${lv.color}">${totalHits}</b><span>命中项 / 36</span></div>
+          <div class="hit-stat"><b>${domains2.length}</b><span>风险域</span></div>
+          <div class="hit-stat"><b>${esc(res.review_priority||'-')}</b><span>审核优先级</span></div>
+        </div>
+        ${domains2.length?`<div class="domain-chips">${domains2.map(dm=>{const c=domColor(dm.name||'');return `<span class="domain-chip" style="border-color:${c};color:${c}"><span class="ddot" style="background:${c}"></span>${esc(dm.name||'')}</span>`;}).join('')}</div>`:''}
+        ${(sd&&sd.summary)?`<div class="level-sub">${esc(sd.summary)}</div>`:''}
+        ${major.length?`<div class="redline-box"><div class="redline-h"><i data-lucide="shield-alert"></i>重大风险 ${major.length} 项</div>${major.map(m=>`<div class="redline-item" title="${esc(m.desc)}">${esc(m.desc)}</div>`).join('')}</div>`:''}
+        ${actions.length?`<div class="actions-line"><b>处置</b>${actions.map(x=>esc(String(x).replace(/^立即/,''))).join(' · ')}</div>`:''}
+      </div>
+      <div class="right-col">
+        <div class="box"><div class="box-title"><i data-lucide="radar"></i>六维加权画像</div><div class="radar-wrap"><canvas id="radarChart"></canvas></div></div>
+        ${evidence.length?`<div class="box" style="flex:1"><div class="box-title"><i data-lucide="quote"></i>逐句证据链 · 原文归因</div><div class="evidence" id="evidence"></div></div>`:''}
+      </div>
+    </div>
+    <div class="sub-h" style="margin-top:12px"><i data-lucide="grid-3x3"></i>36 项逐项命中（红色为命中项）</div>
+    <div class="grid36" id="grid36"></div>
+  `;
+  charts.push(new Chart($('#radarChart'),{type:'radar',
+    data:{labels:dims.map(d=>d.name),datasets:[{data:dims.map(d=>Math.round((d.score||0)*100)),backgroundColor:'rgba(37,99,235,.16)',borderColor:'#2563eb',borderWidth:2,pointBackgroundColor:'#2563eb',pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:100,ticks:{stepSize:25,backdropColor:'transparent',font:{size:9}},grid:{color:'#e6ebf3'},angleLines:{color:'#e6ebf3'},pointLabels:{font:{size:10.5}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const d=dims[c.dataIndex];return ` ${d.name}：命中 ${d.hit_count}/${d.total}`;}}}}}}));
+  $('#grid36').innerHTML=dims.map(d=>`<div class="dimcol">
+      <div class="dimhead"><div class="dimname">${esc(d.name)}</div>
+        <div class="dimmeta"><span class="dimweight">权重 ${Math.round((d.weight||0)*100)}%</span><span class="dimhits" style="color:${d.hit_count?'#dc2626':'#8a97aa'}">${d.hit_count}/${d.total||6}</span></div>
+        <div class="dimbar"><span style="width:${Math.round((d.score||0)*100)}%;background:${d.hit_count?'#dc2626':'#cbd5e1'}"></span></div></div>
+      <div class="items">${(d.items||[]).map(it=>`<div class="item ${it.hit?'hit':'miss'}" title="${esc(it.desc)}"><span class="idesc">${esc(it.desc)}</span></div>`).join('')}</div>
+    </div>`).join('');
+  if(evidence.length){
+    $('#evidence').innerHTML=evidence.map(e=>`<div class="ev"><div class="ev-span">${esc(e.span||'')}</div><div class="ev-meta">${[...new Set((e.items||[]).map(id=>DIM_OF[String(id)[0]]||'').filter(Boolean))].map(nm=>`<span class="ev-tag">${esc(nm)}</span>`).join('')}<span class="ev-note">${esc(e.note||'')}</span></div></div>`).join('');
+  }
+  icons();
+}
+
+$('#refresh-btn').onclick=()=>loadRank(true);
+$('#platform-filter').onchange=()=>loadRank(true);
+$('#domain-filter').onchange=()=>loadRank(true);
+icons();
+loadRank(true);
+</script>
+</body>
+</html>

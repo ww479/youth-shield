@@ -4,15 +4,34 @@
 
 彻底取代旧 nihilism_scorer 的历史虚无 rubric：
 - 六维、每维 6 个可观测 0/1 命中项（F/N/E/V/P/Y 各 6 项，共 36 项）；
-- 维度得分 = 命中数 / 6（平均，保证公平）；
+- 维度得分 = 命中项数走饱和曲线（1项0.45 / 2项0.70 / 3项0.85 / 4项0.95 / 5-6项1.0，见 DIM_SCORE_CURVE）；
 - 加权求和 ×100 = RiskPercent（权重：事实0.20 叙事0.20 情绪0.15 价值0.20 包装0.10 青少年0.15）；
 - 对所有内容都可跑，不再绑定“历史认知”单域。
 
 判定由 OpenAI 兼容接口（复用 nihilism_scorer 的客户端）逐项给 0/1；接口不可用时回退轻量启发式，保证不 500。
 """
 import json
+import os
 import re
 import time
+import hashlib
+try:
+    import major_lexicon   # 数据驱动的重大风险 M1-M11 关键词词库（挖掘自 2.5 万条标注样本）
+except Exception:
+    major_lexicon = None
+try:
+    import major_examples  # M1-M11 代表性示例语料（每规则 3 条，来自 t_major_risk_sample），做提示词语义锚点
+except Exception:
+    major_examples = None
+
+# 红线顶格开关：默认关（保持保守定级），MAJOR_TOPGRADE=on 时重大风险按其严重级顶格
+_MAJOR_TOPGRADE = os.environ.get("MAJOR_TOPGRADE", "").lower() in ("1", "on", "true", "yes")
+# 语义样本库检测器（由 main.py 在向量库构建后注入；离线时为 None，自动跳过）
+_semantic_major_detector = None
+def init_semantic_major(fn):
+    """注入基于 t_major_risk_sample 向量库的重大风险语义检测函数 fn(text)->list[M]。"""
+    global _semantic_major_detector
+    _semantic_major_detector = fn
 
 import nihilism_scorer  # 复用其 OpenAI 兼容客户端与超时配置
 
@@ -69,6 +88,41 @@ DIMENSIONS = [
 ]
 
 _ALL_ITEM_IDS = [iid for d in DIMENSIONS for iid, _ in d["items"]]
+
+# ── 维度得分曲线：命中项数 → 维度得分（0-1）──
+# 原来是线性的"命中数 ÷ 6"，导致六维几乎不可能独立定到高风险：要到 L4 得命中 22/36 项、
+# L5 得 29/36 项，而真实内容（含极高风险语料）实测只命中 5-8 项，全部落在 L1，
+# 只能靠红线顶格。而 36 项里本来就有大量互斥项（深伪、自伤浪漫化、校园暴力…），
+# 一段历史虚无内容根本不涉及，"命中 22 项"实际不可达。
+# 改成饱和曲线：某维只要出现命中就贡献大部分权重，多命中再小幅递增。这样"跨多个维度
+# 触及"能真正抬高分数 —— 同时动摇事实/叙事/价值三层，本就比在单一维度堆 6 项更危险。
+# 实测（LLM 判定）：极高风险语料 5 项/3 维 由 16.7%(L1) → 37.0%(L2)；
+# 低风险语料 0-2 项仍为 0-18%(L1)，无误报。
+DIM_SCORE_CURVE = [0.0, 0.45, 0.70, 0.85, 0.95, 1.0, 1.0]
+
+
+def dim_score(hit_n: int, total: int = 6) -> float:
+    """某维命中 hit_n 项时的维度得分（0-1）。total 非 6 时按比例折算到曲线上。"""
+    try:
+        hit_n = int(hit_n)
+    except Exception:
+        hit_n = 0
+    if hit_n <= 0:
+        return 0.0
+    if total and total != 6:                      # 兼容非 6 项维度（目前没有）
+        hit_n = round(hit_n / total * 6)
+    return DIM_SCORE_CURVE[min(max(hit_n, 0), 6)]
+
+
+def _uniq_keep(seq) -> list:
+    """按出现顺序去重（合并规则/AI 结果时保序）。"""
+    seen, out = set(), []
+    for x in seq or []:
+        if x and x not in seen:
+            seen.add(x); out.append(x)
+    return out
+
+
 _ITEM_DESC = {iid: desc for d in DIMENSIONS for iid, desc in d["items"]}
 
 # ── 一票否决（8 类）：命中即高危，硬 5 级 or 4-5 级 ──
@@ -148,7 +202,7 @@ def decide_level(risk_percent: float, veto: list, major: list, *,
     if major:
         n = len(major)
         m_max = max((MAJOR_LEVEL.get(m, 4) for m in major), default=base)
-        if risk_percent >= 40 or veto:
+        if risk_percent >= 40 or veto or _MAJOR_TOPGRADE:
             m_lvl = 5 if n >= 4 else (min(5, m_max + 1) if n >= 2 else m_max)
             lvl = max(lvl, m_lvl); applied.append("重大风险规则")
         else:
@@ -164,6 +218,25 @@ def decide_level(risk_percent: float, veto: list, major: list, *,
             "major_ideological_risk": bool(major)}
 
 
+# M1-M11 提示词块：在规则名后附语料挖掘的代表性话术做「语义锚点」。
+# STRONG_PHRASES 是静态数据，模块级缓存一次，_build_prompt 直接拼接，零每请求开销。
+_MAJOR_PROMPT_BLOCK = None
+def _major_prompt_block() -> str:
+    global _MAJOR_PROMPT_BLOCK
+    if _MAJOR_PROMPT_BLOCK is not None:
+        return _MAJOR_PROMPT_BLOCK
+    strong = getattr(major_examples, "MAJOR_EXAMPLES", {}) if major_examples else {}
+    lines = []
+    for mid, desc, _ in MAJOR_RULES:
+        egs = [p for p in strong.get(mid, []) if p][:3]
+        if egs:
+            lines.append(f"{mid}：{desc}（示例话术：{' ｜ '.join(egs)}）")
+        else:
+            lines.append(f"{mid}：{desc}")
+    _MAJOR_PROMPT_BLOCK = "\n".join(lines)
+    return _MAJOR_PROMPT_BLOCK
+
+
 def _build_prompt(text: str) -> str:
     lines = []
     for d in DIMENSIONS:
@@ -172,34 +245,43 @@ def _build_prompt(text: str) -> str:
             lines.append(f"{iid}：{desc}")
     checklist = "\n".join(lines)
     veto_list = "\n".join(f"{vid}：{desc}" for vid, desc, _ in VETO_RULES)
-    major_list = "\n".join(f"{mid}：{desc}" for mid, desc, _ in MAJOR_RULES)
+    major_list = _major_prompt_block()
     return f"""你是青少年网络内容意识形态风险审核专家。请依据《青少年五大意识形态风险域统一命中规则》，对下面的内容做三部分判定。
 
 判定规则：
-- 六维命中项每项只回答 0 或 1：命中=1，未命中=0。
-- 仅依据内容本身的事实、叙事、情绪、价值、包装、受众信号判定，宁缺毋滥，没有明确证据一律判 0。
-- 保护性语境（正规新闻、学术、课堂、辟谣、心理求助、权威历史科普等且无恶意包装）应从严判 0。
+- 六维命中项：逐一检查全部 36 项，把**所有**符合的编号都列出来（一条内容常同时命中多项，
+  不要只列一两个就停；长文本往往在多个维度都有信号）。
+- 判定依据是内容本身的事实、叙事、情绪、价值、包装、受众信号；有对应表述就列，不要漏。
+- 只有保护性语境（正规新闻、学术、课堂、辟谣、心理求助、权威历史科普等且无恶意包装）才从严不列。
 - 一票否决与重大风险规则只列出“确实命中”的编号，没有则给空数组。
 
-一、六维 36 个命中项（0/1）：
+一、六维 36 个命中项（逐项检查，列出所有命中的编号）：
 {checklist}
 
 二、一票否决类别（命中则列编号）：
 {veto_list}
 
 三、重大意识形态风险 M1-M11（命中则列编号）：
+（每条规则后的“示例话术”仅帮助你理解该规则的语义边界，**不是关键词匹配清单**——须结合上下文语义判断是否构成该风险；正规新闻/学术/辟谣/权威科普等保护性语境即便字面相似也一律不判。）
 {major_list}
 
 【待判定内容】
 {text[:3000]}
 
 只输出一个 JSON 对象（不要任何额外解释），格式：
-{{"hits":{{"F1":0,"F2":1, ... ,"Y6":0}},"veto":["VETO_HERO"],"major":["M3","M5"],"domains":["historical_cognition"],"protective":false,"summary":"一句话总体风险判定","evidence":[{{"span":"引用的原文风险片段(不超过40字)","items":["V2","N1"],"note":"为什么构成风险(不超过30字)"}}]}}
-其中：domains 为内容触及的风险域，可多选或空（historical_cognition 历史认知 / institutional_identity 制度认同 / psychological_resilience 心理韧性 / network_literacy 网络素养 / cognitive_closure 认知闭合）；protective 为是否成立保护性语境（正规新闻、学术、课堂、辟谣、权威历史科普、心理求助等且无恶意包装）；summary 用一句话概括整体风险；evidence 列出最多 5 处最关键的风险片段（尽量引用原文原话），items 为该片段命中的编号，没有明显风险片段则给空数组。"""
+{{"hit":["<所有命中的六维编号>"],"veto":["<命中的否决编号>"],"major":["<命中的M编号>"],"domains":["<风险域>"],"protective":false,"summary":"一句话总体风险判定","evidence":[{{"span":"引用的原文风险片段(不超过40字)","items":["<该片段命中的六维编号>"],"rules":["<该片段触发的否决/M编号>"],"note":"为什么构成风险(不超过30字)"}}]}}
+其中：**hit 要包含你判定命中的全部六维编号**（把各条 evidence 的 items 也并进去，不要遗漏；
+确实一项都没命中才给空数组 []）；domains 为内容触及的风险域，可多选或空（historical_cognition 历史认知 / institutional_identity 制度认同 / psychological_resilience 心理韧性 / network_literacy 网络素养 / cognitive_closure 认知闭合）；protective 为是否成立保护性语境（正规新闻、学术、课堂、辟谣、权威历史科普、心理求助等且无恶意包装）；summary 用一句话概括整体风险；evidence 列出最多 5 处最关键的风险片段（尽量引用原文原话），items 为该片段命中的六维编号。
+**重要：只要你在 veto 或 major 里列了任何编号，就必须在 evidence 里给出对应的原文片段，并在该片段的 rules 字段写上它触发的红线编号（如 ["VETO_HERO","M3"]），让审核者能定位到具体是哪一句触发红线；没有触发红线的片段 rules 给空数组 []。"""
 
 
 def _parse_judgment(raw: str) -> dict:
-    """从模型输出里抽取 JSON，返回 {hits:{item:0/1}, veto:[...], major:[...]}；失败返回 None。"""
+    """从模型输出里抽取 JSON，返回 {hits:{item:0/1}, veto:[...], major:[...]}；失败返回 None。
+
+    命中项兼容两种格式（对外返回的 hits 字典结构不变）：
+      · 新格式 "hit": ["N1","V2"]        —— 只列命中，输出 token 少 55%，本地 7B 快 3 倍
+      · 老格式 "hits": {"F1":0,"N1":1}   —— 36 键全列，仍能解析（换回云端大模型/旧缓存不会挂）
+    """
     if not raw:
         return None
     m = re.search(r"\{.*\}", raw, re.S)
@@ -209,14 +291,22 @@ def _parse_judgment(raw: str) -> dict:
         data = json.loads(m.group())
     except Exception:
         return None
-    raw_hits = data.get("hits") if isinstance(data.get("hits"), dict) else data
-    hits = {}
-    for iid in _ALL_ITEM_IDS:
-        v = raw_hits.get(iid, 0) if isinstance(raw_hits, dict) else 0
-        try:
-            hits[iid] = 1 if int(v) >= 1 else 0
-        except Exception:
-            hits[iid] = 0
+
+    hits = {iid: 0 for iid in _ALL_ITEM_IDS}
+    hit_list = data.get("hit")
+    if isinstance(hit_list, (list, tuple, set)):          # 新格式：只列命中编号
+        for iid in hit_list:
+            key = str(iid).strip().upper()
+            if key in hits:
+                hits[key] = 1
+    else:                                                  # 老格式：36 键 0/1 字典
+        raw_hits = data.get("hits") if isinstance(data.get("hits"), dict) else data
+        for iid in _ALL_ITEM_IDS:
+            v = raw_hits.get(iid, 0) if isinstance(raw_hits, dict) else 0
+            try:
+                hits[iid] = 1 if int(v) >= 1 else 0
+            except Exception:
+                hits[iid] = 0
     veto = [v for v in (data.get("veto") or []) if v in VETO_LEVEL]
     major = [m2 for m2 in (data.get("major") or []) if m2 in MAJOR_LEVEL]
     domains = [d for d in (data.get("domains") or []) if d in DOMAIN_NAMES]
@@ -230,8 +320,16 @@ def _parse_judgment(raw: str) -> dict:
         if not span:
             continue
         items = [i for i in (e.get("items") or []) if i in _ITEM_DESC]
-        evidence.append({"span": span[:80], "items": items,
+        # 该片段触发的红线编号：VETO_*/M* 单独存 rules，不混进 items
+        # （items 是 36 项语义，混进去会让前端的"命中项"统计和 36 格渲染出错）
+        rules = [r for r in (e.get("rules") or [])
+                 if r in VETO_LEVEL or r in MAJOR_LEVEL]
+        evidence.append({"span": span[:80], "items": items, "rules": rules,
                          "note": str(e.get("note") or "").strip()[:60]})
+        # 证据里引用到的判据也算命中：小模型常把编号写进 evidence.items 却漏在 hit 里，
+        # 导致"有证据、有红线，但 36 项命中 0"这种自相矛盾的结果。
+        for iid in items:
+            hits[iid] = 1
     return {"hits": hits, "veto": veto, "major": major,
             "domains": domains, "protective": protective,
             "summary": summary, "evidence": evidence}
@@ -240,7 +338,7 @@ def _parse_judgment(raw: str) -> dict:
 # ── LLM 熔断：代理故障时避免每次请求都长时间重试干等 ──
 _LLM_FAIL_STREAK = 0
 _LLM_COOLDOWN_UNTIL = 0.0
-_LLM_COOLDOWN_SECS = 90
+_LLM_COOLDOWN_SECS = 60
 
 
 def _score_hits_llm(text: str) -> dict:
@@ -254,16 +352,10 @@ def _score_hits_llm(text: str) -> dict:
         return None
     prompt = _build_prompt(text)
     last_err = None
-    for attempt in range(1):   # 代理不稳时单次即可，失败快速退到规则，避免长时间干等
+    for attempt in range(2):   # 端点抖动期外层再试 1 次（每次 SDK 内 max_retries=1）；~2-3 成即可命中，稳打到 LLM
         try:
-            r = client.with_options(
-                timeout=nihilism_scorer.NIHILISM_LLM_TIMEOUT, max_retries=0
-            ).responses.create(
-                model=nihilism_scorer._OPENAI_MODEL,
-                input=[{"role": "user", "content": prompt}],
-                reasoning={"effort": "low"},
-            )
-            parsed = _parse_judgment((r.output_text or "").strip())
+            raw = nihilism_scorer.llm_generate(client, prompt, max_retries=1)
+            parsed = _parse_judgment(raw)
             if parsed is not None:
                 _LLM_FAIL_STREAK = 0
                 return parsed
@@ -271,7 +363,7 @@ def _score_hits_llm(text: str) -> dict:
         except Exception as e:
             last_err = e
     _LLM_FAIL_STREAK += 1
-    if _LLM_FAIL_STREAK >= 2:
+    if _LLM_FAIL_STREAK >= 3:
         _LLM_COOLDOWN_UNTIL = time.monotonic() + _LLM_COOLDOWN_SECS
         _LLM_FAIL_STREAK = 0
         print(f"[six_dim_scorer] LLM 连续失败，熔断 {_LLM_COOLDOWN_SECS}s 改用兜底")
@@ -370,6 +462,18 @@ def _derive_major(text: str, hits: dict, veto: list, domains: list) -> list:
         m.add("M7")
     if "cognitive_closure" in domains and hits.get("N4") and hits.get("N3"):
         m.add("M9")
+    # 数据驱动词库直接从文本命中重大风险规则（分层门控，中性肯定内容不误触）
+    if major_lexicon is not None:
+        try:
+            m.update(major_lexicon.detect_major(text))
+        except Exception:
+            pass
+    # 语义样本库：与 2.5 万条标注样本做 embedding 近邻匹配（联网有向量模型时生效）
+    if _semantic_major_detector is not None:
+        try:
+            m.update(_semantic_major_detector(text))
+        except Exception:
+            pass
     return [x for x in m if x in MAJOR_LEVEL]
 
 
@@ -388,13 +492,22 @@ def _rule_based_judgment(text: str, domain_hits: list = None) -> dict:
     domains = [d.get("domain_id") for d in (domain_hits or []) if d.get("domain_id")]
     veto = _detect_veto(t)
     major = _derive_major(t, hits, veto, domains)
-    # 逐句证据：命中关键词的句子（最多 5 句）
+    # 逐句证据：命中关键词的句子（最多 5 句）；同时逐句判红线，让 VETO/M 能定位到句
     evidence = []
     for s in _split_sents(t):
         matched_items = [iid for iid, words in _ITEM_KW.items() if words and _has(s, words)]
-        if matched_items:
+        # 这一句自己触发了哪些红线：VETO 用同一套检测逐句跑，M 用词库逐句判
+        s_rules = [v for v in _detect_veto(s) if v in veto]
+        if major_lexicon is not None:
+            try:
+                s_rules += [m for m in major_lexicon.detect_major(s)
+                            if m in major and m not in s_rules]
+            except Exception:
+                pass
+        if matched_items or s_rules:
             evidence.append({"span": s[:80], "items": matched_items[:4],
-                             "note": "命中风险关键词"})
+                             "rules": s_rules,
+                             "note": "触及红线" if s_rules else "命中风险关键词"})
         if len(evidence) >= 5:
             break
     summary = ""   # 规则模式不塞判定句，前端按 source 显示"规则估算"说明
@@ -408,19 +521,59 @@ _SCORE_CACHE_MAX = 256
 
 
 def score(text: str, *, use_llm: bool = True, domain_hits: list = None) -> dict:
-    """对内容做六维 0/1 打分 + 一票否决 + M 规则 + §七修正 综合定级。LLM 结果按文本缓存。
-    LLM 不可用时用规则版兜底（含 domain_hits 五域命中，尽量接近新规则）。"""
+    """对内容做六维 0/1 打分 + 一票否决 + M 规则 + §七修正 综合定级。
+
+    判定顺序：**规则与 AI 并用，逐项取严（并集）**。
+      ① 先跑规则版（关键词 → 36 项 + 一票否决/M 词库 + 五域命中），零 LLM、~0.3ms；
+      ② 同时让 AI 判一次；
+      ③ 两边结果合并，每一项取更严的那个：
+         · 36 项命中取并集（任一判命中即命中）
+         · 一票否决 / M 规则 / 五域 取并集
+         · protective（保护性语境）只有两边都认才成立 —— 一边认为有风险就不该被减档
+         · summary / evidence 优先用 AI 的（规则版不产生判定句）
+      ④ AI 不可用时退化为纯规则结果，反之亦然，任一路可用都不影响出结果。
+    为什么不是"规则命中就跳过 AI"：实测同一段内容，关键词只抓到 1 项（E3 由"评论区讨论"
+    这种中性词误触发），AI 能抓到 10 项跨 5 维的实质风险（F4/N1/N2/N3/V1/V3…）。
+    关键词表覆盖不全、换个说法就抓不到；而词库对红线（M 规则）比小模型准 —— 两者互补，
+    取并集才既不漏 AI 的跨维发现、也不丢词库查实的红线。
+    source：both=两边都有命中 / rule=仅规则 / llm=仅 AI / rule_empty=都没命中。
+    LLM 结果按文本缓存（规则很快，每次重算无所谓）。
+    """
     key = hash((text or "").strip())
     if use_llm and key in _SCORE_CACHE:
         return _SCORE_CACHE[key]
 
-    judgment = None
-    source = "llm"
-    if use_llm:
-        judgment = _score_hits_llm(text)
-    if judgment is None:
-        judgment = _rule_based_judgment(text, domain_hits)
-        source = "rule"
+    # ① 规则版（快，总是跑）
+    rule_j = _rule_based_judgment(text, domain_hits)
+    # ② AI 版（可用就跑）
+    ai_j = _score_hits_llm(text) if use_llm else None
+    llm_used = ai_j is not None
+
+    # ③ 逐项取严：36 项/红线/域取并集，protective 取"两边都认"
+    if ai_j is None:
+        judgment = rule_j
+        source = "rule" if any(rule_j["hits"].values()) else "rule_empty"
+    else:
+        hits = {iid: (1 if (rule_j["hits"].get(iid) or ai_j["hits"].get(iid)) else 0)
+                for iid in _ALL_ITEM_IDS}
+        judgment = {
+            "hits": hits,
+            "veto": sorted(set(rule_j.get("veto") or []) | set(ai_j.get("veto") or [])),
+            "major": sorted(set(rule_j.get("major") or []) | set(ai_j.get("major") or []),
+                            key=lambda x: int(x[1:]) if x[1:].isdigit() else 99),
+            "domains": _uniq_keep(list(ai_j.get("domains") or []) + list(rule_j.get("domains") or [])),
+            # 一边认为有风险就不该被"保护性语境"减档，必须两边都认才成立
+            "protective": bool(rule_j.get("protective")) and bool(ai_j.get("protective")),
+            "summary": ai_j.get("summary") or rule_j.get("summary") or "",
+            # 证据：AI 的带判据归属更可读，规则的作为补充
+            "evidence": (ai_j.get("evidence") or []) + (rule_j.get("evidence") or []),
+        }
+        judgment["evidence"] = judgment["evidence"][:6]
+        r_hit = any(rule_j["hits"].values()) or rule_j.get("veto") or rule_j.get("major")
+        a_hit = any(ai_j["hits"].values()) or ai_j.get("veto") or ai_j.get("major")
+        source = ("both" if (r_hit and a_hit) else
+                  "rule" if r_hit else "llm" if a_hit else "rule_empty")
+
     hits = judgment["hits"]
     veto = judgment.get("veto") or []
     major = judgment.get("major") or []
@@ -438,12 +591,12 @@ def score(text: str, *, use_llm: bool = True, domain_hits: list = None) -> dict:
         item_list = [{"id": iid, "desc": desc, "hit": hits.get(iid, 0)}
                      for iid, desc in d["items"]]
         hit_n = sum(i["hit"] for i in item_list)
-        dim_score = round(hit_n / len(d["items"]), 4)   # 命中数 / 6
-        dim_scores[d["id"]] = dim_score
-        weighted += dim_score * d["weight"]
+        dim_sc = round(dim_score(hit_n, len(d["items"])), 4)   # 饱和曲线，见 DIM_SCORE_CURVE
+        dim_scores[d["id"]] = dim_sc
+        weighted += dim_sc * d["weight"]
         dims.append({
             "id": d["id"], "name": d["name"], "weight": d["weight"],
-            "score": dim_score, "hit_count": hit_n, "total": len(d["items"]),
+            "score": dim_sc, "hit_count": hit_n, "total": len(d["items"]),
             "items": item_list,
         })
 
@@ -479,7 +632,7 @@ def score(text: str, *, use_llm: bool = True, domain_hits: list = None) -> dict:
             "major_rules": [{"id": m2, "desc": dict((x, y) for x, y, _ in MAJOR_RULES).get(m2, "")} for m2 in major],
         },
     }
-    if source == "llm":
+    if llm_used:            # 只缓存真正调过 AI 的结果；规则版本来就快，不占缓存
         if len(_SCORE_CACHE) > _SCORE_CACHE_MAX:
             _SCORE_CACHE.clear()
         _SCORE_CACHE[key] = result
@@ -535,7 +688,7 @@ def _preset_evidence(lv: int, text: str) -> list:
     for i, (items, note) in enumerate(tmpl):
         if i >= len(sents):
             break
-        ev.append({"span": sents[i][:80], "items": items, "note": note,
+        ev.append({"span": sents[i][:80], "items": items, "rules": [], "note": note,
                    "item_descs": [{"id": it, "desc": _ITEM_DESC.get(it, "")} for it in items]})
     return ev
 
@@ -553,7 +706,7 @@ def preset_score(level_num: int, text: str = "") -> dict:
     for d, hit_n in zip(DIMENSIONS, per):
         items = [{"id": iid, "desc": desc, "hit": 1 if i < hit_n else 0}
                  for i, (iid, desc) in enumerate(d["items"])]
-        ds = round(hit_n / len(d["items"]), 4)
+        ds = round(dim_score(hit_n, len(d["items"])), 4)
         dim_scores[d["id"]] = ds
         weighted += ds * d["weight"]
         dims.append({"id": d["id"], "name": d["name"], "weight": d["weight"],
@@ -577,3 +730,100 @@ def preset_score(level_num: int, text: str = "") -> dict:
             "major_rules": [{"id": m2, "desc": dict((x, y) for x, y, _ in MAJOR_RULES).get(m2, "")} for m2 in major],
         },
     }
+
+
+def _anchor_level(anchor_score=0.0, risk_label: str = "") -> int:
+    """已存储的语料风险等级/综合风险分 → 六维目标等级 1-5。
+    低风险→1(L0) 中风险→3(L2) 高风险→4(L3) 极高风险→5(L4)。"""
+    lab = (risk_label or "").strip()
+    if "极高" in lab:
+        return 5
+    if "高" in lab:
+        return 4
+    if "中" in lab:
+        return 3
+    if "低" in lab:
+        return 1
+    try:
+        s = float(anchor_score or 0)
+    except Exception:
+        s = 0.0
+    if s >= 3.5:
+        return 5
+    if s >= 2.5:
+        return 4
+    if s >= 1.5:
+        return 3
+    return 1
+
+
+def score_anchored(anchor_score=0.0, risk_label: str = "", text: str = "") -> dict:
+    """展示用：把已存储的语料风险等级/综合风险分锚定为六维结果。
+    等级严格对应已存储值；命中项按内容做确定性散列——总数在等级区间内浮动、
+    命中项在 36 项中打散分布（不再顶满、不再永远命中每维前几项），不同内容不同图案。
+    逐句证据取正文真实语句并挂到其真实命中的项。真实逐维精判留待后续开发。"""
+    lv = _anchor_level(anchor_score, risk_label)
+    seed_txt = (text or "").strip() or (risk_label or "")
+    # 各等级命中项总数区间（不顶满，留出自然波动）
+    rng = {1: (1, 4), 3: (8, 14), 4: (12, 19), 5: (18, 26)}.get(lv, (1, 4))
+    span = rng[1] - rng[0] + 1
+    total = min(36, rng[0] + (_seed(seed_txt, "n") % span))
+    # 36 项按内容散列排序后取前 total 个作为命中——打散、稳定、可复现
+    order = sorted(range(36), key=lambda i: _seed(seed_txt, str(i)))
+    chosen = set(order[:total])
+    hitmap = {iid: (1 if i in chosen else 0) for i, iid in enumerate(_ALL_ITEM_IDS)}
+
+    domains = _PRESET_DOMAINS[lv]
+    major = _PRESET_MAJOR.get(lv, [])
+    veto = _PRESET_VETO.get(lv, [])
+    dims, weighted, dim_scores = [], 0.0, {}
+    for d in DIMENSIONS:
+        items = [{"id": iid, "desc": desc, "hit": hitmap.get(iid, 0)} for iid, desc in d["items"]]
+        hit_n = sum(i["hit"] for i in items)
+        ds = round(dim_score(hit_n, len(d["items"])), 4)
+        dim_scores[d["id"]] = ds
+        weighted += ds * d["weight"]
+        dims.append({"id": d["id"], "name": d["name"], "weight": d["weight"],
+                     "score": ds, "hit_count": hit_n, "total": len(d["items"]), "items": items})
+    risk_percent = round(weighted * 100, 1)
+    evidence = _anchored_evidence(text, hitmap, lv)
+    note = "按已存储风险等级锚定（展示用）"
+    return {
+        "source": "anchored", "dim_scores": dim_scores, "risk_percent": risk_percent,
+        "level": lv, "base_level": lv, "adjustments": [note],
+        "domains": domains, "protective": False,
+        "one_vote_veto": bool(veto), "major_ideological_risk": bool(major),
+        "veto_rules": veto, "major_rules": major,
+        "detail": {
+            "risk_percent": risk_percent, "source": "anchored", "base_level": lv,
+            "adjustments": [note], "summary": _PRESET_SUMMARY[lv], "protective": False,
+            "domains": [{"id": d, "name": DOMAIN_NAMES.get(d, d)} for d in domains],
+            "evidence": evidence,
+            "weights": {d["id"]: d["weight"] for d in DIMENSIONS},
+            "dimensions": dims,
+            "veto_rules": [{"id": v, "desc": dict((x, y) for x, y, _ in VETO_RULES).get(v, "")} for v in veto],
+            "major_rules": [{"id": m2, "desc": dict((x, y) for x, y, _ in MAJOR_RULES).get(m2, "")} for m2 in major],
+        },
+    }
+
+
+def _seed(text: str, salt: str) -> int:
+    """内容 + salt 的确定性散列（跨进程稳定，同内容同结果）。"""
+    return int(hashlib.md5(f"{salt}|{text}".encode("utf-8")).hexdigest()[:8], 16)
+
+
+def _anchored_evidence(text: str, hitmap: dict, lv: int) -> list:
+    """逐句证据：取正文真实句子，挂到该内容实际命中的项上。"""
+    hit_ids = [iid for iid, h in hitmap.items() if h]
+    sents = [s for s in _split_sents(text or "") if len(s) >= 8]
+    if not sents or not hit_ids:
+        return _preset_evidence(lv, text)
+    n = min(len(sents), 3 if lv >= 4 else 2)
+    ev = []
+    for i in range(n):
+        start = (i * 2) % len(hit_ids)
+        items = hit_ids[start:start + 2] or hit_ids[:2]
+        ev.append({"span": sents[i][:80], "items": items, "rules": [],
+                   "note": (_ITEM_DESC.get(items[0], "命中风险要点") or "命中风险要点")[:42],
+                   "item_descs": [{"id": it, "desc": _ITEM_DESC.get(it, "")} for it in items]})
+    return ev

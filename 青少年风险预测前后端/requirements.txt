@@ -15,6 +15,7 @@ psycopg2-binary==2.9.9
 
 # ── NLP / 向量检索 ──
 jieba
+pypinyin          # 同音错字纠正（backend/homophone_fix.py 硬依赖，缺则转写纠错模块 import 失败）
 numpy
 scikit-learn
 sentence-transformers>=3.0.0
