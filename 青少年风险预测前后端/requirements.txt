@@ -3,6 +3,7 @@ fastapi
 uvicorn[standard]
 pydantic
 python-dotenv
+python-multipart  # 文件上传依赖；缺失时视频转写路由会静默不加载，只在启动日志留一行警告
 
 # ── LLM 客户端 ──
 anthropic
