@@ -212,7 +212,11 @@ button,select{font:inherit}
 </main>
 
 <script>
-const API='http://localhost:8000';
+// 同源优先：写死 localhost 会导致从其他机器访问时全部请求失败。
+// 用 file:// 直接打开页面时才回退到本机 8000。
+const API = (location.protocol === 'http:' || location.protocol === 'https:')
+  ? location.origin
+  : 'http://127.0.0.1:8000';
 const PAGE_SIZE=120;
 const DIMENSIONS=[
   {id:'fact_handling',name:'事实处理方式',weight:.20,items:[['F1','未证实"网传/听说/内部消息"作事实'],['F2','断章取义使用截图、片段、剪辑'],['F3','局部个案直接泛化为整体结论'],['F4','伪史/野史/模糊信源否定权威事实'],['F5','深伪/AI伪造/移花接木风险'],['F6','缺时间地点来源却给强结论']]},

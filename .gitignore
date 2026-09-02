@@ -62,3 +62,10 @@
 **/*.log
 **/.DS_Store
 **/Thumbs.db
+
+# 平台登录账号（口令摘要，仍属敏感，不入库）
+**/backend/users.json
+
+# 浏览器 cookie 导出（含登录态，绝不提交）
+**/backend/dy_cookies.txt
+**/*cookies*.txt

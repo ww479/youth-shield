@@ -853,8 +853,9 @@ header {
 <div class="hero">
 <div class="hero-title">青年心盾：青少年网络空间<em>价值观审查</em>与正向引导平台</div>
   <div class="hero-sub">自动识别内容风险等级，匹配年龄适配的价值观引导话术</div>
-  <!-- 搜索框（需要展示时删除 style="display:none"） -->
-  <div class="search-wrap">
+  <!-- 搜索框：演示态隐藏（链接由 home.html 的 ?url= 参数带入并自动分析）。
+       需要手动粘链接调试时，把下面 div 的 style 整个删掉即可恢复。 -->
+  <div class="search-wrap" style="display:none">
     <input class="search-input" id="urlInput" type="text"
       placeholder="粘贴内容链接，支持微博 / 小红书 / 抖音 / 百度 / B站…" />
     <button class="btn-go" id="btnGo" onclick="startAnalysis()">开始分析</button>
@@ -1040,13 +1041,18 @@ header {
 </div>
 
 <script>
-const API = 'http://localhost:8000';
+// 同源优先：写死 localhost 会导致从其他机器访问时全部请求失败。
+// 用 file:// 直接打开页面时才回退到本机 8000。
+const API = (location.protocol === 'http:' || location.protocol === 'https:')
+  ? location.origin
+  : 'http://127.0.0.1:8000';
 let _data = null;
 
 // 开始分析
 async function startAnalysis(){
   const url = document.getElementById('urlInput').value.trim();
-  if(!url){ alert('请输入链接'); return; }
+  // 搜索框已隐藏：无链接时静默返回，不再弹窗（正常入口是 home.html 带 ?url= 跳转）
+  if(!url){ return; }
   const btn = document.getElementById('btnGo');
   btn.disabled = true;
   btn.textContent = '分析中…';

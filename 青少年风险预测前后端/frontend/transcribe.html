@@ -66,6 +66,7 @@ body{
 }
 .panel-title{font-size:14px;font-weight:700;letter-spacing:-.2px;}
 .panel-note{font-size:11.5px;color:var(--muted);margin-left:auto;}
+.analysis-elapsed{color:var(--muted-2);font-variant-numeric:tabular-nums;}
 .panel-body{flex:1;min-height:0;overflow-y:auto;padding:14px 16px;}
 .panel-body.tight{padding:10px 14px;}
 .panel-body::-webkit-scrollbar,.seg-list::-webkit-scrollbar{width:6px;}
@@ -95,8 +96,7 @@ body{
          animation:fadeSlide .26s cubic-bezier(.4,0,.2,1);}
 @keyframes fadeSlide{from{opacity:0;transform:translateX(6px);}to{opacity:1;transform:none;}}
 /* 卡片纵向铺开，别在长面板里挤在顶部留一大片空白 */
-.pane[data-pane="guide"] .guide,.pane[data-pane="redline"] .rl-rule,
-.pane[data-pane="evidence"] .ev{margin-top:0;}
+.pane .guide:first-child,.pane .rl-rule:first-child,.pane .ev:first-child{margin-top:0;}
 
 header{
   padding:9px 18px;display:flex;align-items:center;justify-content:space-between;
@@ -211,6 +211,148 @@ header{
 .stat-l{font-size:11px;color:var(--muted-2);margin-top:2px;}
 
 /* ── 字幕流 ── */
+/* ── 逐项分析 / 风险红线：沿用导出报告的呈现层级 ── */
+.dimcard{background:#fff;border:1px solid rgba(99,120,210,.16);border-radius:12px;
+  padding:14px 16px;margin-bottom:11px;box-shadow:0 1px 6px rgba(15,23,42,.04)}
+.dimtop{display:flex;justify-content:space-between;align-items:baseline;
+  padding-bottom:9px;margin-bottom:11px;border-bottom:1px solid #eef1f7}
+.dimname{font-size:14.5px;font-weight:800;letter-spacing:-.2px;color:var(--ink)}
+.dimcnt{font-size:12.5px;font-weight:700}
+.item{margin:0 0 13px}
+.item:last-child{margin-bottom:2px}
+.ih{font-size:13px;font-weight:700;color:#1e293b;padding-left:9px;
+  border-left:3px solid #3D6FD4;margin-bottom:7px;line-height:1.5}
+.q{font-size:12.5px;line-height:1.75;color:#334155;background:#f8faff;
+  border-radius:8px;padding:8px 11px;margin:0 0 5px 12px;transition:.14s}
+.q[onclick]{cursor:pointer}
+.q[onclick]:hover{background:#eef4fe;box-shadow:0 1px 5px rgba(61,111,212,.12)}
+.q:last-child{margin-bottom:0}
+.q.nomatch{color:var(--muted-2);background:#f7f8fa}
+.qt{display:inline-block;font-size:11px;font-weight:700;color:#3D6FD4;
+  margin-right:7px;font-variant-numeric:tabular-nums}
+.why{display:block;margin-top:5px;font-size:11.5px;color:var(--muted-2);line-height:1.6}
+.misshint{margin-top:4px;font-size:11.5px;color:var(--muted-2);
+  background:#f7f9fc;border-radius:9px;padding:9px 12px}
+
+/* 风险红线卡 */
+.rl{background:rgba(214,69,65,.04);border:1px solid rgba(214,69,65,.2);
+  border-radius:12px;padding:13px 16px;margin-bottom:10px}
+.rl-h{margin-bottom:9px;line-height:1.55}
+.rl-h b{font-size:14px;color:#7f1d1d;font-weight:800}
+.rl-d{display:block;margin-top:3px;font-size:12px;color:#9f4a45;font-weight:400}
+.rl .q{background:#fff;border:1px solid rgba(214,69,65,.14);margin-left:0}
+.rl .q:hover{background:#fffaf9}
+.rl .qt{color:#B91C1C}
+
+/* ── 导出条（设计稿：结果流程末端单列）── */
+.toc-foot{border-top:1px solid #eef1f7;padding:11px 12px;display:flex;
+  align-items:center;gap:10px;flex:none}
+.btn-export{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:9px;
+  padding:9px 16px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;
+  font-family:inherit;background:linear-gradient(96deg,#3D6FD4,#5AB6F0);
+  box-shadow:0 4px 14px rgba(61,111,212,.26);transition:.16s}
+.btn-export:hover:not(:disabled){transform:translateY(-1px);
+  box-shadow:0 7px 20px rgba(61,111,212,.34)}
+.btn-export:disabled{background:#e2e8f2;color:#a8b4c6;cursor:default;box-shadow:none}
+.btn-export svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round}
+.toc-foot-n{font-size:11px;color:var(--muted-2)}
+
+/* ── 五大风险域 ── */
+.dom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.dom{background:#fbfcfe;border:1px solid #eef1f7;border-radius:11px;padding:13px 15px}
+.dom.on{background:rgba(61,111,212,.04);border-color:rgba(61,111,212,.24)}
+.dom-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dom-h b{font-size:13.5px;color:#64748B;font-weight:700}
+.dom.on .dom-h b{color:var(--ink)}
+.dom-tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;
+  background:rgba(61,111,212,.12);color:#3D6FD4;flex:none}
+.dom-tag.no{background:#eef1f6;color:#a8b4c6}
+.dom-kw{margin-top:8px;font-size:11.5px;color:var(--muted-2);line-height:1.7}
+
+/* ── 处置建议：平台 / 家长 / 学校 三行，各含动作与表述 ── */
+.actor-list{display:flex;flex-direction:column;gap:11px}
+.actor{background:#fbfcfe;border:1px solid #eef1f7;border-radius:12px;padding:14px 16px}
+.actor.blank{opacity:.72}
+.actor-h{display:flex;align-items:center;gap:9px;margin-bottom:9px;
+  padding-bottom:8px;border-bottom:1px solid #eef1f7}
+.actor-n{font-size:13.5px;font-weight:800;color:#fff;background:linear-gradient(96deg,#3D6FD4,#5AB6F0);
+  padding:3px 12px;border-radius:99px;flex:none}
+.actor-h>span:last-child{font-size:11.5px;color:var(--muted-2)}
+.actor-s{font-size:12.5px;line-height:1.8;color:#475569}
+.actor-c{margin-top:9px;font-size:12.5px;line-height:1.85;color:#0f2b46;
+  background:#fff;border-left:3px solid #5AB6F0;border-radius:0 8px 8px 0;
+  padding:9px 12px}
+.actor-none{color:var(--muted-2)}
+
+/* 导出原文：与「导出分析报告」区分 —— 一个是转写文字，一个是研判结果 */
+.dl-group{display:flex;align-items:center;gap:5px;padding-left:10px;
+  margin-left:4px;border-left:1px solid #e6ebf3}
+.dl-lb{font-size:11px;color:var(--muted-2);margin-right:2px}
+
+/* ── 三种输入来源 ── */
+.src-tabs{display:flex;gap:4px;background:#f1f5fa;border-radius:10px;padding:4px;margin-bottom:12px}
+.src-tabs button{flex:1;border:0;background:transparent;border-radius:7px;padding:7px 0;
+  font-size:12.5px;font-weight:700;color:var(--muted-2);cursor:pointer;
+  font-family:inherit;transition:.16s}
+.src-tabs button.on{background:#fff;color:#1D4ED8;box-shadow:0 1px 5px rgba(16,74,133,.1)}
+.src-pane textarea{width:100%;border:1.5px solid #dbe8f4;border-radius:10px;padding:10px 12px;
+  font-size:13px;color:var(--ink);background:#fbfdff;font-family:inherit;resize:vertical;
+  line-height:1.7;transition:.16s}
+.src-pane textarea:focus{outline:0;border-color:#3f9ee0;background:#fff;
+  box-shadow:0 0 0 3px rgba(63,158,224,.13)}
+.src-row{display:flex;align-items:center;gap:11px;margin-top:9px}
+.src-note{font-size:11.5px;color:var(--muted-2);flex:1}
+.src-note.err{color:#B91C1C}
+.src-note.ok{color:#047857}
+
+/* ── 空态引导：未上传时也让人看清流程与将得到什么 ── */
+.toc-pre{padding:14px 12px}
+.toc-pre-h{font-size:11.5px;color:var(--muted-2);margin-bottom:11px}
+.toc-pre-i{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;border-radius:9px;
+  background:#fbfcfe;margin-bottom:6px}
+.toc-pre-i>span{width:20px;height:20px;border-radius:6px;flex:none;display:grid;
+  place-items:center;background:#eef2fa;color:#94A3B8;font-size:11px;font-weight:800}
+.toc-pre-i>div{font-size:11.5px;color:var(--muted-2);line-height:1.65}
+.toc-pre-i b{display:block;font-size:12.5px;color:#64748B;font-weight:700;margin-bottom:1px}
+
+.flow{padding:26px 22px}
+.flow-h{font-size:12px;color:var(--muted-2);text-align:center;margin-bottom:20px;
+  letter-spacing:.6px}
+.flow-row{display:flex;align-items:stretch;gap:10px;justify-content:center}
+.flow-s{flex:1;max-width:210px;background:#fbfcfe;border:1px solid #eef1f7;
+  border-radius:12px;padding:16px 14px;text-align:center}
+.flow-n{width:26px;height:26px;border-radius:50%;margin:0 auto 10px;display:grid;
+  place-items:center;background:linear-gradient(135deg,#3D6FD4,#5AB6F0);color:#fff;
+  font-size:12px;font-weight:800}
+.flow-s b{display:block;font-size:13px;color:var(--ink);font-weight:700;margin-bottom:6px}
+.flow-s p{font-size:11.5px;color:var(--muted-2);line-height:1.7}
+.flow-a{display:flex;align-items:center;color:#cbd5e1;font-size:15px;flex:none}
+.flow-t{margin-top:18px;text-align:center;font-size:11.5px;color:var(--muted-2)}
+@media(max-width:1100px){
+  .flow-row{flex-direction:column}.flow-a{display:none}.flow-s{max-width:none}
+}
+
+/* ── 左下目录：点选后右栏切换内容 ── */
+.toc{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:5px}
+.toc-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;
+  cursor:pointer;transition:.15s;border:1px solid transparent;background:#fbfcfe}
+.toc-item:hover{background:#f2f7fd;border-color:rgba(61,111,212,.18)}
+.toc-item.on{background:linear-gradient(96deg,rgba(61,111,212,.1),rgba(90,182,240,.08));
+  border-color:rgba(61,111,212,.34)}
+.toc-item.on .toc-name{color:#1D4ED8;font-weight:700}
+.toc-ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none;
+  background:rgba(61,111,212,.1);color:#3D6FD4;font-size:12px;font-weight:800}
+.toc-item.on .toc-ic{background:#3D6FD4;color:#fff}
+.toc-body{flex:1;min-width:0}
+.toc-name{font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.4}
+.toc-sub{font-size:11px;color:var(--muted-2);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toc-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;flex:none;
+  background:rgba(61,111,212,.12);color:#3D6FD4}
+.toc-badge.red{background:rgba(214,69,65,.12);color:#B91C1C}
+.toc-badge.gray{background:#eef1f6;color:#94A3B8}
+
 .seg-list{flex:1;min-height:0;overflow-y:auto;padding:8px 14px;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 .seg-tx{font-size:13.5px;line-height:1.8;color:var(--text-2);flex:1;letter-spacing:.1px;}
@@ -458,15 +600,6 @@ header{
 }
 .guide-age{font-size:12px;font-weight:700;color:#047857;margin-bottom:8px;}
 /* 分龄 tab：对齐插件的青少年分级处置 */
-.age-tabs{display:flex;gap:6px;margin-bottom:4px;}
-.age-tab{
-  flex:1;padding:7px 10px;border-radius:9px;cursor:pointer;font-family:inherit;
-  font-size:12px;font-weight:700;border:1px solid var(--border);
-  background:rgba(255,255,255,.7);color:var(--muted);
-  display:flex;align-items:center;justify-content:center;gap:5px;transition:all .18s;
-}
-.age-tab:hover{border-color:rgba(16,185,129,.4);color:#047857;}
-.age-tab.on{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.45);color:#047857;}
 /* 未生成完的年龄段显示一个小转圈 */
 .age-wait{
   width:9px;height:9px;border:1.5px solid rgba(100,116,139,.3);border-top-color:var(--muted);
@@ -553,15 +686,42 @@ header{
       <div class="panel-body tight" id="videoBody">
         <div class="alert alert-warn hide" id="envAlert"></div>
 
+        <!-- 三种来源：上传文件 / 视频链接 / 粘贴文本 -->
+        <div class="src-tabs" id="srcTabs">
+          <button class="on" data-src="file">上传文件</button>
+          <button data-src="link">视频链接</button>
+          <button data-src="text">粘贴文本</button>
+        </div>
+
         <!-- 上传态：选完文件后收起，把空间让给播放器 -->
         <div id="uploadZone">
           <div class="drop" id="drop">
             <div class="drop-icon">📤</div>
             <div class="drop-main">点击选择，或把视频拖到页面任意处</div>
             <div class="drop-hint">mp4 / mov / mkv / webm 及 mp3 / wav / m4a 等 · 上限 500MB</div>
+            <div class="drop-hint" id="dropRemote" style="display:none;color:#a9791b">
+              远程访问时上传较慢（约 20MB/分钟），较大文件建议改用「视频链接」</div>
           </div>
           <input type="file" id="fileInput" class="hide"
                  accept="video/*,audio/*,.mp4,.mov,.mkv,.avi,.flv,.webm,.ts,.m4v,.mp3,.wav,.m4a,.aac,.flac,.ogg">
+        </div>
+
+        <!-- 视频链接：下载后走同一条转写链路 -->
+        <div class="src-pane hide" id="paneLink">
+          <textarea id="linkInput" rows="2"
+            placeholder="粘贴视频链接，或整段分享文案（抖音、快手、B站、小红书等）"></textarea>
+          <div class="src-row">
+            <span class="src-note" id="linkNote">支持抖音、快手、B站、小红书等，取回后自动分析</span>
+          </div>
+        </div>
+
+        <!-- 粘贴文本：跳过转写，直接分析 -->
+        <div class="src-pane hide" id="paneText">
+          <textarea id="textInput" rows="6"
+            placeholder="粘贴文章、字幕或任意文本内容，将直接进行分析"></textarea>
+          <div class="src-row">
+            <span class="src-note" id="textNote">不需要转写，粘贴后点下方「开始分析」</span>
+          </div>
         </div>
 
         <!-- 播放器：选了文件才显示 -->
@@ -589,11 +749,17 @@ header{
       </div>
       <!-- 按钮固定在面板底部（不进滚动区），否则内容一多就被滚出视野点不到 -->
       <div class="controls panel-foot">
-        <button class="btn btn-primary" id="btnStart" disabled>开始转写</button>
+        <!-- 一个主按钮统管三种来源：上传→转写→分析 / 下载→转写→分析 / 直接分析。
+             原先每种来源各有一个启动按钮，底部还挂着只对上传有效的「开始转写」，
+             切到其他来源时它点了没反应 —— 那是最容易让人困惑的地方。 -->
+        <button class="btn btn-primary" id="btnStart" disabled>开始分析</button>
         <button class="btn btn-ghost hide" id="btnStop">停止</button>
-        <button class="btn btn-ghost hide" id="btnTxt">TXT</button>
-        <button class="btn btn-ghost hide" id="btnSrt">SRT</button>
         <button class="btn btn-ghost hide" id="btnReset">换一个</button>
+        <div class="dl-group hide" id="dlGroup">
+          <span class="dl-lb">导出原文</span>
+          <button class="btn btn-ghost" id="btnTxt">TXT</button>
+          <button class="btn btn-ghost" id="btnSrt">SRT</button>
+        </div>
         <div class="band-legend" id="bandLegend">
           <span><i style="background:#2e9e5b"></i>低</span>
           <span><i style="background:#e0b400"></i>轻度</span>
@@ -604,51 +770,66 @@ header{
       </div>
     </div>
 
-    <!-- 左下：转录文字 -->
-    <div class="panel" id="segCard">
+    <!-- 左下：结果目录。点击后右栏显示对应部分，右栏不再有标签栏 -->
+    <div class="panel" id="navCard">
       <div class="panel-head">
-        <span class="panel-title">转写结果</span>
-        <div class="toggle" style="margin-left:auto">
-          <button id="tabSeg" class="on">分句</button>
-          <button id="tabPlain">纯文本</button>
-        </div>
-        <label class="follow-chk" title="勾选后播放时自动滚动到当前句；不勾只高亮、不打扰你翻看">
-          <input type="checkbox" id="chkFollow">自动滚动
-        </label>
+        <span class="panel-title">分析结果</span>
+        <span class="panel-note" id="navNote"></span>
       </div>
-      <div class="seg-list" id="segList"></div>
-      <div class="plain hide" id="plainBox"></div>
-      <div class="empty" id="segEmpty">
-        等待识别结果…<br>模型加载约十几秒，之后按解析速度逐句出现
+      <div class="toc" id="toc">
+        <div class="toc-pre" id="tocEmpty">
+          <div class="toc-pre-h">分析完成后，将在此列出以下内容</div>
+          <div class="toc-pre-i"><span>1</span><div><b>总体结论</b>风险等级、内容概述与涉及的风险类型</div></div>
+          <div class="toc-pre-i"><span>2</span><div><b>风险红线</b>触及的红线条目及其对应语句</div></div>
+          <div class="toc-pre-i"><span>3</span><div><b>逐项分析</b>发现的风险特征，逐条附原文依据</div></div>
+          <div class="toc-pre-i"><span>4</span><div><b>沟通建议</b>按 6-12 / 13-15 / 16-18 岁分别给出</div></div>
+        </div>
+      </div>
+      <!-- 导出：设计稿中「导出研判报告」单列于结果流程末端 -->
+      <div class="toc-foot">
+        <button class="btn-export" id="btnReport" disabled onclick="exportReport()">
+          <svg viewBox="0 0 24 24"><path d="M12 3v12M7 11l5 5 5-5M4 21h16"/></svg>
+          导出分析报告
+        </button>
+        <span class="toc-foot-n" id="reportNote">分析完成后可导出</span>
       </div>
     </div>
   </div>
 
-  <!-- ═══ 右栏：六维研判（分页，避免下滑）═══ -->
+  <!-- ═══ 右栏：显示左侧目录选中的那一部分 ═══ -->
   <div class="col-right">
     <div class="panel" style="flex:1">
       <div class="panel-head">
-        <span class="panel-title">意识形态风险研判</span>
-        <div class="tabs" id="sixTabs" style="margin-left:auto">
-          <button data-pane="verdict" class="on">总览</button>
-          <button data-pane="redline">风险红线<span class="tab-dot hide" id="dotRed">0</span></button>
-          <button data-pane="dims">六维画像</button>
-          <button data-pane="evidence">风险语句</button>
-          <button data-pane="guide">引导话术</button>
-        </div>
-        <span class="panel-note" id="sixSrc"></span>
+        <span class="panel-title" id="paneTitle">意识形态风险分析</span>
+        <span class="panel-note" id="sixSrc" style="margin-left:auto"></span>
       </div>
       <div class="panel-body" id="sixBody">
-        <div class="empty" id="sixEmpty">
-          转写完成后自动完成风险研判，输出六维画像、风险等级与分龄引导建议<br>
-          <span style="font-size:11px;color:var(--muted-2)">
-            重大风险语句在转写过程中即时标注
-          </span>
+        <div class="flow" id="sixEmpty">
+          <div class="flow-h">使用流程</div>
+          <div class="flow-row">
+            <div class="flow-s"><div class="flow-n">1</div>
+              <b>上传音视频</b><p>支持 mp4 / mov / mkv / mp3 / wav 等常见格式，单个文件 500MB 以内</p></div>
+            <div class="flow-a">→</div>
+            <div class="flow-s"><div class="flow-n">2</div>
+              <b>转写成文字</b><p>在本机完成识别，内容不上传外网；转写过程中即时标出有风险的语句</p></div>
+            <div class="flow-a">→</div>
+            <div class="flow-s"><div class="flow-n">3</div>
+              <b>给出分析</b><p>结论、红线、逐项依据与分年龄段沟通建议，均可回到原文核对</p></div>
+          </div>
+          <div class="flow-t">左上角选择文件即可开始</div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+  <!-- 逐句数据容器：不展示，仅供时间轴定位与跳播使用 -->
+  <div style="display:none">
+    <div class="seg-list" id="segList"></div>
+    <div class="plain" id="plainBox"></div>
+    <div id="segEmpty"></div>
+    <input type="checkbox" id="chkFollow">
+  </div>
 
 <script>
 // 后端地址：走 http(s) 打开时同源；用 file:// 直接打开时 location.origin 是 "null"，
@@ -668,6 +849,12 @@ const LV_LABEL = ['','低风险','轻度风险','中度风险','高风险','极�
 
 let file = null, taskId = null, es = null;
 let segments = [], startedAt = 0, timer = null, duration = 0, fixedCount = 0;
+let analysisStartedAt = 0, analysisTimer = null;
+let analysisController = null, analysisRunId = 0;
+let analysisProgressDone = 0, analysisProgressTotal = 0;
+let analysisProgressDetail = '';
+let analysisProgressPct = 0;
+let isTextMode = false;   // 粘贴文本：无时间轴、无播放器
 let videoURL = null, riskResult = null, majorCount = 0, filteredCount = 0;
 // 左右联动用：句起始秒(×100取整) → 字幕行元素 / 该句研判结果
 let segRows = {}, sentBandMap = {}, winResults = [];
@@ -768,8 +955,107 @@ function showErr(msg) {
 }
 
 // ── 开始 ──
-$('btnStart').onclick = async () => {
+// 上传前先在浏览器里抽出音轨：转写只用得到音频，而视频轨通常占 90% 以上体积。
+// 实测 22.3MB 的 mp4（视频 808kbps / 音频 54kbps）抽成 16k 单声道 WAV 后仅 0.84MB，
+// 经内网穿透上传由 37 秒降到 2 秒左右。解码失败则退回上传原文件，不影响可用性。
+async function toAudioForUpload(f) {
+  // 本机访问时上传是瞬时的，没必要多花一次解码时间
+  const remote = !/^(localhost|127\.|10\.|192\.168\.)/.test(location.hostname);
+  if (!remote || !window.AudioContext) return null;
+  if (f.size < 3 * 1024 * 1024) return null;          // 小文件直接传更快
+  try {
+    $('progStage').textContent = '正在提取音频…';
+    const buf = await f.arrayBuffer();
+    const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    const decoded = await ctx.decodeAudioData(buf);
+    ctx.close();
+    // 不做进一步压缩：浏览器只能实时编码（实测 215 秒音频要编 216 秒），
+    // 而直接传 16k 单声道 WAV 仅需十几秒 —— 压缩反而更慢。
+    const wav = pcmToWav(decoded);
+    if (wav.size >= f.size * 0.9) return null;   // 本来就是音频文件时别白折腾
+    return new File([wav], (f.name || 'audio').replace(/\.[^.]+$/, '') + '.wav',
+                    { type: 'audio/wav' });
+  } catch (e) {
+    console.warn('音频提取失败，改传原文件', e);
+    return null;
+  }
+}
+
+// AudioBuffer → 16k 单声道 16bit WAV
+function pcmToWav(ab) {
+  const ch = ab.numberOfChannels;
+  const n = ab.length;
+  // 多声道混成单声道：whisper 只吃单声道，也省一半体积
+  const mono = new Float32Array(n);
+  for (let c = 0; c < ch; c++) {
+    const d = ab.getChannelData(c);
+    for (let i = 0; i < n; i++) mono[i] += d[i] / ch;
+  }
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const put = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  put(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); put(8, 'WAVE');
+  put(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, ab.sampleRate, true);
+  v.setUint32(28, ab.sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  put(36, 'data'); v.setUint32(40, n * 2, true);
+  let o = 44;
+  for (let i = 0; i < n; i++) {
+    const x = Math.max(-1, Math.min(1, mono[i]));
+    v.setInt16(o, x < 0 ? x * 0x8000 : x * 0x7fff, true);
+    o += 2;
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+// 带进度的上传。fetch 无法报告上传进度，大文件经隧道时用户会以为卡死。
+function uploadWithProgress(f) {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('file', f);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API}/api/transcribe/upload`);
+    xhr.timeout = 30 * 60 * 1000;      // 大文件 + 慢上传，给足时间
+
+    let t0 = Date.now(), lastLoaded = 0, lastAt = t0;
+    xhr.upload.onprogress = ev => {
+      if (!ev.lengthComputable) return;
+      const pct = Math.round(ev.loaded / ev.total * 100);
+      $('barFill').classList.remove('indet');
+      $('barFill').style.width = pct + '%';
+      $('progPct').textContent = pct + '%';
+      // 估算速度与剩余时间，让等待有预期
+      const now = Date.now();
+      if (now - lastAt > 800) {
+        const spd = (ev.loaded - lastLoaded) / ((now - lastAt) / 1000);
+        lastLoaded = ev.loaded; lastAt = now;
+        const left = spd > 0 ? Math.round((ev.total - ev.loaded) / spd) : 0;
+        $('progStage').textContent = `上传中 ${fmtMB(ev.loaded)}/${fmtMB(ev.total)}`
+          + (spd > 0 ? `　${(spd/1048576).toFixed(1)}MB/s`
+                     + (left > 1 ? `　约剩 ${left > 60 ? Math.ceil(left/60)+' 分' : left+' 秒'}` : '')
+                     : '');
+      }
+    };
+    xhr.onload = () => {
+      let d = {};
+      try { d = JSON.parse(xhr.responseText); } catch {}
+      if (xhr.status >= 200 && xhr.status < 300) {
+        $('progStage').textContent = '上传完成，开始识别…';
+        resolve(d);
+      } else {
+        reject(new Error(d.detail || `HTTP ${xhr.status} ${(xhr.responseText||'').slice(0,200)}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('网络中断'));
+    xhr.ontimeout = () => reject(new Error('上传超时，请检查网络或换用较小的文件'));
+    xhr.send(fd);
+  });
+}
+
+async function runFromFile() {
   if (!file) return;
+  // 保留刚选中的本地文件/播放器，只清空上一轮的分析结果。
+  clearPreviousAnalysis({ clearMedia: false });
   segments = [];
   fixedCount = 0;
   majorCount = 0;
@@ -786,21 +1072,20 @@ $('btnStart').onclick = async () => {
   $('errBox').classList.add('hide');
   $('btnStart').disabled = true;
   $('drop').classList.add('busy');
-  ['btnTxt','btnSrt','btnReset'].forEach(i => $(i).classList.add('hide'));
-  $('progStage').textContent = '上传中…';
-  $('progPct').textContent = '—';
+  ['btnReset'].forEach(i => $(i).classList.add('hide'));
+  $('dlGroup').classList.add('hide');
+  $('progStage').textContent = '准备上传…';
+  $('progPct').textContent = '0%';
   $('barFill').classList.add('indet');
 
-  // 上传
+  // 上传：用 XHR 而非 fetch —— fetch 拿不到上传进度，
+  // 经内网穿透时 20MB 要几十秒（实测 ~600KB/s），没有进度会被当成卡死。
   try {
-    const fd = new FormData();
-    fd.append('file', file);
-    const r = await fetch(`${API}/api/transcribe/upload`, { method:'POST', body:fd });
-    // 先看状态码：后端返回非 JSON（代理拦截、502）时 r.json() 会自己抛错、把真实原因吞掉
-    const raw = await r.text();
-    let d = {};
-    try { d = JSON.parse(raw); } catch { /* 非 JSON，下面用 raw 报错 */ }
-    if (!r.ok) throw new Error(d.detail || `HTTP ${r.status} ${raw.slice(0,200)}`);
+    // 远程访问时先抽音轨，体积可小一个数量级；失败或不划算则传原文件
+    const slim = await toAudioForUpload(file);
+    if (slim) $('fMeta').textContent =
+      `${fmtMB(file.size)} → ${fmtMB(slim.size)}（已提取音频）`;
+    const d = await uploadWithProgress(slim || file);
     taskId = d.task_id;
     duration = d.duration || 0;
     $('fMeta').textContent = `${fmtMB(d.size)} · 时长 ${fmtTime(duration)}`;
@@ -812,10 +1097,28 @@ $('btnStart').onclick = async () => {
     reset(); return;
   }
 
-  // 开流
+  startFromTask(taskId);
+}
+
+// 主按钮：按当前来源分派，三种方式对用户都是同一个动作
+$('btnStart').onclick = () => {
+  const src = document.querySelector('#srcTabs button.on')?.dataset.src || 'file';
+  if (src === 'link') return runFromLink();
+  if (src === 'text') return runFromText();
+  return runFromFile();
+};
+
+// 从已有 task_id 开始转写 —— 上传与链接两种来源在此汇合
+function startFromTask(tid) {
+  taskId = tid;
+  $('segEmpty').classList.add('hide');
+  $('errBox').classList.add('hide');
+  $('btnStart').disabled = true;
+  $('btnStop').classList.remove('hide');
+  $('progStage').textContent = '正在识别…';
+  $('barFill').classList.add('indet');
   startedAt = Date.now();
   timer = setInterval(tick, 500);
-  $('btnStop').classList.remove('hide');
 
   // 不传 prompt：后端会用内置提示词（其中"输出标点"是断句的前提，不能省）
   es = new EventSource(`${API}/api/transcribe/stream?task_id=${taskId}`);
@@ -847,7 +1150,7 @@ $('btnStart').onclick = async () => {
     if (segments.length === 0) showErr('连接中断，未收到识别结果');
     finish();
   };
-};
+}
 
 function addSeg(d) {
   segments.push(d);
@@ -1092,7 +1395,7 @@ function ruleCard(r, isVeto) {
   const body = trigs.length
     ? `<div class="rl-trigs">${trigs.map(t => {
         const at = (t.at != null)
-          ? `<span class="rl-at">[${fmtTime(t.at)}]</span>`
+          ? `<span class="rl-at">[${posLabel(t.at)}]</span>`
           : '<span class="rl-at" style="color:var(--muted-2)">—</span>';
         // 词库交叉确认过的标"已核"，只有 AI 说的标"待核"——小模型会把同一规则
         // 抄到多条证据上，不加区分会让审核被误导
@@ -1129,40 +1432,37 @@ let liveDims = {}, liveMajor = new Set(), liveVeto = new Set(), liveItems = {};
 function initSixSkeleton() {
   liveDims = {}; liveMajor = new Set(); liveVeto = new Set(); liveItems = {};
   DIM_DEF.forEach(([id]) => liveDims[id] = { hit:0, total:6 });
-  const dimsHtml = DIM_DEF.map(([id,nm,w,ids]) => `
-    <div class="dim-row" data-dim="${id}">
-      <div class="dim-top">
-        <span class="dim-name">${nm}</span>
-        <span class="dim-cnt" id="cnt-${id}">0/6<span class="dim-w"> · 权重 ${Math.round(w*100)}%</span></span>
+  SECTIONS = {}; curSection = null;
+  // 分析中：左侧目录先给一条进度项，右栏显示实时进展。
+  // 不再预铺六维骨架 —— 新版只呈现命中的部分，全量 36 格铺开对使用者无价值。
+  $('toc').innerHTML = `
+    <div class="toc-item on" data-sec="live">
+      <div class="toc-ic"><span class="spin"></span></div>
+      <div class="toc-body">
+        <div class="toc-name">正在分析</div>
+        <div class="toc-sub" id="tocLiveSub">读取内容中…</div>
       </div>
-      <div class="dim-track"><div class="dim-fill" id="fill-${id}" style="width:0%;background:#cbd5e1"></div></div>
-      <div class="dim-items">${ids.map(x =>
-        `<span class="dim-item" id="it-${x}" title="待分析">${ids.indexOf(x)+1}</span>`).join('')}</div>
-    </div>`).join('');
+    </div>`;
+  $('navNote').textContent = '';
   $('sixBody').innerHTML = `
-    <div class="pane on" data-pane="verdict">
+    <div class="pane on">
       <div class="live-head">
-        <span class="live-title">研判进行中</span>
-        <span class="live-prog" id="liveProg">0 / ? 窗</span>
+        <span class="live-title">正在分析</span>
+        <span class="live-prog" id="liveProg">0 / ?</span>
       </div>
       <div id="liveRed" class="live-red hide"></div>
       <div class="six-note" style="margin-top:2px">
-        分析结果实时汇入六维画像（见「六维画像」标签），左侧字幕会同步标记已分析的语句。
+        分析完成后，左侧会列出各部分结果，点选即可查看。
       </div>
-    </div>
-    <div class="pane" data-pane="redline">
-      <div class="empty" id="redlinePending">尚未发现红线，研判进行中…</div>
-    </div>
-    <div class="pane" data-pane="dims">${dimsHtml}</div>
-    <div class="pane" data-pane="evidence"><div class="empty">研判进行中，证据链稍后出现…</div></div>
-    <div class="pane" data-pane="guide"><div class="empty">全片研判完成后生成分龄引导话术…</div></div>`;
-  document.querySelectorAll('#sixTabs button').forEach((b,i) => b.classList.toggle('on', i===0));
-  $('dotRed').classList.add('hide');
+    </div>`;
+  $('paneTitle').textContent = '正在分析';
 }
 
 function pushWindowIntoSix(w, n, tot) {
   const prog = $('liveProg');
-  if (prog) prog.textContent = `${n} / ${tot || '?'} 窗`;
+  if (prog) prog.textContent = `${n} / ${tot || '?'}`;
+  const sub = $('tocLiveSub');
+  if (sub) sub.textContent = `已完成 ${n}/${tot || '?'} 段`;
   // 各维取窗口最大命中数（和后端汇总口径一致）
   (w.dimensions || []).forEach(d => {
     const cur = liveDims[d.id] || (liveDims[d.id] = { hit:0, total:d.total||6 });
@@ -1197,215 +1497,541 @@ function pushWindowIntoSix(w, n, tot) {
       el.innerHTML = `<b>⚠ 已发现红线 ${nRed} 项</b>　`
         + [...liveVeto, ...liveMajor].map(x => `<span class="rl-mini">${esc(x)}</span>`).join('');
     }
-    const pend = $('redlinePending');
-    if (pend) pend.textContent = `已发现红线 ${nRed} 项，逐句归属在全片研判完成后给出…`;
-    const dot = $('dotRed');
-    dot.textContent = nRed; dot.classList.remove('hide');
   }
 }
 
-// ══ 分龄引导话术：三个年龄段 tab（对齐插件的青少年分级处置）══
-const AGES = [['6-12','6-12岁'],['13-15','13-15岁'],['16-18','16-18岁']];
+// ══ 处置建议：按平台/家长/学校三个对象呈现（转写链路不分龄）══
 let guideData = {}, curAge = AGE_GROUP;
 
 function buildGuidePane(g) {
-  guideData = Object.assign({}, guideData, g || {});
-  if (!AGES.some(([k]) => k === curAge)) curAge = '13-15';
-  const tabs = AGES.map(([k,lbl]) => {
-    const has = !!guideData[k];
-    return `<button class="age-tab${k===curAge?' on':''}" data-age="${k}">`
-      + `${lbl}${has ? '' : '<span class="age-wait"></span>'}</button>`;
-  }).join('');
-  const v = guideData[curAge];
-  const body = v ? `
-    <div class="guide">
-      <div class="guide-age">${esc(curAge)} 岁 · ${v.source === 'ai' ? 'AI 生成' : '话术库匹配'}</div>
-      <div class="guide-k">处置策略</div>
-      <div class="guide-v">${esc(v.strategy || '—')}</div>
-      <div class="guide-k">引导话术</div>
-      <div class="guide-v">${esc(v.script || '—')}</div>
-    </div>`
-    : `<div class="empty"><span class="spin"></span>　${esc(curAge)} 岁话术生成中…</div>`;
-  return `<div class="age-tabs">${tabs}</div><div id="guideBody">${body}</div>`;
+  // 从上到下依次为平台、家长、学校，每一行给该身份的处置动作与对应表述。
+  // guideData 仍以年龄段为键（后端结构未变），取其中任意一份。
+  const d = guideData[curAge] || Object.values(guideData)[0] || {};
+  const raw = d.actors || {};
+  const ACTORS = [
+    ['platform', '平台', '内容处置与传播管控'],
+    ['parent',   '家长', '家庭沟通与陪伴'],
+    ['school',   '学校', '课堂引导与同伴影响'],
+  ];
+  // 兼容三种历史格式：对象含 {strategy,script} / 对象是字符串 / 只有整段 strategy
+  const pick = k => {
+    const v = raw[k];
+    if (v && typeof v === 'object') return { s: v.strategy || '', c: v.script || '' };
+    if (typeof v === 'string' && v.trim()) return { s: v.trim(), c: '' };
+    return { s: '', c: '' };
+  };
+  let parts = {};
+  ACTORS.forEach(([k]) => parts[k] = pick(k));
+  if (!ACTORS.some(([k]) => parts[k].s || parts[k].c)) {
+    const fb = splitByActor(d.strategy || '');
+    ACTORS.forEach(([k]) => parts[k] = { s: fb[k] || '', c: '' });
+    if (parts.platform.s && d.script) parts.platform.c = d.script;
+  }
+  if (!ACTORS.some(([k]) => parts[k].s || parts[k].c))
+    return '<div class="empty">处置建议生成中…</div>';
+
+  return `<div class="actor-list">${ACTORS.map(([k, nm, sub]) => `
+    <div class="actor ${parts[k].s || parts[k].c ? '' : 'blank'}">
+      <div class="actor-h"><span class="actor-n">${nm}</span><span>${sub}</span></div>
+      ${parts[k].s ? `<div class="actor-s">${esc(parts[k].s)}</div>` : ''}
+      ${parts[k].c ? `<div class="actor-c">${esc(parts[k].c)}</div>` : ''}
+      ${!parts[k].s && !parts[k].c
+        ? '<div class="actor-s actor-none">按通用策略执行</div>' : ''}
+    </div>`).join('')}</div>`;
+}
+
+// 兜底切分：仅当后端未给 actors 时使用（老结果 / 话术库）
+function splitByActor(text) {
+  const t = String(text || '');
+  const out = { platform:'', parent:'', school:'' };
+  if (!t) return out;
+  const RE = /(平台方?|家长|父母|学校|老师|教师)[：:，,]?/g;
+  const marks = [];
+  let m;
+  while ((m = RE.exec(t))) marks.push({ i: m.index, len: m[0].length, w: m[1] });
+  if (!marks.length) { out.platform = t; return out; }
+  marks.forEach((mk, i) => {
+    const seg = t.slice(mk.i + mk.len, i + 1 < marks.length ? marks[i+1].i : t.length).trim();
+    const key = /家长|父母/.test(mk.w) ? 'parent'
+              : /学校|老师|教师/.test(mk.w) ? 'school' : 'platform';
+    if (seg) out[key] = (out[key] ? out[key] + ' ' : '') + seg;
+  });
+  if (!out.platform && !out.parent && !out.school) out.platform = t;
+  return out;
 }
 
 // 事件委托绑在 sixBody 上：pane 内容会被重渲染，直接绑按钮会失效
-$('sixBody').addEventListener('click', e => {
-  const b = e.target.closest('.age-tab');
-  if (!b || !b.dataset.age) return;
-  curAge = b.dataset.age;
-  const pane = document.querySelector('#sixBody .pane[data-pane="guide"]');
-  if (pane) pane.innerHTML = buildGuidePane({});
-});
-
-// 话术分批到达时只刷新话术页，不重画整个面板（免得打断用户正在看的标签）
+// 话术分批到达（三个年龄段逐个返回）：更新缓存，正在看这一节时才重画
 function mergeGuidance(g) {
   guideData = Object.assign({}, guideData, g || {});
   if (riskResult) riskResult.guidance = guideData;
-  const pane = document.querySelector('#sixBody .pane[data-pane="guide"]');
-  if (pane) pane.innerHTML = buildGuidePane({});
+  SECTIONS.guide = buildGuidePane({});
+  if (curSection === 'guide') showSection('guide');
 }
+
+// 位置标签：视频给 mm:ss（可跳播），文本给「第 N 句」（无时间概念）
+function posLabel(at) {
+  if (at == null) return '';
+  if (!isTextMode) return fmtTime(at);
+  const sents = sidSentences();
+  let idx = sents.findIndex(x => at >= x.start && at < x.end);
+  if (idx < 0) {                       // 落在句间时取最近的前一句
+    let gap = Infinity;
+    sents.forEach((x, i) => {
+      const g = Math.abs((x.start || 0) - at);
+      if (g < gap) { gap = g; idx = i; }
+    });
+  }
+  return idx >= 0 ? `第 ${idx + 1} 句` : '';
+}
+
+// 转写时为了让跳播精确到逗号级，长句会在句中标点处切成多条短句
+// （同一个完整句共用一个 sid）。展示与引用时按 sid 合并回完整句，
+// 避免出现「因为触动了满清的利益」这种半截话。
+function sidSentences() {
+  if (!segments.length) return [];
+  const out = [];
+  segments.forEach(sg => {
+    const last = out[out.length - 1];
+    if (last && sg.sid != null && last.sid === sg.sid) {
+      last.text += sg.text;
+      last.end = sg.end;
+    } else {
+      out.push({ sid: sg.sid, start: sg.start, end: sg.end, text: sg.text || '' });
+    }
+  });
+  return out;
+}
+
+// 模型引用的片段常常不是完整句：结尾丢标点，或把跨句内容拼成一条。
+// 优先用「片段是哪句话的一部分」来定位（比时间戳可靠 —— 时间戳可能有偏移），
+// 找到后展示完整原句；跨句拼接的则把覆盖到的句子按顺序合起来。
+function fullSentence(at, span) {
+  const sp = String(span || '').trim();
+  const sents = sidSentences();
+  if (!sents.length) return sp;
+  const norm = t => String(t || '').replace(
+    /[\s\u3000，。！？、；：,.!?;:\u201c\u201d\u2018\u2019"'（）()【】\[\]—…·]/g, '');
+  const key = norm(sp);
+  if (!key) return sp;
+
+  // ① 片段被某句完整包含 → 返回那一整句
+  const hit = sents.find(sg => norm(sg.text).includes(key));
+  if (hit) return hit.text;
+
+  // ② 片段跨句：从与片段开头匹配的那句起，往后拼到覆盖住片段为止
+  const head = key.slice(0, 12);
+  let start = sents.findIndex(sg => norm(sg.text).includes(head));
+  if (start < 0 && at != null) {
+    // ③ 文本对不上时才退回时间戳，取起点最接近的那句
+    let gap = Infinity;
+    sents.forEach((sg, i) => {
+      const g = Math.abs((sg.start || 0) - at);
+      if (g < gap) { gap = g; start = i; }
+    });
+  }
+  if (start < 0) return sp;
+
+  const parts = [];
+  for (let i = start; i < sents.length; i++) {
+    parts.push(sents[i].text || '');
+    if (norm(parts.join('')).length >= key.length) break;
+  }
+  return parts.join('') || sp;
+}
+
+// ══ 分析结果：左侧目录 + 右栏单区呈现 ══
+// 目录项按「先结论、后依据、再建议」排列；六维与逐句只列命中的部分，
+// 与导出报告的呈现口径一致 —— 全量 36 项铺开对使用者没有价值。
+let SECTIONS = {}, curSection = null;
 
 function renderSix(res) {
   const sm = res.summary || {}, sd = sm.six_dim_detail;
   if (!sd) {
-    $('sixBody').innerHTML = '<div class="empty">未产出六维结果</div>';
+    $('sixBody').innerHTML = '<div class="empty">未产出分析结果</div>';
     return;
   }
   const n = sm.risk_level_num || 1, color = lvColor(n);
   const dims = sd.dimensions || [];
   const hits = dims.reduce((a, d) => a + (d.hit_count || 0), 0);
   const major = sd.major_rules || [], veto = sd.veto_rules || [];
-  const ev = (sd.evidence || []);
-  const src = srcLabel(sd.source);
-  $('sixSrc').textContent = src;
+  const reds = [...veto, ...major];
+  const ev = sd.evidence || [];
+  $('sixSrc').textContent = '';
 
-  const dimRows = dims.map(d => `
-    <div class="dim-row">
-      <div class="dim-top">
-        <span class="dim-name">${esc(d.name)}</span>
-        <span class="dim-cnt" style="color:${d.hit_count ? color : '#94A3B8'}">
-          ${d.hit_count}/${d.total}<span class="dim-w"> · 权重 ${Math.round((d.weight||0)*100)}%</span>
-        </span>
-      </div>
-      <div class="dim-track"><div class="dim-fill"
-        style="width:${Math.round((d.score||0)*100)}%;background:${d.hit_count ? color : '#cbd5e1'}"></div></div>
-      <div class="dim-items">${(d.items||[]).map((it,i) =>
-        `<span class="dim-item ${it.hit ? 'hit' : ''}" title="${esc(it.desc)}">${i+1}</span>`
-      ).join('')}</div>
-    </div>`).join('');
+  // 证据按判据编号归拢，供六维逐项挂原句
+  const evByItem = {};
+  ev.forEach(e => {
+    ((e.item_descs || []).map(x => x.id).filter(Boolean).length
+      ? (e.item_descs || []).map(x => x.id)
+      : (e.items || [])).forEach(id => (evByItem[id] = evByItem[id] || []).push(e));
+  });
 
-  const evHtml = ev.length ? ev.map(e => {
-    const at = (e.at != null) ? `<span class="ev-at">[${fmtTime(e.at)}]</span>` : '';
-    const tags = (e.item_descs || []).map(x => x.desc).filter(Boolean)
-      .map(t => `<span class="ev-tag">${esc(t)}</span>`).join('');
-    // 这条证据自己触了红线的，直接标出规则编号
-    // 多条红线只标一个角标，具体规则在「风险红线」页展开
-    const rules = (e.rules || []).length
-      ? `<span class="ev-tag" style="background:rgba(214,69,65,.12);color:#B91C1C">风险红线</span>` : '';
-    return `<div class="ev" ${e.at != null ? `onclick="seekTo(${e.at})" title="点击跳到该处"` : ''}>
-      <div class="ev-span">${at}“${esc(e.span)}”</div>
-      <div class="ev-meta">${rules}${tags}${e.note ? `<span class="ev-note">${esc(e.note)}</span>` : ''}</div>
-    </div>`;
-  }).join('') : '<div class="empty">未提取到明显风险片段</div>';
-
-  const guideHtml = buildGuidePane(res.guidance || {});
-
-  // 识别标签 + 叙事分析（对齐插件的展示，数据换成转写场景真正有值的来源）
+  // ── ① 总体结论 ──
   const L = res.labels || {};
+  const dtags = res.domain_tags || [];
   const labs = L.labels || [];
   const KIND = { veto:'风险红线', major:'风险红线', item:'风险特征', domain:'风险类型' };
-  const dtags = res.domain_tags || [];
-  const tagHtml = `
-    ${dtags.length ? `<div class="sub-h2">潜在意识形态风险类型</div>
-      <div class="dtags">${dtags.map(x => `<div class="dtag">
-        <span class="dtag-name">${esc(x.domain_name || '')}</span>
-        ${(x.keywords||[]).length ? `<span class="dtag-kw">${(x.keywords||[]).slice(0,6).map(esc).join(' · ')}</span>` : ''}
-      </div>`).join('')}</div>` : ''}
-    <div class="sub-h2">识别标签</div>
-    <div class="tag-chips">${labs.length
-      ? labs.map(l => `<span class="tag-chip k-${esc(l.kind)}" title="${esc(KIND[l.kind]||'')}${l.desc ? '　'+esc(l.desc) : ''}">${esc(l.text)}</span>`).join('')
-      : '<span class="tag-chip empty">未命中明确标签</span>'}</div>
-    ${L.narrative ? `<div class="sub-h2">叙事分析</div>
-      <div class="narrative">${esc(L.narrative)}</div>` : ''}`;
-
-  // 拆成 5 个 pane，切标签就能看到各部分，不必在右栏里长距离下滑
-  $('sixBody').innerHTML = `
-    <div class="pane on" data-pane="verdict">
-      <div class="verdict">
-        <div>
-          <div class="verdict-lv" style="color:${color}">${esc(sm.risk_level || LV_LABEL[n])}</div>
-          <div class="scale5">${[1,2,3,4,5].map(i => `<div>
-            <div class="s5bar" style="background:${i === n ? lvColor(i) : '#e6eaf1'}"></div>
-            <div class="s5lb" style="${i === n ? 'color:'+lvColor(i)+';font-weight:700' : ''}">${LV_LABEL[i].replace('风险','')}</div>
-          </div>`).join('')}</div>
-        </div>
-        <div>
-          <span class="verdict-num" style="color:${color}">${sm.risk_percent}</span>
-          <span class="verdict-of">/100</span>
-        </div>
-        <div class="verdict-meta">
-          风险特征 <b>${hits}</b> 项　·　${src}<br>
-          ${sd.summary ? esc(sd.summary) + '<br>' : ''}
-          ${(sd.adjustments||[]).length ? '判定依据：' + esc((sd.adjustments||[]).map(adjLabel).join('、')) : ''}
-        </div>
+  SECTIONS.verdict = `
+    <div class="verdict">
+      <div>
+        <div class="verdict-lv" style="color:${color}">${esc(sm.risk_level || LV_LABEL[n])}</div>
+        <div class="scale5">${[1,2,3,4,5].map(i => `<div>
+          <div class="s5bar" style="background:${i === n ? lvColor(i) : '#e6eaf1'}"></div>
+          <div class="s5lb" style="${i === n ? 'color:'+lvColor(i)+';font-weight:700' : ''}">${LV_LABEL[i].replace('风险','')}</div>
+        </div>`).join('')}</div>
       </div>
-      ${(major.length || veto.length) ? `<div class="redline" style="margin-bottom:2px">
-        <div class="redline-h" style="margin-bottom:0">⚠ 触及风险红线 ${veto.length + major.length} 项　—　详情见「风险红线」标签</div>
-      </div>` : '<div class="six-note" style="margin-top:0">未发现触及风险红线的内容。</div>'}
-      ${tagHtml}
-      <div class="six-note">
-        说明：时间轴按语句标注风险等级，可点击定位复核；全片等级由各时段风险汇总，
-        并结合风险红线综合判定。识别文本已自动校正同音错字。
+      <div class="verdict-meta">
+        发现风险特征 <b>${hits}</b> 项${reds.length ? `　·　触及红线 <b style="color:#B91C1C">${reds.length}</b> 项` : ''}
       </div>
     </div>
+    ${sd.summary ? `<div class="narrative" style="margin-top:12px">${esc(sd.summary)}</div>` : ''}
+    ${L.narrative ? `<div class="sub-h2">内容分析</div>
+      <div class="narrative">${esc(L.narrative)}</div>` : ''}
+    ${labs.length ? `<div class="sub-h2">识别标签</div>
+      <div class="tag-chips">${labs.map(l =>
+        `<span class="tag-chip k-${esc(l.kind)}" title="${esc(KIND[l.kind]||'')}${l.desc ? '　'+esc(l.desc) : ''}">${esc(l.text)}</span>`
+      ).join('')}</div>` : ''}`;
 
-    <div class="pane" data-pane="redline">
-      ${(major.length || veto.length) ? `
-        <div class="redline-h" style="margin-bottom:10px">
-          ⚠ ${veto.length ? `严重违规 ${veto.length} 项　` : ''}${major.length ? `重大风险 ${major.length} 项` : ''}
-          　—　点击语句可定位播放复核
-        </div>
-        ${veto.map(v => ruleCard(v, true)).join('')}
-        ${major.map(m => ruleCard(m, false)).join('')}`
-      : '<div class="empty">未发现触及风险红线的内容</div>'}
-    </div>
+  // ── ② 风险红线 ──
+  SECTIONS.redline = reds.length
+    ? reds.map(r => {
+        const rid = typeof r === 'string' ? r : (r.id || '');
+        const nm = (typeof r === 'object' && (r.name || r.desc)) ? (r.name || r.desc) : rid;
+        const desc = (typeof r === 'object' && r.name && r.desc) ? r.desc : '';
+        const trigs = (typeof r === 'object' ? (r.triggers || []) : []);
+        return `<div class="rl">
+          <div class="rl-h"><b>${esc(nm)}</b>${desc ? `<span class="rl-d">${esc(desc)}</span>` : ''}</div>
+          ${trigs.length ? trigs.slice(0,5).map(t => `
+            <div class="q" ${t.at != null && !isTextMode ? `onclick="seekTo(${t.at})" title="点击跳到该处"` : ''}>
+              ${t.at != null ? `<span class="qt">${posLabel(t.at)}</span>` : ''}“${esc(fullSentence(t.at, t.span))}”
+            </div>`).join('')
+            : '<div class="q nomatch">由全段内容综合判定，无单句直接对应</div>'}
+        </div>`;
+      }).join('')
+    : '<div class="empty">未触及风险红线</div>';
 
-    <div class="pane" data-pane="dims">
-      <div class="six-grid">
-        <div class="radar-box">${radar6(dims, color)}</div>
-        <div>${dimRows}</div>
+  // ── ③ 逐项分析：只列命中的判据，每项挂原句（与导出报告一致）──
+  const dimBlocks = dims.map(d => {
+    const rows = (d.items || []).filter(it => it.hit).map(it => {
+      const evs = evByItem[it.id] || [];
+      const quotes = evs.length
+        ? evs.slice(0,3).map(e => `<div class="q"
+            ${e.at != null && !isTextMode ? `onclick="seekTo(${e.at})" title="点击跳到该处"` : ''}>
+            ${e.at != null ? `<span class="qt">${posLabel(e.at)}</span>` : ''}“${esc(fullSentence(e.at, e.span))}”
+            ${e.note ? `<span class="why">${esc(e.note)}</span>` : ''}</div>`).join('')
+        : '<div class="q nomatch">由全段内容综合判定，无单句直接对应</div>';
+      return `<div class="item"><div class="ih">${esc(it.desc || it.id)}</div>${quotes}</div>`;
+    }).join('');
+    if (!rows) return '';
+    return `<div class="dimcard">
+      <div class="dimtop">
+        <span class="dimname">${esc(d.name)}</span>
+        <span class="dimcnt" style="color:${color}">${d.hit_count}/${d.total}</span>
+      </div>${rows}</div>`;
+  }).filter(Boolean).join('');
+  const miss = dims.filter(d => !d.hit_count).map(d => d.name);
+  SECTIONS.detail = (dimBlocks || '<div class="empty">未发现风险特征</div>')
+    + (miss.length ? `<div class="misshint">未涉及：${esc(miss.join(' · '))}</div>` : '');
+
+  // ── ③ 潜在风险域（设计稿中单列一项）──
+  const DOMAIN_ALL = ['历史认知','制度认同','心理韧性','网络素养','认知闭合'];
+  const hitDomain = {};
+  dtags.forEach(x => hitDomain[String(x.domain_name || '').replace(/风险$/, '')] = x);
+  SECTIONS.domain = `
+    <div class="dom-grid">${DOMAIN_ALL.map(nm => {
+      const h = hitDomain[nm];
+      return `<div class="dom ${h ? 'on' : ''}">
+        <div class="dom-h"><b>${nm}</b>${h ? '<span class="dom-tag">已涉及</span>' : '<span class="dom-tag no">未涉及</span>'}</div>
+        ${h && (h.keywords||[]).length
+          ? `<div class="dom-kw">${(h.keywords||[]).slice(0,8).map(esc).join(' · ')}</div>` : ''}
+      </div>`;
+    }).join('')}</div>
+    <div class="misshint">五大风险域为固定分类，命中的以蓝色标出并列出对应关键词。</div>`;
+
+  // ── ④ 沟通建议 ──
+  SECTIONS.guide = buildGuidePane(res.guidance || {});
+
+  // ── 目录 ──
+  const items = [
+    { id:'verdict', name:'总体结论', sub: sd.summary ? String(sd.summary).slice(0,26) : '风险等级与内容分析',
+      badge: sm.risk_level || LV_LABEL[n], cls: n >= 4 ? 'red' : '' },
+    { id:'redline', name:'风险红线', sub: reds.length ? '触及的红线及对应语句' : '未触及',
+      badge: String(reds.length), cls: reds.length ? 'red' : 'gray' },
+    { id:'domain', name:'潜在风险域', sub:'五大风险域的涉及情况',
+      badge: String(dtags.length), cls: dtags.length ? '' : 'gray' },
+    { id:'detail', name:'逐项分析', sub:'命中的风险特征与原文依据',
+      badge: String(hits), cls: hits ? '' : 'gray' },
+    { id:'guide', name:'沟通建议', sub:'按平台、家长、学校分别给出',
+      badge:'', cls:'' },
+  ];
+  $('toc').innerHTML = items.map((x, i) => `
+    <div class="toc-item" data-sec="${x.id}" onclick="showSection('${x.id}')">
+      <div class="toc-ic">${i+1}</div>
+      <div class="toc-body">
+        <div class="toc-name">${x.name}</div>
+        <div class="toc-sub">${esc(x.sub)}</div>
       </div>
-    </div>
+      ${x.badge ? `<span class="toc-badge ${x.cls}">${esc(x.badge)}</span>` : ''}
+    </div>`).join('');
+  $('navNote').textContent = '点选查看';
 
-    <div class="pane" data-pane="evidence">${evHtml}</div>
+  const btn = $('btnReport');
+  if (btn) { btn.disabled = false; $('reportNote').textContent = '含全部五部分内容'; }
 
-    <div class="pane" data-pane="guide">${guideHtml}</div>`;
-
-  // 红线数量角标
-  const nRed = veto.length + major.length;
-  const dot = $('dotRed');
-  dot.textContent = nRed;
-  dot.classList.toggle('hide', !nRed);
-  // 有红线就直接切到红线页——审核最关心的就是这个
-  showPane(nRed ? 'redline' : 'verdict');
+  // 分析完成后先看总体结论 —— 结论里已含等级与红线条数，
+  // 需要细看再点进「风险红线」。
+  showSection('verdict');
 }
 
-// ══ 右栏分页切换 ══
-function showPane(name) {
-  document.querySelectorAll('#sixBody .pane').forEach(p =>
-    p.classList.toggle('on', p.dataset.pane === name));
-  document.querySelectorAll('#sixTabs button').forEach(b =>
-    b.classList.toggle('on', b.dataset.pane === name));
+const SEC_TITLE = { verdict:'总体结论', redline:'风险红线', domain:'潜在风险域',
+                    detail:'逐项分析', guide:'沟通建议' };
+function showSection(id) {
+  if (!SECTIONS[id]) return;
+  curSection = id;
+  $('sixBody').innerHTML = `<div class="pane on">${SECTIONS[id]}</div>`;
   $('sixBody').scrollTop = 0;
+  $('paneTitle').textContent = SEC_TITLE[id] || '分析结果';
+  document.querySelectorAll('#toc .toc-item').forEach(el =>
+    el.classList.toggle('on', el.dataset.sec === id));
 }
-
-$('sixTabs').addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (b && b.dataset.pane) showPane(b.dataset.pane);
-});
 
 function resetSixPanes() {
   $('sixBody').innerHTML = `<div class="empty">转写完成后自动研判…</div>`;
-  $('dotRed').classList.add('hide');
   $('sixSrc').textContent = '';
-  document.querySelectorAll('#sixTabs button').forEach((b, i) =>
-    b.classList.toggle('on', i === 0));
+  $('toc').innerHTML = '<div class="empty" id="tocEmpty">转写完成后自动分析</div>';
+  SECTIONS = {}; curSection = null;
+}
+
+// 研判可能调用本地模型，单个窗口几十秒没有 window 事件；用计时器 + 后端心跳
+// 持续显示状态，避免用户误以为页面卡死。
+function analysisElapsed() {
+  return Math.max(0, Math.floor((Date.now() - analysisStartedAt) / 1000));
+}
+function setAnalysisStatus(done, total, detail = '', pctOverride = null) {
+  const elapsed = analysisElapsed();
+  const n = Number.isFinite(done) ? done : 0;
+  const t = Number.isFinite(total) && total > 0 ? total : '?';
+  const pct = Number.isFinite(pctOverride)
+    ? Math.max(0, Math.min(99, Math.round(pctOverride)))
+    : analysisProgressPct;
+  analysisProgressDone = n;
+  analysisProgressTotal = Number.isFinite(total) ? total : 0;
+  analysisProgressDetail = detail;
+  analysisProgressPct = Math.max(analysisProgressPct, pct); // 百分比只前进，不倒退
+  $('progPct').textContent = analysisProgressPct + '%';
+  $('progStage').textContent = t === '?' ? '正在连接研判服务' : `研判中 · ${n}/${t}`;
+  $('barFill').classList.remove('indet');
+  $('barFill').style.width = analysisProgressPct + '%';
+  $('bandStatus').innerHTML = `<span class="spin"></span> ${analysisProgressPct}% · 研判中 ${n}/${t}`
+    + `　<span class="analysis-elapsed">已运行 ${elapsed}s`
+    + (detail ? ` · ${esc(detail)}` : '') + `</span>`;
+}
+function stopAnalysisClock() {
+  if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
+}
+
+// 开始新来源/新任务时立即清掉上一轮的媒体和研判展示。
+// bumpRun=true 会让尚未结束的旧 fetch 失效，防止它晚到后覆盖新页面。
+function clearPreviousAnalysis({ clearMedia = false, bumpRun = true } = {}) {
+  if (analysisController) { analysisController.abort(); analysisController = null; }
+  if (bumpRun) analysisRunId++;
+  stopAnalysisClock();
+  riskResult = null; winResults = []; sentBandMap = {}; guideData = {};
+  SECTIONS = {}; curSection = null;
+  $('sixBody').innerHTML = '<div class="empty">等待本次研判结果…</div>';
+  $('sixSrc').textContent = '';
+  $('toc').innerHTML = '<div class="empty" id="tocEmpty">本次分析进行中</div>';
+  $('btnReport').disabled = true;
+  $('reportNote').textContent = '分析完成后可导出';
+  $('bandZone').classList.add('hide');
+  $('band').querySelectorAll('.band-seg').forEach(n => n.remove());
+  $('winBand').innerHTML = '';
+  $('bandTicks').innerHTML = '';
+  $('bandCursor').classList.add('hide');
+  $('dlGroup').classList.add('hide');
+  $('errBox').classList.add('hide');
+  if (clearMedia) {
+    file = null; taskId = null; segments = []; duration = 0;
+    fixedCount = 0; majorCount = 0; filteredCount = 0;
+    segRows = {};
+    if (es) { es.close(); es = null; }
+    if (timer) { clearInterval(timer); timer = null; }
+    if (videoURL) { URL.revokeObjectURL(videoURL); videoURL = null; }
+    $('player').removeAttribute('src'); $('player').load();
+    $('videoWrap').classList.add('hide');
+    $('fileRow').classList.add('hide');
+    $('fName').textContent = ''; $('fMeta').textContent = '';
+    $('fileInput').value = '';
+    $('segList').innerHTML = ''; $('plainBox').textContent = '';
+    $('stSeg').textContent = '0'; $('stMajor').textContent = '0';
+  }
+}
+
+// 远程访问时上传受对方带宽限制（实测经隧道约 600KB/s），提前告知避免误判为卡死
+if (!/^(localhost|127\.|10\.|192\.168\.)/.test(location.hostname)) {
+  const el = document.getElementById('dropRemote');
+  if (el) el.style.display = 'block';
+}
+
+// ══ 三种输入来源：上传文件 / 视频链接 / 粘贴文本 ══
+// 链接与文件最终都走同一条转写研判链路；粘贴文本跳过转写直接分析。
+$('srcTabs').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || !b.dataset.src) return;
+  const previous = document.querySelector('#srcTabs button.on')?.dataset.src;
+  if (previous !== b.dataset.src) clearPreviousAnalysis({ clearMedia: true });
+  document.querySelectorAll('#srcTabs button').forEach(x =>
+    x.classList.toggle('on', x === b));
+  const src = b.dataset.src;
+  $('uploadZone').classList.toggle('hide', src !== 'file');
+  $('paneLink').classList.toggle('hide', src !== 'link');
+  $('paneText').classList.toggle('hide', src !== 'text');
+  isTextMode = (src === 'text');
+  // 上传方式要先选文件才可点；链接与文本随时可点
+  $('btnStart').disabled = (src === 'file') && !file;
+  // 文本没有时间概念：面板标题去掉「时间轴」，并收起色带与播放器
+  document.querySelector('#videoPanel .panel-title').textContent =
+    isTextMode ? '文本内容' : '视频与风险时间轴';
+  if (isTextMode) {
+    $('bandZone').classList.add('hide');
+    $('videoWrap').classList.add('hide');
+  }
+  if (src === 'file') $('uploadZone').classList.remove('hide');
+});
+
+// 视频链接：后端下载后返回 task_id，之后与上传文件完全同流程
+async function runFromLink() {
+  const url = $('linkInput').value.trim();
+  const note = $('linkNote');
+  if (!url) { note.className = 'src-note err'; note.textContent = '请先粘贴链接'; return; }
+  const btn = $('btnStart');
+  clearPreviousAnalysis({ clearMedia: true });
+  btn.disabled = true;
+  note.className = 'src-note';
+  note.innerHTML = '<span class="spin"></span> 正在取回视频，可能需要几十秒…';
+  try {
+    const r = await fetch(`${API}/api/transcribe/link`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ url }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '获取失败');
+    note.className = 'src-note ok';
+    note.textContent = `已取回：${d.name}`;
+    // 交给既有流程：伪造一个 file 对象承载名称，其余与上传一致
+    file = { name: d.name };
+    duration = d.duration || 0;
+    $('fName').textContent = d.name;
+    $('fMeta').textContent = fmtTime(duration) + '　·　' + (d.site || '链接');
+    $('fileRow').classList.remove('hide');
+    startFromTask(d.task_id);
+  } catch (e) {
+    note.className = 'src-note err';
+    note.textContent = e.message || '获取失败，请改用上传文件';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// 粘贴文本：无音频可转写，按句切分后直接进研判
+async function runFromText() {
+  const txt = $('textInput').value.trim();
+  const note = $('textNote');
+  if (txt.length < 20) {
+    note.className = 'src-note err'; note.textContent = '内容太短，请至少粘贴 20 个字'; return;
+  }
+  const btn = $('btnStart');
+  clearPreviousAnalysis({ clearMedia: true });
+  btn.disabled = true;
+  note.className = 'src-note';
+  note.innerHTML = '<span class="spin"></span> 正在分析…';
+  try {
+    // 按句末标点切句；没有时间轴，用字数折算位置以便定位
+    const parts = txt.split(/(?<=[。！？!?…；;])/).map(x => x.trim()).filter(x => x.length > 1);
+    let pos = 0;
+    segments = (parts.length ? parts : [txt]).map((t, i) => {
+      const st = pos / 5; pos += t.length;
+      return { start: +st.toFixed(2), end: +(pos / 5).toFixed(2), text: t, sid: i };
+    });
+    duration = pos / 5;
+    file = { name: '粘贴文本' };
+    $('fName').textContent = '粘贴文本';
+    $('fMeta').textContent = `${txt.length} 字　·　${segments.length} 句`;
+    $('fileRow').classList.remove('hide');
+    note.className = 'src-note ok';
+    note.textContent = `已切分 ${segments.length} 句，分析中…`;
+    const completed = await runAnalysis();
+    // 只有真正收到最终结果并完成渲染，才移除来源区域的转圈并显示完成。
+    if (completed) {
+      note.className = 'src-note ok';
+      note.textContent = `分析完成（${segments.length} 句）`;
+    } else if (note.isConnected && !note.closest('.hide')) {
+      note.className = 'src-note err';
+      note.textContent = '分析未完成，请查看右侧提示后重试';
+    }
+  } catch (e) {
+    note.className = 'src-note err';
+    note.textContent = e.message || '分析失败';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ══ 触发研判 ══
 // ══ 流式研判：逐窗到达就增量渲染，不做"分析中"占位 ══
 async function runAnalysis() {
   if (!segments.length) return;
+  if (analysisController) analysisController.abort();
+  const runId = ++analysisRunId;
+  analysisController = new AbortController();
   winResults = []; sentBandMap = {}; guideData = {}; curAge = AGE_GROUP;
-  $('bandZone').classList.remove('hide');
-  $('bandZone').classList.add('rise');
+  if (!isTextMode) {                 // 文本无时间轴，不显示风险色带
+    $('bandZone').classList.remove('hide');
+    $('bandZone').classList.add('rise');
+  }
   initSixSkeleton();                    // 先把六维骨架摆出来，之后逐窗填充
-  $('bandStatus').innerHTML = '<span class="spin"></span> 研判中 0/?';
+  stopAnalysisClock();
+  analysisStartedAt = Date.now();
+  analysisProgressPct = 0;
+  setAnalysisStatus(0, 0, '正在连接研判服务', 2);
+  analysisTimer = setInterval(() => {
+    // 只有处于研判态时刷新，完成/失败状态由下面的分支固定显示。
+    if (analysisTimer && runId === analysisRunId) {
+      setAnalysisStatus(analysisProgressDone, analysisProgressTotal,
+                        analysisProgressDetail, analysisProgressPct);
+    }
+  }, 1000);
   const total = duration || 0;
+  let finalResult = null;
+  let analysisCompleted = false;
+
+  // Cloudflare 偶尔会在最后一个 NDJSON 事件到达后直接结束响应，
+  // 因此完成逻辑必须可由 done 事件或正常 EOF 共同触发，并保证只执行一次。
+  const completeAnalysis = () => {
+    if (analysisCompleted) return true;
+    if (!finalResult || runId !== analysisRunId) return false;
+    riskResult = finalResult;
+    riskResult.guidance = guideData;
+    renderBand(winResults, total, Object.values(sentBandMap));
+    renderSix(riskResult);
+    const n = riskResult.summary?.risk_level_num || 1;
+    $('bandStatus').innerHTML = `全片定级 <b style="color:${lvColor(n)}">`
+      + esc(riskResult.summary?.risk_level || '') + '</b>';
+    analysisProgressPct = 100;
+    $('progPct').textContent = '100%';
+    $('progStage').textContent = '研判完成';
+    $('barFill').classList.remove('indet');
+    $('barFill').style.width = '100%';
+    stopAnalysisClock();
+    analysisController = null;
+    analysisCompleted = true;
+    return true;
+  };
   try {
     const r = await fetch(`${API}/analyze/transcript/stream`, {
       method:'POST', headers:{'Content-Type':'application/json'},
+      signal: analysisController.signal,
       body: JSON.stringify({
         segments: segments.map(s => ({ start:s.start, end:s.end, text:s.text })),
         age_group: AGE_GROUP, window_sec: WINDOW_SEC,
@@ -1415,57 +2041,117 @@ async function runAnalysis() {
     if (!r.ok) throw new Error(`HTTP ${r.status} ${(await r.text()).slice(0,160)}`);
     // NDJSON：一行一个事件，边收边渲染
     const rd = r.body.getReader(), dec = new TextDecoder();
-    let buf = '', nWin = 0, totWin = 0;
+    let buf = '', nWin = 0, llmWin = 0, totWin = 0, receivedDone = false;
     for (;;) {
       const { value, done } = await rd.read();
-      if (done) break;
-      buf += dec.decode(value, { stream:true });
+      if (runId !== analysisRunId) return false;
+      if (value) buf += dec.decode(value, { stream: !done });
+      if (done) buf += dec.decode();
+      // 正常读取时保留不完整的最后一行；EOF 时把它也作为完整事件处理。
       const lines = buf.split('\n');
-      buf = lines.pop();
+      buf = done ? '' : lines.pop();
       for (const ln of lines) {
         if (!ln.trim()) continue;
         let ev; try { ev = JSON.parse(ln); } catch { continue; }
         if (ev.event === 'meta') {
           totWin = ev.window_count || 0;
-          $('bandStatus').innerHTML = `<span class="spin"></span> 研判中 0/${totWin}`;
+          nWin = 0; llmWin = 0;
+          setAnalysisStatus(0, totWin, '任务已建立', 5);
+        } else if (ev.event === 'heartbeat') {
+          setAnalysisStatus(llmWin || nWin, totWin,
+                            llmWin ? '精判窗口进度' : '初判完成，等待精判结果',
+                            llmWin && totWin ? 20 + llmWin / totWin * 70 : 20);
         } else if (ev.event === 'sentence') {
           markSentence(ev.sentence, 'redline');      // 逐句红线：秒出
         } else if (ev.event === 'window') {
-          nWin++;
-          winResults.push(ev.window);
+          const idx = Number.isInteger(ev.index) ? ev.index : nWin;
+          const phase = ev.phase || 'llm';
+          if (phase === 'rules') nWin++;
+          else llmWin++;
+          // 规则初判和模型精判针对同一个窗口；精判到达时覆盖初判，
+          // 不要把同一窗口重复计入最终结果。
+          winResults[idx] = ev.window;
           (ev.window.sentence_bands || []).forEach(b => {
             sentBandMap[Math.round(b.start * 100)] = b;
             markSentence(b, 'analyzed');             // 该句已被研判 → 打标记
           });
           renderBand(winResults, total, Object.values(sentBandMap));
-          pushWindowIntoSix(ev.window, nWin, totWin); // 六维一点点长出来
-          $('bandStatus').innerHTML = `<span class="spin"></span> 研判中 ${nWin}/${totWin}`;
+          pushWindowIntoSix(ev.window, phase === 'rules' ? nWin : llmWin, totWin);
+          setAnalysisStatus(phase === 'rules' ? nWin : llmWin, totWin,
+                            phase === 'rules' ? '初判窗口进度' : '精判窗口进度',
+                            phase === 'rules'
+                              ? 5 + (totWin ? nWin / totWin * 15 : 0)
+                              : 20 + (totWin ? llmWin / totWin * 70 : 0));
         } else if (ev.event === 'summary') {
-          riskResult = { summary: ev.summary, bands: winResults,
-                         matched_tags: ev.matched_tags || [],
-                         sentence_bands: ev.sentence_bands || [],
-                         labels: ev.labels || {},
-                         domain_tags: ev.domain_tags || [],
-                         window_sec: WINDOW_SEC, duration: total };
+          const provisional = !!ev.provisional;
+          setAnalysisStatus(provisional ? nWin : (llmWin || nWin), totWin,
+                            provisional ? '初判结果已显示，等待精判结果' : '正在汇总结果',
+                            provisional ? 20 : 92);
+          const result = { summary: ev.summary, bands: winResults.filter(Boolean),
+                           matched_tags: ev.matched_tags || [],
+                           sentence_bands: ev.sentence_bands || [],
+                           labels: ev.labels || {},
+                           domain_tags: ev.domain_tags || [],
+                           window_sec: WINDOW_SEC, duration: total };
           (ev.sentence_bands || []).forEach(b => {
             sentBandMap[Math.round(b.start * 100)] = b;
             markSentence(b, 'analyzed');
           });
           renderBand(winResults, total, Object.values(sentBandMap));
-          renderSix(riskResult);                     // 全片定级：替换成完整面板
           const n = ev.summary.risk_level_num || 1;
-          $('bandStatus').innerHTML = `全片定级 <b style="color:${lvColor(n)}">`
-            + esc(ev.summary.risk_level || '') + '</b>';
+          if (provisional) {
+            // 初判仅用于让用户知道任务在推进，不展示为正式结论。
+            const liveTitle = document.querySelector('#sixBody .live-title');
+            if (liveTitle) liveTitle.textContent = '快速初判完成，正在深度研判';
+            const liveProg = $('liveProg');
+            if (liveProg) liveProg.textContent = `0 / ${totWin || '?'}`;
+            const liveSub = $('tocLiveSub');
+            if (liveSub) liveSub.textContent = `深度研判 0/${totWin || '?'} 段`;
+            $('btnReport').disabled = true;
+            $('reportNote').textContent = '深度研判完成后可导出';
+          } else {
+            // 精判总结已到，但沟通建议还在生成；先缓存，收到 done 再统一展示。
+            finalResult = result;
+            setAnalysisStatus(totWin, totWin, '生成处置建议', 95);
+          }
         } else if (ev.event === 'guidance') {
-          mergeGuidance(ev.guidance);        // 分批到达，合并后只刷话术页
+          guideData = Object.assign({}, guideData, ev.guidance || {});
+          if (finalResult) finalResult.guidance = guideData;
+          setAnalysisStatus(totWin, totWin, '整理最终结果', 98);
+        } else if (ev.event === 'done') {
+          if (!finalResult) throw new Error('未收到最终研判结果');
+          completeAnalysis();
+          receivedDone = true;
+          break;
         } else if (ev.event === 'error') {
           throw new Error(ev.text || '研判失败');
         }
       }
+      // done 已经代表业务完成，不再等 Cloudflare 把 HTTP 流彻底关闭；
+      // 否则结果虽然出来了，页面上的来源提示仍可能一直转圈。
+      if (receivedDone) {
+        try { await rd.cancel(); } catch (_) {}
+        break;
+      }
+      if (done) break;
     }
+    // 正常 EOF 但末尾 done 被代理吞掉时，只要最终总结已收到就可以安全完成。
+    if (!analysisCompleted && !completeAnalysis()) {
+      throw new Error('研判连接已结束，但未收到最终结果');
+    }
+    return true;
   } catch (e) {
-    $('sixBody').innerHTML = `<div class="alert alert-err">研判失败：${esc(e.message)}</div>`;
-    $('bandStatus').textContent = '研判失败';
+    if (e.name === 'AbortError' || runId !== analysisRunId) return false;
+    stopAnalysisClock();
+    $('progStage').textContent = '研判失败';
+    if (riskResult) {
+      $('bandStatus').textContent = '模型精判中断，已保留快速初判';
+      $('reportNote').textContent = '当前为快速初判结果';
+    } else {
+      $('sixBody').innerHTML = `<div class="alert alert-err">研判失败：${esc(e.message)}</div>`;
+      $('bandStatus').textContent = '研判失败';
+    }
+    return false;
   }
 }
 
@@ -1501,8 +2187,7 @@ function finish() {
   $('btnStart').disabled = false;
   $('btnReset').classList.remove('hide');
   if (segments.length) {
-    $('btnTxt').classList.remove('hide');
-    $('btnSrt').classList.remove('hide');
+    $('dlGroup').classList.remove('hide');
     if (!$('progStage').textContent.includes('完成'))
       $('progStage').textContent = '已结束';
     if (filteredCount) {
@@ -1533,6 +2218,7 @@ $('btnReset').onclick = reset;
 function reset() {
   if (es) { es.close(); es = null; }
   if (timer) { clearInterval(timer); timer = null; }
+  stopAnalysisClock();
   file = null; segments = []; duration = 0; fixedCount = 0;
   majorCount = 0; riskResult = null; filteredCount = 0;
   segRows = {}; sentBandMap = {}; winResults = [];
@@ -1560,17 +2246,40 @@ function reset() {
   $('barFill').style.width = '0%';
 }
 
-// ── 视图切换 ──
-$('tabSeg').onclick = () => {
-  $('tabSeg').classList.add('on'); $('tabPlain').classList.remove('on');
-  $('segList').classList.remove('hide'); $('plainBox').classList.add('hide');
-};
-$('tabPlain').onclick = () => {
-  $('tabPlain').classList.add('on'); $('tabSeg').classList.remove('on');
-  $('plainBox').classList.remove('hide'); $('segList').classList.add('hide');
-};
-
 // ── 导出 ──
+// ══ 导出分析报告：把四部分结果拼成一份离线 HTML，可直接发送与留档 ══
+function exportReport() {
+  if (!riskResult) return;
+  const sm = riskResult.summary || {}, sd = sm.six_dim_detail || {};
+  const nm = (file && file.name) || '分析报告';
+  const order = [['verdict','一、总体结论'], ['redline','二、风险红线'],
+                 ['domain','三、潜在风险域'], ['detail','四、逐项分析'],
+                 ['guide','五、沟通建议']];
+  const css = [...document.querySelectorAll('style')].map(x => x.textContent).join('\n');
+  const body = order.filter(([k]) => SECTIONS[k])
+    .map(([k, t]) => `<h2>${t}</h2><div class="pane on">${SECTIONS[k]}</div>`).join('');
+  const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<title>${esc(nm)} · 分析报告</title><style>${css}
+body{background:#f4f9fd;padding:26px;max-width:1000px;margin:0 auto}
+h1{font-size:22px;margin-bottom:4px}h2{font-size:16px;margin:26px 0 12px;
+  padding-bottom:7px;border-bottom:2px solid #dbe3f5}
+.meta{font-size:12.5px;color:#64748b;margin-bottom:8px}
+.foot{margin-top:30px;padding-top:14px;border-top:1px solid #dbe3f5;
+  font-size:11.5px;color:#94a3b8;line-height:1.9}
+.q[onclick]{cursor:default}</style></head><body>
+<h1>${esc(nm)}</h1>
+<div class="meta">风险等级：${esc(sm.risk_level || '')}　·　导出时间：${new Date().toLocaleString('zh-CN')}</div>
+${body}
+<div class="foot">本报告由系统自动生成，结果供人工复核参考，不构成最终结论。<br>
+所有分析在本机完成，内容未上传外部网络。</div></body></html>`;
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type:'text/html;charset=utf-8' }));
+  a.download = nm.replace(/\.[^.]+$/, '') + '_分析报告.html';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
 async function dl(fmt) {
   const r = await fetch(`${API}/api/transcribe/export`, {
     method:'POST', headers:{'Content-Type':'application/json'},

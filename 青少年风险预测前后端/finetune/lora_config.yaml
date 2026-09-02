@@ -1,0 +1,29 @@
+# MLX LoRA 微调配置 —— 150 条流程验证跑
+# 目的是打通流程，不是产出可用模型（142 条在 8B 上必然过拟合）
+model: "mlx-community/Qwen3-8B-4bit"
+train: true
+fine_tune_type: lora
+optimizer: adamw
+
+data: "./data"          # 读 train.jsonl / valid.jsonl
+
+seed: 20260820
+mask_prompt: true       # 关键：loss 只算 assistant 段，不学"生成用户输入"
+num_layers: 16          # 只训后 16 层；小数据全层训更容易过拟合
+batch_size: 1           # M5 16GB 的硬约束
+iters: 400              # 126 条 / bs1 ≈ 3.2 epoch
+val_batches: 7          # valid 全量（7 条）
+learning_rate: 5e-5     # 4-bit QLoRA 用比 bf16 更小的 lr
+steps_per_report: 25
+steps_per_eval: 50
+save_every: 100
+adapter_path: "./adapters"
+max_seq_length: 1024    # 摘要平均85字+输出，1024 够
+grad_checkpoint: true   # 省显存，慢一点
+
+lora_parameters:
+  keys: ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj",
+         "mlp.gate_proj", "mlp.down_proj", "mlp.up_proj"]
+  rank: 16              # 150 条数据 r=16 足够，r=64 会更严重过拟合
+  scale: 32.0
+  dropout: 0.05

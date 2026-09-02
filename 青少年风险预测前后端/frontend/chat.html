@@ -571,8 +571,10 @@ header{
 
 <div class="app-layout">
 
-<!-- ── 数据面板 ── -->
-<aside class="data-panel" id="dataPanel">
+<!-- ── 数据面板：演示态隐藏（问答主区自动占满宽度）──
+     元素保留，因为 dpCaseFilter / dpCaseList 有 JS 引用；
+     需要恢复时把下面的 style="display:none" 删掉即可。 -->
+<aside class="data-panel" id="dataPanel" style="display:none">
   <div class="dp-card">
     <div class="dp-card-head"><span class="dp-icon">📂</span>典型案例库</div>
     <div class="dp-card-body">
@@ -1023,11 +1025,20 @@ function fillDataQueryReply(id, data) {
     '中度风险': ['中度风险', 'lv-m'], '轻度风险': ['轻度风险', 'lv-l'], '低风险': ['低风险', 'lv-l'],
   };
 
-  // 获取用于展示的数值
+  // 获取用于展示的数值（字段名兼容语料表/案例表两套命名）
   function getVal(c) {
-    if (orderField === 'total_interaction') return c.total_interaction || 0;
-    if (orderField === 'avg_risk_score') return c.avg_risk_score || 0;
-    return c.case_priority_score || 0;
+    if (orderField === 'total_interaction' || orderField === 'interaction_count')
+      return c.total_interaction ?? c.interaction_count ?? 0;
+    if (orderField === 'avg_risk_score' || orderField === 'total_risk_score')
+      return c.avg_risk_score ?? c.total_risk_score ?? 0;
+    if (orderField === 'like_count') return c.like_count ?? 0;
+    return c.case_priority_score ?? c.total_interaction ?? 0;
+  }
+  // 语料表的 case_name 是帖子正文全文，后端已压成 display_title；回退时自己清一次
+  function caseTitle(c) {
+    if (c.display_title) return c.display_title;
+    const one = (c.case_name || '').replace(/\s+/g, ' ').trim();
+    return one.length > 34 ? one.slice(0, 34) + '…' : (one || '（无标题）');
   }
   const maxVal = Math.max(...cases.map(getVal), 1);
 
@@ -1042,7 +1053,7 @@ function fillDataQueryReply(id, data) {
       <div class="rank-item" ${onclick}>
         <div class="rank-num ${numClass}">${numIcon}</div>
         <div class="rank-info">
-          <div class="rank-name">${escHtml(c.case_name || '')}</div>
+          <div class="rank-name" title="${escHtml(c.case_name||'')}">${escHtml(caseTitle(c))}</div>
           <div class="rank-meta">
             <span class="case-level-badge ${rl[1]}">${rl[0]}</span>
             ${c.platform ? `<span class="rank-meta-tag">${escHtml(c.platform)}</span>` : ''}
@@ -1057,7 +1068,8 @@ function fillDataQueryReply(id, data) {
   const barRows = cases.slice(0, 5).map(c => {
     const val = getVal(c);
     const pct = maxVal > 0 ? Math.round(val / maxVal * 100) : 0;
-    const name = (c.case_name || '').slice(0, 10) + (c.case_name && c.case_name.length > 10 ? '…' : '');
+    const full = caseTitle(c);
+    const name = full.length > 16 ? full.slice(0, 16) + '…' : full;
     return `
       <div class="rank-bar-row">
         <div class="rank-bar-label" title="${escHtml(c.case_name||'')}">${escHtml(name)}</div>
@@ -1082,7 +1094,8 @@ function fillDataQueryReply(id, data) {
           <div class="rank-summary">${escHtml(summary)}</div>
           ${noData}
           <div class="rank-list">${listItems}</div>
-          ${barRows ? `<div class="rank-bar-wrap">${barRows}</div>` : ''}
+          ${/* 条形图与上方排行列表是同一批数据，视觉上重复，演示态隐藏。
+                恢复：把下面这行换成 barRows ? `<div class="rank-bar-wrap">${barRows}</div>` : '' */''}
         </div>
       </div>
     </div>`;
@@ -1233,9 +1246,16 @@ async function sendMessage() {
       };
       function getVal(c) {
         const f = data.order_field || 'total_interaction';
-        if(f==='total_interaction') return c.total_interaction||0;
-        if(f==='avg_risk_score') return c.avg_risk_score||0;
-        return c.case_priority_score||0;
+        if(f==='total_interaction'||f==='interaction_count') return c.total_interaction ?? c.interaction_count ?? 0;
+        if(f==='avg_risk_score'||f==='total_risk_score') return c.avg_risk_score ?? c.total_risk_score ?? 0;
+        if(f==='like_count') return c.like_count ?? 0;
+        return c.case_priority_score ?? c.total_interaction ?? 0;
+      }
+      // 语料表 case_name 是帖子正文全文，优先用后端压好的 display_title
+      function caseTitle(c){
+        if(c.display_title) return c.display_title;
+        const one=(c.case_name||'').replace(/\s+/g,' ').trim();
+        return one.length>34?one.slice(0,34)+'…':(one||'（无标题）');
       }
       const maxVal = Math.max(...cases.map(getVal), 1);
       const listItems = cases.map((c,i) => {
@@ -1247,7 +1267,7 @@ async function sendMessage() {
         return `<div class="rank-item" ${oc}>
           <div class="rank-num ${numClass}">${numIcon}</div>
           <div class="rank-info">
-            <div class="rank-name">${escHtml(c.case_name||'')}</div>
+            <div class="rank-name" title="${escHtml(c.case_name||'')}">${escHtml(caseTitle(c))}</div>
             <div class="rank-meta">
               <span class="case-level-badge ${rl[1]}">${rl[0]}</span>
               ${c.platform?`<span class="rank-meta-tag">${escHtml(c.platform)}</span>`:''}
@@ -1260,7 +1280,8 @@ async function sendMessage() {
       const barRows = cases.slice(0,5).map(c => {
         const val = getVal(c);
         const pct = maxVal>0?Math.round(val/maxVal*100):0;
-        const name = (c.case_name||'').slice(0,10)+(c.case_name&&c.case_name.length>10?'…':'');
+        const full = caseTitle(c);
+        const name = full.length>16?full.slice(0,16)+'…':full;
         return `<div class="rank-bar-row">
           <div class="rank-bar-label" title="${escHtml(c.case_name||'')}">${escHtml(name)}</div>
           <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
@@ -1276,7 +1297,8 @@ async function sendMessage() {
           </div>
           ${cases.length===0?'<div class="no-chart" style="padding:20px;">暂无数据</div>':''}
           <div class="rank-list">${listItems}</div>
-          ${barRows?`<div class="rank-bar-wrap">${barRows}</div>`:''}
+          ${/* 条形图与排行列表同源，演示态隐藏（同 fillDataQueryReply）。
+                恢复：换成 barRows?`<div class="rank-bar-wrap">${barRows}</div>`:'' */''}
         </div>`;
       return;
     }

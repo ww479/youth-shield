@@ -182,7 +182,11 @@ button,select{font:inherit}
 </main>
 
 <script>
-const API='http://localhost:8000';
+// 同源优先：写死 localhost 会导致从其他机器访问时全部请求失败。
+// 用 file:// 直接打开页面时才回退到本机 8000。
+const API = (location.protocol === 'http:' || location.protocol === 'https:')
+  ? location.origin
+  : 'http://127.0.0.1:8000';
 const PLATFORM_COLORS={'微博':'#2a78d6','抖音':'#4a3aa7','小红书':'#e87ba4','百度':'#1baf7a'};
 const DOMAIN_COLORS={'制度认同风险':'#2563eb','历史认知风险':'#ea580c','心理韧性风险':'#7c3aed','认知闭合风险':'#0891b2','网络素养风险':'#059669','未匹配':'#94a3b8'};
 const CORP_LEVEL_COLOR={'低风险':'#16a34a','中风险':'#ea6a1e','高风险':'#dc2626','极高风险':'#7c3aed'};

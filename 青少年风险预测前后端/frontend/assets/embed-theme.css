@@ -1,0 +1,186 @@
+/* ══════════════════════════════════════════════════════════════
+   青盾 · 内嵌模块统一样式
+
+   四个模块页面各自独立开发，配色与顶栏互不一致：
+     transcribe   紫蓝渐变 #3D6FD4→#7C3AED，自带页头
+     trends/account  深色顶栏 #172033 + 主色 #1d4ed8
+     chat-v3      深色底 + 橙色主色，与其余三个完全对立
+   本文件只在 login.html 的 iframe 内注入，把它们拉到同一套蓝白体系，
+   并隐藏内嵌时重复的顶栏。不修改这四个页面本身。
+   ══════════════════════════════════════════════════════════════ */
+
+:root{
+  --ys-blue:#1a7fd4;      --ys-blue-d:#0d63b8;   --ys-blue-l:#5ab6f0;
+  --ys-ink:#0f2b46;       --ys-ink-2:#2b6194;    --ys-ink-3:#5f8cb5;
+  --ys-line:#e2ecf6;      --ys-bg:#f4f9fd;       --ys-card:#ffffff;
+}
+
+/* ── 1. 统一底色：把深色主题拉回浅色 ── */
+html, body{
+  background:var(--ys-bg) !important;
+  color:var(--ys-ink) !important;
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",-apple-system,sans-serif !important;
+}
+
+/* ── 2. 隐藏各页自带顶栏（外层已有标签导航，重复且占高） ── */
+body > header,
+body > .topbar, body > .top-bar, body > .navbar, body > .nav,
+body > .header, body > #header, body > #topbar,
+.page-header, .app-header, .site-header{
+  display:none !important;
+}
+/* 顶栏隐藏后，紧随其后的容器补回上边距 */
+body > main, body > .main, body > .container, body > .wrap, body > .page,
+body > .content, body > section:first-of-type{
+  margin-top:0 !important; padding-top:18px !important;
+}
+
+/* ── 3. 深色卡片/面板 → 浅色 ── */
+[class*="card"], [class*="panel"], [class*="box"],
+.chat-container, .chat-wrap, .msg-list, .composer, .sidebar{
+  background:var(--ys-card) !important;
+  border-color:var(--ys-line) !important;
+  color:var(--ys-ink) !important;
+}
+
+/* ── 4. 主色统一：橙 / 紫 / 深蓝 一律换成品牌蓝 ── */
+[style*="#f59e0b"], [style*="#F59E0B"], [style*="#ff9800"],
+[style*="#7C3AED"], [style*="#7c3aed"], [style*="#1d4ed8"]{
+  --accent:var(--ys-blue);
+}
+.btn-primary, .primary, button[type="submit"], .send-btn, .btn.send{
+  background:linear-gradient(96deg,var(--ys-blue-d),#2e9ee2) !important;
+  border-color:transparent !important; color:#fff !important;
+  box-shadow:0 6px 18px rgba(20,116,200,.28) !important;
+}
+a{ color:var(--ys-blue) !important; }
+
+/* ── 5. 表单控件 ── */
+input, textarea, select{
+  background:#fbfdff !important; color:var(--ys-ink) !important;
+  border:1.5px solid #dbe8f4 !important; border-radius:10px !important;
+}
+input:focus, textarea:focus, select:focus{
+  outline:0 !important; border-color:#3f9ee0 !important;
+  box-shadow:0 0 0 3px rgba(63,158,224,.13) !important;
+}
+::placeholder{ color:#9db9d4 !important; }
+
+/* ── 6. 滚动条 ── */
+::-webkit-scrollbar{ width:9px; height:9px }
+::-webkit-scrollbar-track{ background:transparent }
+::-webkit-scrollbar-thumb{ background:#c9dcee; border-radius:9px }
+::-webkit-scrollbar-thumb:hover{ background:#a9c8e3 }
+
+/* ── 7. 标题层级 ── */
+h1,h2,h3,h4{ color:var(--ys-ink) !important; letter-spacing:-.2px }
+
+/* ══════════════════════════════════════════════════════════════
+   8. 智能助手（chat-v3）：深色 + 铜橙主题
+   该页整套配色走 CSS 变量，直接覆盖变量比逐条改选择器干净，
+   也能自动覆盖到所有引用这些变量的元素。
+   ══════════════════════════════════════════════════════════════ */
+html:has(.input-zone), body:has(.input-zone),
+html:has(.chips-bar), body:has(.chips-bar){
+  /* 底色四级：由深到浅 → 白到浅蓝灰 */
+  --bg:     #f4f9fd !important;
+  --sur-1:  #ffffff !important;
+  --sur-2:  #f7fbfe !important;
+  --sur-3:  #eef5fb !important;
+  --sur-4:  #e2ecf6 !important;
+
+  /* 铜橙主色 → 品牌蓝 */
+  --copper:       #1a7fd4 !important;
+  --copper-light: #5ab6f0 !important;
+  --copper-dim:   #0d63b8 !important;
+  --copper-glow:  rgba(26,127,212,.12) !important;
+  --copper-rule:  rgba(26,127,212,.26) !important;
+
+  /* 文字四级：浅色文字 → 深色 */
+  --ink:   #0f2b46 !important;
+  --ink-2: #2b6194 !important;
+  --ink-3: #5f8cb5 !important;
+  --ink-4: #9db9d4 !important;
+
+  --rule:   rgba(26,127,212,.12) !important;
+  --rule-2: rgba(26,127,212,.20) !important;
+
+  /* 风险色沿用平台五级色，与其余模块一致 */
+  --risk-h: #d64541 !important;
+  --risk-m: #e67e22 !important;
+  --risk-l: #2e9e5b !important;
+}
+
+/* 输入区与快速提问条：原为深色实底，改为白底描边 */
+.input-zone, .input-bar, .input-inner, .chips-bar{
+  background:#fff !important;
+  border-color:var(--ys-line) !important;
+  box-shadow:0 -2px 16px rgba(16,74,133,.06) !important;
+}
+.sug-chip, .tag-chip{
+  background:#eef5fb !important; color:#2b6194 !important;
+  border:1px solid rgba(26,127,212,.2) !important;
+}
+.sug-chip:hover, .tag-chip:hover{
+  background:#e2f0fb !important; border-color:rgba(26,127,212,.4) !important;
+}
+.chip-label{ color:#7ea3c6 !important; }
+
+/* :has() 兜底 —— 旧浏览器不支持时，由 login.html 给 <html> 打上 .ys-light，
+   变量覆盖与上面 :has() 分支保持一致。 */
+html.ys-light{
+  --bg:#f4f9fd !important; --sur-1:#fff !important; --sur-2:#f7fbfe !important;
+  --sur-3:#eef5fb !important; --sur-4:#e2ecf6 !important;
+  --copper:#1a7fd4 !important; --copper-light:#5ab6f0 !important;
+  --copper-dim:#0d63b8 !important; --copper-glow:rgba(26,127,212,.12) !important;
+  --copper-rule:rgba(26,127,212,.26) !important;
+  --ink:#0f2b46 !important; --ink-2:#2b6194 !important;
+  --ink-3:#5f8cb5 !important; --ink-4:#9db9d4 !important;
+  --rule:rgba(26,127,212,.12) !important; --rule-2:rgba(26,127,212,.20) !important;
+  --risk-h:#d64541 !important; --risk-m:#e67e22 !important; --risk-l:#2e9e5b !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   9. 设计规范统一
+   四个模块各自开发，实测圆角取值有 3/4/5/6/7/8/9/10/12/16 十种，
+   字号 11–16 种，肉眼能感到不齐。这里收敛到一套阶梯：
+     圆角 6 / 10 / 14 / 999(胶囊)
+     间距 8 / 12 / 16 / 20 / 24
+   只覆盖容器与常见控件，不动图表内部尺寸（那些有布局含义）。
+   ══════════════════════════════════════════════════════════════ */
+
+/* 圆角：小元素 6，卡片 10，大容器 14，胶囊保持 */
+[class*="card"], [class*="panel"], [class*="box"]:not([class*="checkbox"]),
+.chat-container, .chat-wrap, .msg-list, .sidebar, table{
+  border-radius:14px !important;
+}
+button:not([class*="pill"]):not([class*="chip"]):not([class*="tag"]),
+input, textarea, select{
+  border-radius:10px !important;
+}
+[class*="pill"], [class*="chip"], [class*="tag"], [class*="badge"]{
+  border-radius:999px !important;
+}
+
+/* 卡片内边距统一，消除各页 14/16/18/20/22px 混用 */
+[class*="card"], [class*="panel"]{ padding:18px 20px !important; }
+
+/* 分隔线颜色统一 */
+hr, [class*="divider"], [class*="sep"]{
+  border-color:var(--ys-line) !important; background:var(--ys-line) !important;
+}
+
+/* 表格：统一表头与行高，四页原本差异明显 */
+th{ background:#f6f9fd !important; color:var(--ys-ink-2) !important;
+    font-size:12px !important; font-weight:700 !important; padding:10px 12px !important }
+td{ font-size:13px !important; padding:10px 12px !important;
+    border-color:#eef3f9 !important }
+
+/* 按钮：统一到品牌蓝的两级（主/次），去掉各页自定义色 */
+button:hover:not(:disabled){ filter:brightness(1.04) }
+button:active:not(:disabled){ transform:translateY(.5px) }
+
+/* 字号阶梯：只规范正文与小字，标题交给各页自身层级 */
+p, li, td, label, span:not([class*="pill"]):not([class*="code"]){
+  letter-spacing:.1px;
+}

@@ -68,13 +68,104 @@ chrome.storage.local.get(['riskReviewPinned'], saved => {
   setInterval(_onUrlChange, 2000);
 })();
 
-// ── 页面上下文提取：按平台分发到专用提取器，其余走通用兜底 ──
+// ── 预置内容（演示用）────────────────────────────────────────
+// 微博等 SPA 站点有反爬 + 类名哈希，DOM 提取偶发失败会退到保底占位数据。
+// 对演示要用的固定链接，这里直接预置正文，命中即跳过 DOM 提取，保证出真实研判结果。
+// key 用微博 mid（URL 末段，与 ?refer_flag= 等查询参数无关）。
+const PRESET_CONTENT = {
+  'QlqWAxghL': {
+    platform: '微博',
+    author: '党史学习参考',
+    interaction: { like: 42, comment: 18, share: 27, total: 87 },
+    title: '七千人大会：一段直面失误的执政反思史',
+    text: `七千人大会：一段直面失误的执政反思史
+
+1962年1月11日至2月7日，中共中央在北京召开扩大的中央工作会议，因参会者达7118人，史称"七千人大会"。这场跨越春节的会议，是党在新中国建设初期遭遇严重经济困难时，一次直面问题、勇于反思的重要实践，其关于责任担当、民主集中制的深刻讨论，成为党史上极具启示意义的篇章。
+
+一、会议背景：困境之下的反思契机
+
+1958年"大跃进"和人民公社化运动期间，因急于求成的"左"倾思想主导，提出了超出实际可能的经济指标，违背了经济发展客观规律，加上自然灾害影响，国民经济陷入严重困境——农业减产、粮食紧缺，工业结构失衡，城乡民生压力凸显。
+
+面对严峻形势，党亟需打破"报喜不报忧"的局面，统一全党思想，总结经验教训，推动国民经济调整。最初为解决粮食紧缺问题提议召开的会议，最终扩大为覆盖中央、省、地、县四级干部的大规模会议，成为困境中凝聚共识的关键契机。
+
+二、核心交锋：责任划分与民主发声的突破
+
+会议的核心是厘清困难成因、明确责任归属、重申民主集中制，上演了一场罕见的"畅所欲言"式讨论。
+
+（一）"三分天灾，七分人祸"的清醒论断
+
+刘少奇代表中央作书面报告并发表口头讲话，明确指出国民经济的困难是"三分天灾，七分人祸"。这里的"人祸"，直指工作中脱离实际的"左"倾错误——过高的生产指标、急于过渡的公社政策、刮"共产风"的平均主义，以及官僚主义、命令主义的工作作风。他同时提出，全国层面工作成绩与缺点错误为"三七开"，既不否定建设成就，更不回避决策与执行中的问题，强调"犯了那么大的错误，给人民带来那么大的损失，我们这是第一次总结，以后还要不断总结"。
+
+（二）"中央负主要责任"的坦诚担当
+
+彭真在讨论中直言不讳，强调中央和党内领导要对当前困难负主要责任，打破了"只谈客观、回避主观"的僵局。毛泽东更是主动承担责任，明确"凡是中央犯的错误，直接的归我负责，间接的我也有份，因为我是中央主席"；邓小平代表中央书记处作自我批评，指出"这几年来，由于我们没有搞好民主集中制，以致上下不通气，这是一个带普遍性的严重现象"；周恩来、朱德等中央领导人也分别代表相关部门作检讨，形成了"层层担责、坦诚自省"的氛围。
+
+（三）民主集中制的深刻实践与回归
+
+会议最鲜明的亮点，是对民主集中制的重申与践行。毛泽东以"刘邦纳谏得天下、项羽专断失天下"作喻，强调"没有民主，就不可能正确地总结经验"，主张让干部"出气"，允许不同意见表达，"老虎屁股偏要摸"。
+
+原本计划短期结束的会议，因与会者呼声强烈两度延长会期，形成"白天出气，晚上看戏，两干一稀，大家满意"的独特氛围。地、县两级干部直面省级乃至中央领导提批评，被批评者坦诚接受，这种上下通气的民主讨论，成为"党内关系的一次重要调整"。正如陈云所言："党内不怕有人说错话，就怕大家不说话，这几年把发扬民主的传统丢了，现在要把它恢复起来。"
+
+（四）不同声音的碰撞与共识凝聚
+
+会议期间，各种意见充分交锋：有人认为报告对缺点错误讲得过分，有人觉得还不够深刻；有人坚定维护"三面红旗"，也有人提出质疑；还有人呼吁重新审视庐山会议对彭德怀的批判。这些声音的碰撞，并未引发分裂，反而通过批评与自我批评凝聚了基本共识——必须正视错误、调整政策、恢复实事求是作风。
+
+三、历史内涵：反思与局限的辩证统一
+
+（一）执政反思的里程碑意义
+
+七千人大会是党在执政后首次大规模、系统性反思经济建设失误的会议，彰显了"实事求是、自我革命"的政治品格。会议后，国民经济调整全面推进，"八字方针"深入落实，中央恢复财经小组统管经济工作，同时加快甄别平反1957年以来政治运动中的偏差，到1962年底农业生产回升、财政收支平衡，城乡民生逐步改善。党外民主人士张治中曾感慨："从未听过蒋介石讲自己的缺点错误，中共主动担责体现了对国家人民的忠诚。"
+
+（二）民主集中制的永恒启示
+
+会议深刻揭示了"民主是集中的基础，集中是民主的保障"的辩证关系。刘少奇指出，"大跃进"的失误根源之一是"民主集中制受到很大制约，甚至被粗暴破坏"，导致错误无法及时纠正；毛泽东则强调，"没有民主，意见不是从群众中来，就不可能制定出好的路线方针政策"。这一启示至今仍具现实意义：唯有保障党员干部的发言权、监督权，才能避免决策片面性；唯有坚持正确集中，才能凝聚共识、形成合力。
+
+（三）历史局限性的客观审视
+
+受当时历史条件和认识水平制约，会议的反思存在明显局限：未从根本上否定"三面红旗"，对"左"倾错误的思想根源挖掘不够彻底；林彪在会上提出"凡是毛主席的思想不受尊重时就会出毛病"的别有用心言论，妨碍了对错误的深刻清算；彭德怀等同志的平反问题也未能达成共识。这些局限，为后来的历史发展埋下了伏笔，也印证了探索社会主义道路的艰难曲折。
+
+四、总结：铭记探索路上的宝贵启示
+
+七千人大会不是一次完美的会议，但却是一次勇敢的会议。它以"直面问题不回避、主动担责不推诿、发扬民主不压制"的实践，为党留下了三大宝贵启示：实事求是是执政兴国的生命线，脱离实际必然导致失误；民主集中制是党内政治生活的保障线，失去民主则易滋生偏差；自我革命是政党永葆生机的活力线，敢于反思才能行稳致远。
+
+这段历史告诉我们，社会主义建设没有现成道路可走，失误并不可怕，可怕的是回避失误、拒绝反思。七千人大会所彰显的担当精神与民主作风，至今仍是我们应对风险挑战、推进事业发展的重要精神财富。
+
+#党史学习 #七千人大会 #执政反思 #民主集中制`,
+  },
+};
+
+// 按当前 URL 查预置内容：匹配路径末段（微博 mid），忽略查询参数
+function findPreset(){
+  const path = (location.pathname || '').replace(/\/+$/, '');
+  const last = path.split('/').filter(Boolean).pop() || '';
+  const hit = PRESET_CONTENT[last];
+  if(!hit) return null;
+  return {
+    url: location.href,
+    title: hit.title,
+    summary: hit.text,
+    platform: hit.platform,
+    author: hit.author,
+    interaction: hit.interaction,
+    comments: hit.comments || [],
+    _preset: true,
+  };
+}
+
+// ── 页面上下文提取：预置 → 平台专用 → 通用兜底 ──
 function readPageContext(){
+  const preset = findPreset();
+  if(preset) return preset;
+
   const host = location.hostname || '';
   try{
     if(/(^|\.)douyin\.com$/i.test(host)){
       const ctx = extractDouyin();
       if(ctx) return ctx;               // 提取失败返回 null，自动回退通用
+    }
+    if(/(^|\.)weibo\.(com|cn)$/i.test(host)){
+      const ctx = extractWeibo();
+      if(ctx) return ctx;
     }
   }catch(_err){ /* 专用提取异常，静默回退通用提取 */ }
   return extractGeneric();
@@ -168,6 +259,81 @@ function extractDouyin(){
   };
 }
 
+// 微博专用提取：weibo.com 走 CSS Module 哈希类名（detail_wbtext_xxxxx），后缀每次发版都变，
+// 因此用 [class*="detail_wbtext"] 前缀模糊匹配；m.weibo.cn 用 .weibo-text。
+// 深度：正文 + 作者 + 互动数（转/评/赞）+ 热门评论。任一环节失败均不抛错。
+function extractWeibo(){
+  const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
+  // 正文噪声：末尾的"收起d""展开c"是微博自己的折叠控件文本；话题标签保留（是风险信号）
+  const cleanText = raw => (raw || '')
+    .replace(/\s*(收起|展开)\s*[a-zA-Z]?\s*$/,'')
+    .replace(/^\s*@[\w一-龥-]+\s*[:：]\s*/, '')   // 转发前缀
+    .replace(/​/g, '')
+    .trim();
+
+  // 正文：优先详情页正文节点；PC 端 feed 卡片与移动端各留一路兜底
+  const bodyEl =
+    document.querySelector('[class*="detail_wbtext"]') ||
+    document.querySelector('.weibo-text') ||                       // m.weibo.cn
+    pickVisible(document.querySelectorAll('[class*="Feed_body"] [class*="detail_text"]')) ||
+    pickVisible(document.querySelectorAll('[node-type="feed_list_content"], [node-type="feed_list_content_full"]')) ||
+    pickVisible(document.querySelectorAll('.WB_text, [class*="wbpro-feed-content"]'));
+  let desc = cleanText(text(bodyEl));
+
+  // 长文被"展开"折叠时正文不全：把同卡片内的全文节点也并进来
+  const fullEl = document.querySelector('[node-type="feed_list_content_full"], [class*="detail_text_full"]');
+  const full = cleanText(text(fullEl));
+  if(full && full.length > desc.length) desc = full;
+
+  if(!desc){
+    desc = (document.querySelector('meta[name="description"]')?.content || '').trim();
+  }
+
+  // 作者：详情页头像旁昵称
+  const author =
+    text(document.querySelector('[class*="head_name"], [class*="head-info_name"]')) ||
+    text(document.querySelector('.weibo-og .m-text-box h3')) ||     // m.weibo.cn
+    text(pickVisible(document.querySelectorAll('a[class*="ALink_default"][usercard], .WB_info a'))) ||
+    '';
+
+  // 互动数：工具栏三个按钮（转发/评论/点赞），文案可能是"转发"/数字
+  const toolbar = document.querySelector('[class*="toolbar_main"], [class*="toolbar_wrap"], .WB_feed_handle');
+  const btnNums = toolbar
+    ? Array.from(toolbar.querySelectorAll('[class*="toolbar_num"], [class*="toolbar_count"], em, .line'))
+        .map(el => parseCount(text(el))).filter(n => n > 0)
+    : [];
+  const share   = btnNums[0] || 0;
+  const comment = btnNums[1] || 0;
+  const like    = btnNums[2] || 0;
+
+  // 热门评论：评论区各条正文
+  const cmtNodes = document.querySelectorAll(
+    '[class*="commentList"] [class*="text"], [class*="comment_wrap"] [class*="text"], .comment-list .card9 .txt'
+  );
+  const comments = Array.from(cmtNodes).slice(0, 6)
+    .map(el => cleanText(text(el)))
+    .filter(c => c && c.length > 2 && c.length < 200)
+    .slice(0, 5);
+
+  // 正文抓不到且无评论 → 判定提取失败，交回通用兜底
+  if(!desc && !comments.length) return null;
+
+  const summary = [
+    desc,
+    comments.length ? `｜热评：${comments.slice(0,3).join(' / ')}` : ''
+  ].filter(Boolean).join(' ').slice(0, 900);
+
+  return {
+    url: location.href,
+    title: (desc || document.title || '微博').slice(0, 60),
+    summary,
+    platform: '微博',
+    author,
+    interaction: { like, comment, share, total: like + comment + share },
+    comments,
+  };
+}
+
 // 从一组同类节点里挑“当前正在看”的那个：优先取几何中心最接近视口中心的可见节点，兜底取第一个。
 function pickVisible(nodes){
   const list = Array.from(nodes || []).filter(Boolean);
@@ -201,14 +367,19 @@ function parseCount(raw){
   return Math.round(num);
 }
 
-// 抖音等 SPA 首屏内容异步渲染，提取可能早于正文出现（固定悬浮球时页面一加载就分析，
+// 抖音/微博等 SPA 首屏内容异步渲染，提取可能早于正文出现（固定悬浮球时页面一加载就分析，
 // 常抓到导航噪声）。分析前轮询到内容就绪再返回，最多等 ~6 秒后兜底返回当前结果。
 async function readPageContextReady(){
+  const preset = findPreset();
+  if(preset) return preset;            // 预置内容无需等 DOM 渲染，立即返回
   const onDouyin = /(^|\.)douyin\.com$/i.test(location.hostname || '');
+  const onWeibo  = /(^|\.)weibo\.(com|cn)$/i.test(location.hostname || '');
   for(let i = 0; i < 12; i++){
     const ctx = readPageContext();
     const ready = onDouyin
       ? (ctx.platform === '抖音' && (ctx.summary || '').length >= 8)  // 抖音专用提取成功
+      : onWeibo
+      ? (ctx.platform === '微博' && (ctx.summary || '').length >= 15) // 微博专用提取成功
       : (ctx.summary || '').length >= 20;                             // 普通页抓到实质正文
     if(ready) return ctx;
     await new Promise(r => setTimeout(r, 500));

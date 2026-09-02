@@ -4,7 +4,7 @@
 青少年意识形态风险识别平台 — 后端 API
 启动：cd backend && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 """
-import os, re, json, asyncio, time
+import os, re, json, asyncio, time, queue, threading
 import io, datetime
 try:
     from dotenv import load_dotenv
@@ -64,12 +64,42 @@ _anthropic_kwargs = {"api_key": _anthropic_key or "sk-placeholder-set-ANTHROPIC_
 if _anthropic_base:
     _anthropic_kwargs["base_url"] = _anthropic_base
 ai_client = Anthropic(**_anthropic_kwargs)
-app.add_middleware(CORSMiddleware,
-    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# CORS：默认只放行本机与内网穿透域名。
+# 原先是 allow_origins=["*"] —— 配合 Cookie 鉴权时，任何网站都能带着用户的
+# 登录态调本服务接口，公网暴露后即为漏洞。需要额外来源时用 YS_ALLOW_ORIGINS
+# 配置（逗号分隔），或设为 "*" 显式恢复全放行（仅限内网调试）。
+_origins_env = os.environ.get("YS_ALLOW_ORIGINS", "").strip()
+if _origins_env == "*":
+    _cors = dict(allow_origins=["*"], allow_credentials=False)
+    print("⚠ CORS 全放行（仅应用于内网调试）")
+else:
+    _extra = [x.strip() for x in _origins_env.split(",") if x.strip()]
+    _cors = dict(
+        allow_origins=[
+            "http://localhost:8000", "http://127.0.0.1:8000",
+        ] + _extra,
+        # 隧道域名每次重启都变，用正则匹配而非逐个配置
+        allow_origin_regex=r"https://[a-z0-9-]+\.trycloudflare\.com|"
+                           r"https://[a-z0-9-]+\.ngrok(-free)?\.(app|io)|"
+                           r"https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|"
+                           r"192\.168\.\d+\.\d+)(:\d+)?",
+        allow_credentials=True,
+    )
+app.add_middleware(CORSMiddleware, allow_methods=["*"], allow_headers=["*"], **_cors)
 
 FRONTEND = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.exists(FRONTEND):
     app.mount("/ui", StaticFiles(directory=FRONTEND, html=True), name="frontend")
+
+# ── 登录鉴权：口令存后端（PBKDF2 摘要），/ui 下模块页需登录才可访问 ──
+try:
+    import auth as _auth
+    _auth.install(app)
+    _n = len(_auth._load_users())
+    print(f"✓ 登录鉴权已启用（{_n} 个账号）" if _n else
+          "⚠ 登录鉴权已启用，但尚无账号 —— 运行：python auth.py add <用户名>")
+except Exception as _e:
+    print(f"⚠ 登录鉴权未启用：{_e}")
 
 # ── 数据库连接池（连接信息从环境变量读取）──
 DB = dict(host=os.environ.get("DB_HOST", "127.0.0.1"),
@@ -233,7 +263,7 @@ def build_case_index():
                representative_text, review_conclusion,
                CAST(total_interaction AS SIGNED) AS total_interaction,
                core_keywords, source_url
-        FROM t_case WHERE case_name != '' AND case_id LIKE 'ZQW%'
+        FROM t_case WHERE case_name != '' AND case_id NOT LIKE 'POS%'
     """)
     if not rows or _embed_model is None or _chroma_client is None:
         return
@@ -867,8 +897,12 @@ def _build_structured_result(result: dict) -> dict:
     if sixdim:
         level_num = sixdim["level"]                    # 已综合六维/否决/M 定级
         six_pct = _safe_float(sixdim["risk_percent"])
-        floor = {1: 0, 2: 21, 3: 41, 4: 61, 5: 81}.get(level_num, 0)
-        risk_percent = max(six_pct, floor)             # 被否决/M 顶级时，显示分对齐等级，避免"1.3分却紫灯"
+        # 分数始终是六维加权真实值，不再按等级抬到档位下限。
+        # 原先抬分（5 级顶到 81）本意是避免"1.3 分却紫灯"的观感矛盾，但会把
+        # 顶格篇目的分数全部压成同一个数 —— 实测 34 篇文章里 20 篇挤在 81.0，
+        # 分数不同取值仅 13 个，无法排序也无法看出轻重。等级由红线决定、
+        # 分数反映六维实际，两者分开呈现；界面上用"触及 N 条红线"解释等级来源。
+        risk_percent = six_pct
         risk_code = LEVEL_NUM_TO_CODE[level_num]
         risk_level = RISK_CODE_LABEL.get(risk_code, risk_level)
         risk_score = round(risk_percent / 20, 2)
@@ -1065,12 +1099,48 @@ def _guidance_fallback(domains: list, age_key: str) -> dict:
     strat = (s.get("follow_up_action") or "").strip() or _GUIDANCE_DEFAULT_STRATEGY
     if not script:
         return None
-    return {"strategy": strat, "script": script, "source": "library"}
+    # 库里的策略是整段文字，没有按对象拆分：整段归到平台，另两栏留空，
+    # 前端会显示「按通用策略执行」，不会出现空白。
+    # 库里没有按对象拆分的数据：整段归到平台，另两栏留空
+    return {"strategy": strat, "script": script, "source": "library",
+            "actors": {"platform": {"strategy": strat, "script": script},
+                       "parent":   {"strategy": "", "script": ""},
+                       "school":   {"strategy": "", "script": ""}}}
 
 
 def _parse_guidance(raw: str, ages: list) -> dict:
-    """解析三段『处置策略+引导话术』。先整体 json.loads；失败则逐段正则抢救，
-    保证一段坏 JSON 不至于丢掉全部（合并单次调用后更需要容错）。"""
+    """解析处置建议。当前口径：平台/家长/学校三个对象，各含 strategy + script。
+    同时兼容两种旧格式 —— 对象只给一个字符串、或整段只有一个 strategy/script。"""
+    ACTORS = ("platform", "parent", "school")
+    LABEL = {"platform": "平台", "parent": "家长", "school": "学校"}
+
+    def _pack(seg: dict) -> dict:
+        actors = {}
+        for k in ACTORS:
+            v = seg.get(k)
+            if isinstance(v, dict):
+                actors[k] = {"strategy": str(v.get("strategy", "") or "").strip(),
+                             "script": str(v.get("script", "") or "").strip()}
+            elif isinstance(v, str) and v.strip():
+                actors[k] = {"strategy": v.strip(), "script": ""}   # 旧格式：只有一句
+            else:
+                actors[k] = {"strategy": "", "script": ""}
+
+        legacy_s = str(seg.get("strategy", "") or "").strip()
+        legacy_c = str(seg.get("script", "") or "").strip()
+        if not any(a["strategy"] or a["script"] for a in actors.values()):
+            if not (legacy_s or legacy_c):
+                return None
+            actors["platform"] = {"strategy": legacy_s, "script": legacy_c}
+
+        # strategy / script 顶层字段保留，供导出与旧调用方继续使用
+        joined = "；".join(f"{LABEL[k]}：{actors[k]['strategy']}"
+                          for k in ACTORS if actors[k]["strategy"])
+        return {"actors": actors,
+                "strategy": joined or legacy_s,
+                "script": actors["platform"]["script"] or legacy_c,
+                "source": "ai"}
+
     out = {}
     m = re.search(r"\{.*\}", raw, re.S)
     if m:
@@ -1079,25 +1149,42 @@ def _parse_guidance(raw: str, ages: list) -> dict:
             for a in ages:
                 seg = data.get(a) or {}
                 if isinstance(seg, dict):
-                    s = str(seg.get("strategy", "")).strip()
-                    sc = str(seg.get("script", "")).strip()
-                    if s or sc:
-                        out[a] = {"strategy": s, "script": sc, "source": "ai"}
+                    v = _pack(seg)
+                    if v:
+                        out[a] = v
             if out:
                 return out
         except Exception:
             pass   # 整体 JSON 坏了 → 逐段抢救
+
+    # 抢救：按年龄段取块，再从块里分别抠三个对象的 strategy/script
     for a in ages:
-        blk = re.search(rf'"{re.escape(a)}"\s*:\s*\{{(.*?)\}}', raw, re.S)
-        seg = blk.group(1) if blk else ""
-        if not seg:
+        blk = re.search(rf'"{re.escape(a)}"\s*:\s*\{{(.*)\}}', raw, re.S)
+        seg_txt = blk.group(1) if blk else ""
+        if not seg_txt:
             continue
-        sm = re.search(r'"strategy"\s*:\s*"(.*?)"\s*(?:,|\}|$)', seg, re.S)
-        cm = re.search(r'"script"\s*:\s*"(.*?)"\s*(?:,|\}|$)', seg, re.S)
-        s = sm.group(1).strip() if sm else ""
-        sc = cm.group(1).strip() if cm else ""
-        if s or sc:
-            out[a] = {"strategy": s, "script": sc, "source": "ai"}
+        seg = {}
+        for k in ACTORS:
+            sub = re.search(rf'"{k}"\s*:\s*\{{(.*?)\}}', seg_txt, re.S)
+            if sub:
+                d = {}
+                for f in ("strategy", "script"):
+                    fm = re.search(rf'"{f}"\s*:\s*"(.*?)"\s*(?:,|\}}|$)', sub.group(1), re.S)
+                    if fm:
+                        d[f] = fm.group(1)
+                if d:
+                    seg[k] = d
+            else:   # 旧格式：对象直接是字符串
+                sm = re.search(rf'"{k}"\s*:\s*"(.*?)"\s*(?:,|\}}|$)', seg_txt, re.S)
+                if sm:
+                    seg[k] = sm.group(1)
+        for f in ("strategy", "script"):
+            fm = re.search(rf'"{f}"\s*:\s*"(.*?)"\s*(?:,|\}}|$)', seg_txt, re.S)
+            if fm:
+                seg[f] = fm.group(1)
+        v = _pack(seg)
+        if v:
+            out[a] = v
     return out
 
 
@@ -1122,15 +1209,32 @@ def generate_guidance_sync(risk_label: str, risk_types: list, domains: list, key
         if client is not None:
             tone_lines = "\n".join(f"- {a}岁：{_GUIDANCE_TONE.get(a, '')}" for a in ages)
             n = len(ages)
-            tmpl = ",".join(f'"{a}":{{"strategy":"...","script":"..."}}' for a in ages)
+            # 设计稿要求处置建议分「平台 / 家长 / 学校」三个对象，
+            # 因此让模型直接按对象输出，避免前端再去猜怎么切分。
+            # 平台/家长/学校三个对象，各自给「策略 + 话术」两部分 ——
+            # 三种身份的处置动作和说法都不同，不能共用一句。
+            tmpl = ",".join(
+                f'"{a}":{{'
+                f'"platform":{{"strategy":"...","script":"..."}},'
+                f'"parent":{{"strategy":"...","script":"..."}},'
+                f'"school":{{"strategy":"...","script":"..."}}}}'
+                for a in ages)
             # 按需只生成传入的年龄段（插件懒加载时单段更快）；合并单次调用避免自制并发/429。
             prompt = (
                 f"你是青少年意识形态风险处置与引导专家。当前内容分析：{ctx}。\n"
                 f"请分别为以下{n}个年龄段各生成『处置策略 + 引导话术』，各段语气要求：\n{tone_lines}\n"
-                f"处置策略：给一线教师/家长/平台的处置与干预建议，具体可操作"
-                f"（如何识别、引导、必要时留存上报），60-90字。\n"
-                f"引导话术：可直接对该年龄段青少年说的引导话，帮其识破手法、建立正确认知，"
-                f"亲切不生硬，80-110字。\n"
+                f"请为平台、家长、学校三种身份分别给出『策略 + 表述』，"
+                f"三者的做法与说法都不同，不要互相重复：\n"
+                f"  platform（平台方）\n"
+                f"    strategy：内容处置与传播管控动作，如降低推荐权重、加提示、"
+                f"留存证据、必要时上报，30-50字。\n"
+                f"    script：面向用户的提示文案，客观克制、不指责，40-60字。\n"
+                f"  parent（家长）\n"
+                f"    strategy：家庭沟通与陪伴层面的做法，如何开口、注意什么，30-50字。\n"
+                f"    script：家长可以对孩子说的话，平等、不说教、不训斥，60-90字。\n"
+                f"  school（学校/教师）\n"
+                f"    strategy：课堂引导与同伴影响层面的做法，30-50字。\n"
+                f"    script：教师可以在课堂上讲的话，引导思辨、不下结论，60-90字。\n"
                 f"只输出一个 JSON 对象，键为年龄段字符串，字符串值内不要出现英文双引号，不要任何额外文字：\n"
                 f'{{{tmpl}}}'
             )
@@ -1224,6 +1328,9 @@ CASE_DOMAINS = ["历史认知风险"]
 # 余弦距离阈值：Chroma cosine 距离 = 1 - 余弦相似度
 # 距离 > 0.65 ≈ 相似度 < 0.35，视为无匹配
 CASE_SIM_THRESHOLD = 0.65
+# 案例语义搜索的余弦距离上限：超过则视为不相关，丢给关键词检索。
+# 比 CASE_SIM_THRESHOLD 略宽——这里只求"别返回明显无关的案例"。
+CASE_SEARCH_MAX_DIST = float(os.environ.get("CASE_SEARCH_MAX_DIST", "0.72"))
 
 def _web_search_cases(keywords: str, domain: str) -> list:
     """本地案例无高质量匹配时联网搜索，返回结构化结果。"""
@@ -1503,6 +1610,11 @@ def search_cases_by_query(query: str, domain: str = "", top_k: int = 5) -> dict:
                 seen_ids.add(cid)
                 dist = float(dists[i]) if i < len(dists) else 1.0
                 similarity = round(max(0.0, min(1.0, 1.0 - dist)), 4)
+                # 距离不设下限时，问什么都会返回 top_k 条最近邻——哪怕完全不相关
+                # （如问"消费主义"返回历史认知类案例），下游模型会被迫强行关联。
+                # 低于阈值的直接丢弃，让关键词检索接手。
+                if dist > CASE_SEARCH_MAX_DIST:
+                    continue
                 items.append(_format_case_search_item(case, query, similarity, "vector"))
                 if len(items) >= top_k:
                     break
@@ -2766,11 +2878,12 @@ def analyze_transcript_sync(segs: list, age_group: str, window_sec: float,
     guidance = {}
     if with_guidance and merged:
         key_points = [e.get("span", "") for e in (merged["detail"].get("evidence") or [])][:3]
-        # 三个年龄段一次生成（generate_guidance_sync 传 None 即默认三段），
-        # 前端用 tab 切换展示，和浏览器插件的分级处置一致
+        # 转写链路只出一份处置建议（按平台/家长/学校分对象），不再分年龄段：
+        # 分龄要跑三次模型、等待明显变长，而处置对象才是使用者真正区分的维度。
+        # 浏览器插件仍走分龄，那条链路不受影响。
         guidance = generate_guidance_sync(
             summary.get("risk_level", ""), summary.get("risk_types", []),
-            summary.get("risk_domains", []), key_points, None)
+            summary.get("risk_domains", []), key_points, ["13-15"])
 
     for w in wins:
         w.pop("_sd", None)      # 内部字段不外发，响应体能小一半
@@ -2820,6 +2933,9 @@ async def analyze_transcript_stream(req: TranscriptAnalyzeRequest):
     def emit(obj):
         return json.dumps(obj, ensure_ascii=False) + "\n"
 
+    # 客户端断开或切换来源时，由心跳包装器置位；生成器据此停止旧任务。
+    cancelled = threading.Event()
+
     def gen():
         wins_raw = _split_windows(segs, req.window_sec)
         yield emit({"event": "meta", "segment_count": len(segs),
@@ -2830,29 +2946,91 @@ async def analyze_transcript_stream(req: TranscriptAnalyzeRequest):
         for row in sentences:
             if row.get("major"):
                 yield emit({"event": "sentence", "sentence": row})
-        # 轨 B：各窗并发跑，谁先算完先推谁（不必等前面的窗）
-        wins = []
-        workers = min(len(wins_raw), int(os.environ.get("TRANSCRIPT_WINDOW_WORKERS", "4")))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-            futs = {ex.submit(_score_window, w, req.use_llm): i
-                    for i, w in enumerate(wins_raw)}
-            for f in concurrent.futures.as_completed(futs):
-                i = futs[f]
-                try:
-                    res = f.result()
-                except Exception as e:
-                    yield emit({"event": "window_error", "index": i, "text": str(e)[:200]})
-                    continue
-                wins.append(res)
-                out = {k: v for k, v in res.items() if k != "_sd"}
-                # 带上本窗覆盖的句子区间 + 这些句子的逐句色带，前端据此把
-                # 左侧字幕逐段标成"已分析"，并同步给时间轴染色（研判过程可见）
-                cov = [s for s in sentences
-                       if s.get("start") is not None
-                       and res["start"] - 0.01 <= s["start"] <= res["end"] + 0.01]
-                out["sentence_bands"] = _sentence_bands_for(cov, sentences)
-                yield emit({"event": "window", "index": i,
-                            "total": len(wins_raw), "window": out})
+        # 轨 B 分两阶段：先用规则秒出初判，再并发调用模型做精判。
+        # 以前必须等所有 qwen2.5:7b 窗口完成后才有第一个结果，视频稍长时
+        # 页面会长时间空白；现在规则结果先展示，模型结果随后按窗口覆盖更新。
+        rule_wins = []
+        for i, w in enumerate(wins_raw):
+            if cancelled.is_set():
+                return
+            res = _score_window(w, False)
+            rule_wins.append(res)
+            out = {k: v for k, v in res.items() if k != "_sd"}
+            cov = [s for s in sentences
+                   if s.get("start") is not None
+                   and res["start"] - 0.01 <= s["start"] <= res["end"] + 0.01]
+            out["sentence_bands"] = _sentence_bands_for(cov, sentences)
+            yield emit({"event": "window", "index": i,
+                        "total": len(wins_raw), "phase": "rules", "window": out})
+
+        # 规则窗口完成后立即给出一个可用的临时总结，不必等本地 7B 模型全部跑完。
+        # 后面模型精判结束时会再次发送同一事件（provisional=false）覆盖它。
+        full_text = " ".join(s["text"] for s in segs)
+        def make_summary(current_wins):
+            merged0 = _merge_windows(current_wins, sentences)
+            matched0 = match_keywords(full_text) or []
+            tags0 = sorted([
+                {"tag_id": m["tag_id"], "keyword": m["keyword"],
+                 "domain": m["risk_domain_l1"] or "",
+                 "score": float(m["total_risk_score"] or 0),
+                 "tag_chain": m.get("tag_chain", ""),
+                 "l1_name": m.get("l1_name", ""), "l2_name": m.get("l2_name", ""),
+                 "l3_name": m.get("l3_name", "")}
+                for m in matched0], key=lambda x: x["score"], reverse=True)[:10]
+            shell0 = {"source": "transcript", "url": "", "platform": "视频转写",
+                      "title": req.title or "", "content_summary": full_text[:300],
+                      "matched_tags": tags0,
+                      "primary_domain": tags0[0]["domain"] if tags0 else "",
+                      "narrative": build_narrative(matched0) if matched0 else
+                                   {"badges": [], "patterns": []},
+                      "highlighted_text": [], "_sixdim": merged0}
+            summary0 = _build_structured_result(shell0)
+            dtags0 = match_five_domains(full_text)
+            return summary0, tags0, dtags0
+
+        provisional_summary, provisional_tags, provisional_domains = make_summary(rule_wins)
+        yield emit({"event": "summary", "phase": "rules", "provisional": True,
+                    "summary": provisional_summary,
+                    "matched_tags": provisional_tags,
+                    "sentence_bands": _sentence_bands(sentences),
+                    "labels": _transcript_labels(provisional_summary,
+                                                  provisional_domains, sentences),
+                    "domain_tags": provisional_domains})
+
+        # 模型精判可能较慢或暂时不可用；无论如何保留规则初判作为可用结果。
+        wins = list(rule_wins)
+        if req.use_llm:
+            final_by_index = {}
+            workers = min(len(wins_raw), int(os.environ.get("TRANSCRIPT_WINDOW_WORKERS", "4")))
+            ex = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+            try:
+                futs = {ex.submit(_score_window, w, True): i
+                        for i, w in enumerate(wins_raw)}
+                for f in concurrent.futures.as_completed(futs):
+                    if cancelled.is_set():
+                        for pending in futs:
+                            pending.cancel()
+                        return
+                    i = futs[f]
+                    try:
+                        res = f.result()
+                    except Exception as e:
+                        yield emit({"event": "window_error", "index": i, "text": str(e)[:200]})
+                        continue
+                    final_by_index[i] = res
+                    out = {k: v for k, v in res.items() if k != "_sd"}
+                    cov = [s for s in sentences
+                           if s.get("start") is not None
+                           and res["start"] - 0.01 <= s["start"] <= res["end"] + 0.01]
+                    out["sentence_bands"] = _sentence_bands_for(cov, sentences)
+                    yield emit({"event": "window", "index": i,
+                                "total": len(wins_raw), "phase": "llm", "window": out})
+            finally:
+                # 客户端切换了来源时不要等待尚未开始的旧窗口；已经进入模型的
+                # 少数请求会自行结束，但不会再向旧页面回写。
+                ex.shutdown(wait=not cancelled.is_set(), cancel_futures=True)
+            wins = [final_by_index.get(i) or rule_wins[i]
+                    for i in range(len(rule_wins))]
         wins.sort(key=lambda w: w["start"])      # 汇总要按时间序，乱序会让证据链排错
         if not wins:
             yield emit({"event": "error", "text": "所有窗口研判失败"})
@@ -2876,7 +3054,8 @@ async def analyze_transcript_stream(req: TranscriptAnalyzeRequest):
                  "highlighted_text": [], "_sixdim": merged}
         summary = _build_structured_result(shell)
         _dtags = match_five_domains(full_text)
-        yield emit({"event": "summary", "summary": summary,
+        yield emit({"event": "summary", "phase": "llm", "provisional": False,
+                    "summary": summary,
                     "matched_tags": matched_tags,
                     "sentence_bands": _sentence_bands(sentences),
                     "labels": _transcript_labels(summary, _dtags, sentences),
@@ -2886,18 +3065,46 @@ async def analyze_transcript_stream(req: TranscriptAnalyzeRequest):
             args = (summary.get("risk_level", ""), summary.get("risk_types", []),
                     summary.get("risk_domains", []), key_points)
             # 分两批推：先出当前年龄段（尽快可见），其余两段随后补齐，
-            # 前端按 tab 合并展示。和插件的分龄懒加载同一套体感。
-            first = req.age_group if req.age_group in _GUIDANCE_TONE else "13-15"
-            rest = [a for a in ("6-12", "13-15", "16-18") if a != first]
-            for ages in ([first], rest):
-                try:
-                    g = generate_guidance_sync(*args, ages)
-                    yield emit({"event": "guidance", "guidance": g, "partial": ages != rest})
-                except Exception as e:
-                    yield emit({"event": "guidance", "guidance": {}, "error": str(e)[:200]})
+            # 只生成一份（按平台/家长/学校分对象），不再分龄分批。
+            try:
+                g = generate_guidance_sync(*args, ["13-15"])
+                yield emit({"event": "guidance", "guidance": g, "partial": False})
+            except Exception as e:
+                yield emit({"event": "guidance", "guidance": {}, "error": str(e)[:200]})
         yield emit({"event": "done"})
 
-    return StreamingResponse(gen(), media_type="application/x-ndjson")
+    # _score_window() 可能调用本地/远程大模型，单个窗口几十秒没有任何输出时，
+    # 浏览器或 Cloudflare 会把连接误判为空闲并主动关闭（cloudflared 日志中的
+    # "stream canceled by remote"）。把同步生成器放到后台线程，并每 10 秒发一行
+    # NDJSON 心跳，保持公网长连接；心跳事件前端会忽略，不影响既有事件协议。
+    async def stream_with_heartbeat():
+        q = queue.Queue()
+        end = object()
+
+        def produce():
+            try:
+                for chunk in gen():
+                    q.put(chunk)
+            except Exception as e:
+                q.put(emit({"event": "error", "text": str(e)[:200]}))
+            finally:
+                q.put(end)
+
+        threading.Thread(target=produce, daemon=True).start()
+        try:
+            while True:
+                try:
+                    item = await asyncio.to_thread(q.get, True, 10)
+                except queue.Empty:
+                    yield emit({"event": "heartbeat"})
+                    continue
+                if item is end:
+                    break
+                yield item
+        finally:
+            cancelled.set()
+
+    return StreamingResponse(stream_with_heartbeat(), media_type="application/x-ndjson")
 
 
 # ── 历史虚无主义评估报告（Word 导出）──
@@ -5018,6 +5225,43 @@ _TOOL_CN = {
 }
 
 
+# ── 问答生成走本地模型（ollama/vLLM）────────────────────────────
+# Anthropic 密钥缺失/失效时问答会整条 401，改为优先用已配置的 OpenAI 兼容端点
+# （backend/.env 的 NIHILISM_OPENAI_*，默认本机 ollama qwen2.5:7b），
+# 断网可用、零成本。设 CHAT_PREFER_LOCAL=false 可退回原来的 Anthropic 优先。
+CHAT_PREFER_LOCAL = os.environ.get("CHAT_PREFER_LOCAL", "true").lower() == "true"
+
+
+def _chat_stream_local(prompt: str, max_tokens: int, on_chunk) -> bool:
+    """用本地 OpenAI 兼容端点流式生成，逐块回调 on_chunk。
+    成功返回 True；端点不可用/报错返回 False，由调用方走既有兜底。"""
+    if not CHAT_PREFER_LOCAL:
+        return False
+    client = nihilism_scorer._get_openai_client()
+    if client is None:
+        return False
+    try:
+        stream = client.with_options(timeout=90.0, max_retries=0).chat.completions.create(
+            model=nihilism_scorer._OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=0.6,
+            stream=True,
+        )
+        got = False
+        for ck in stream:
+            if not ck.choices:
+                continue
+            piece = ck.choices[0].delta.content or ""
+            if piece:
+                got = True
+                on_chunk(piece)
+        return got
+    except Exception as e:
+        print(f"[chat/stream] 本地模型生成失败，转兜底: {type(e).__name__}: {e}")
+        return False
+
+
 @app.post("/chat/stream")
 async def chat_stream_endpoint(req: ChatRequest, request: Request):
     import json as _js
@@ -5025,7 +5269,6 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
     q = (req.question or "").strip()
     if not q:
         raise HTTPException(400, "请输入问题")
-
     ev_q: asyncio.Queue = asyncio.Queue()
     cur_loop = asyncio.get_event_loop()
 
@@ -5037,7 +5280,9 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
             collected = {"cases": [], "scripts": {}, "tags": [], "domain": ""}
             emit(type="thinking", text=f"解析问题：「{q[:35]}{'…' if len(q)>35 else ''}」")
 
-            if not _ai_call_allowed():
+            # 熔断只针对 Anthropic；本地模型（CHAT_PREFER_LOCAL）可用时不进纯规则兜底
+            if not _ai_call_allowed() and not (
+                    CHAT_PREFER_LOCAL and nihilism_scorer._get_openai_client() is not None):
                 emit(type="thinking", text="AI 服务暂不可用，启用规则引擎兜底…")
                 tokens = list(dict.fromkeys(t for t in jieba.cut(q) if len(t) >= 2))[:15]
                 if _is_data_query(q):
@@ -5075,14 +5320,78 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
 
             for _r in range(4):
                 if _r == 0:
-                    emit(type="thinking", text="Claude 分析问题，选择工具…")
-                resp = ai_client.messages.create(
-                    model="claude-haiku-4-5-20251001",
-                    max_tokens=600,
-                    system=sys_p,
-                    tools=CHAT_TOOLS,
-                    messages=msgs,
-                )
+                    emit(type="thinking", text="分析问题，选择工具…")
+                try:
+                    resp = ai_client.messages.create(
+                        model="claude-haiku-4-5-20251001",
+                        max_tokens=600,
+                        system=sys_p,
+                        tools=CHAT_TOOLS,
+                        messages=msgs,
+                    )
+                except Exception as _te:
+                    # Anthropic 不可用（如密钥失效）：改用规则做工具路由，
+                    # 保持"排行查询→案例表 / 主题问题→案例卡片"两条结构化数据路径，
+                    # 只有最后的自然语言生成交给本地模型。
+                    print(f"[chat/stream] 工具编排不可用，转规则路由: {type(_te).__name__}")
+                    emit(type="thinking", text="切换本地检索策略…")
+                    _tk = list(dict.fromkeys(t for t in jieba.cut(q) if len(t) >= 2))[:15]
+
+                    if _is_data_query(q):
+                        from decimal import Decimal as _Decimal
+                        import datetime as _dt
+                        import re as _re_mod
+                        # 排行/统计类：走 SQL 数据查询，结果进 collected 供下游渲染案例表
+                        emit(type="thinking_tool", text="调用「案例排行查询」",
+                             tool="query_cases_ranked", preview=q[:80])
+                        _qr = _execute_data_query(q)
+                        _rows = _qr.get("rows", []) or []
+                        # SQL 直查会带回 Decimal/datetime，转成原生类型再进 SSE，
+                        # 否则前端拿到字符串没法做数值格式化（互动量千分位等）
+                        _rows = [{k: (float(v) if isinstance(v, _Decimal) and v % 1
+                                      else int(v) if isinstance(v, _Decimal)
+                                      else str(v) if isinstance(v, (_dt.datetime, _dt.date))
+                                      else v)
+                                  for k, v in r.items()} for r in _rows]
+                        # 语料表的 case_name 存的是帖子正文全文（含换行/话题标签），
+                        # 直接当标题渲染会撑破排行榜。这里压成单行短标题给前端用，
+                        # 原文保留在 representative_text 不动。
+                        for _r0 in _rows:
+                            _raw = (_r0.get("case_name") or "").strip()
+                            _one = " ".join(_raw.split())          # 去换行/连续空格
+                            _tags = _re_mod.findall(r"#([^#\n]{2,20})#", _raw)
+                            _body = _re_mod.sub(r"#[^#\n]{2,20}#", "", _one).strip(" 【】|·-—")
+                            _title = (_tags[0] if _tags else "") or _body[:26]
+                            if _tags and _body:
+                                _title = f"{_tags[0]}：{_body[:22]}"
+                            _r0["display_title"] = (_title[:34] + "…") if len(_title) > 34 else (_title or "（无标题）")
+                        collected["cases"].extend(_rows)
+                        emit(type="thinking", text=f"✓ 获得 {len(_rows)} 条案例数据")
+                        tool_log.append({"name": "query_cases_ranked", "input": {
+                            "order_by": _qr.get("order_field", "interaction_count"),
+                            "platform": _qr.get("platform_filter"),
+                        }})
+                    else:
+                        # 主题类：案例语义检索 + 风险域话术
+                        _dom = _chat_detect_domain(q, _tk)
+                        collected["domain"] = collected["domain"] or _dom
+                        emit(type="thinking_tool", text="调用「主题案例搜索」",
+                             tool="search_cases_by_topic", preview=q[:80])
+                        _cs = search_cases_by_query(q, domain=_dom, top_k=3).get("cases", [])
+                        if not _cs:
+                            # 域判定可能与案例库归属不一致（如"消费主义"被判成心理韧性风险，
+                            # 而案例在别的域），去掉域约束再全库语义检索一次，避免空结果
+                            _cs = search_cases_by_query(q, top_k=3).get("cases", [])
+                        if _cs:
+                            collected["cases"].extend(_cs)
+                        emit(type="thinking", text=f"✓ 获得 {len(_cs)} 条案例数据")
+                        _sc = _chat_scripts_by_domain(_dom, _tk)
+                        for _a, _s in (_sc or {}).items():
+                            if _s and _a not in collected["scripts"]:
+                                collected["scripts"][_a] = _s
+                        if _sc:
+                            emit(type="thinking", text=f"✓ 检索到「{_dom}」引导话术")
+                    break
                 if resp.stop_reason != "tool_use":
                     break
 
@@ -5144,23 +5453,32 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
                            if c["name"] == "query_cases_ranked"), {})
                 ol = _OL.get(oi.get("order_by", ""), "互动量")
                 rows_txt = "\n".join(
-                    f"{i+1}.《{r.get('case_name','')}》互动量:{r.get('total_interaction',0)}"
+                    f"{i+1}.《{r.get('display_title') or r.get('case_name','')}》"
+                    f"{ol}:{r.get('total_interaction') or r.get('avg_risk_score') or 0}"
+                    f" 风险:{r.get('risk_level','')} 平台:{r.get('platform','')}"
                     for i, r in enumerate(collected["cases"][:3])
                 ) or "未找到案例"
-                sp = (f"用户问：{q}\n结果（按{ol}排序）：\n{rows_txt}\n"
-                      "用1-2句简洁说明结果，直接输出。")
-                try:
-                    with ai_client.messages.stream(
-                        model="claude-haiku-4-5-20251001", max_tokens=100,
-                        messages=[{"role": "user", "content": sp}]
-                    ) as s:
-                        for t in s.text_stream:
-                            emit(type="answer_chunk", text=t)
-                    _ai_record_success()
-                except Exception:
-                    _ai_record_failure()
-                    emit(type="answer_chunk",
-                         text=f"已按{ol}排序，共 {len(collected['cases'])} 条案例。")
+                # 明细已由前端排行榜卡片渲染，这里只要一句总述——
+                # 否则文字会把卡片里的条目和数字再念一遍，看起来像重复。
+                sp = (f"用户问：{q}\n"
+                      f"数据库已按{ol}排序返回 {len(collected['cases'])} 条结果，"
+                      f"其中前三条：\n{rows_txt}\n\n"
+                      "请用一句话概括整体情况（涉及哪类风险、集中在什么话题），"
+                      "不要逐条罗列标题和数字（下方已有明细表格），不超过40字，直接输出。")
+                if not _chat_stream_local(sp, 100,
+                                          lambda t: emit(type="answer_chunk", text=t)):
+                    try:
+                        with ai_client.messages.stream(
+                            model="claude-haiku-4-5-20251001", max_tokens=100,
+                            messages=[{"role": "user", "content": sp}]
+                        ) as s:
+                            for t in s.text_stream:
+                                emit(type="answer_chunk", text=t)
+                        _ai_record_success()
+                    except Exception:
+                        _ai_record_failure()
+                        emit(type="answer_chunk",
+                             text=f"已按{ol}排序，共 {len(collected['cases'])} 条案例。")
                 emit(type="result", data={
                     "type": "data_query", "question": q, "order_label": ol,
                     "order_field": oi.get("order_by", "total_interaction"),
@@ -5181,19 +5499,22 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
                       + f"相关案例：\n{ca_ctx or '（无相关案例）'}\n"
                       "请用200-250字给出专业回答，直接输出正文。")
                 full: list = []
-                try:
-                    with ai_client.messages.stream(
-                        model="claude-haiku-4-5-20251001", max_tokens=450,
-                        messages=[{"role": "user", "content": gp}]
-                    ) as s:
-                        for t in s.text_stream:
-                            full.append(t); emit(type="answer_chunk", text=t)
-                    _ai_record_success()
-                except Exception:
-                    _ai_record_failure()
-                    fb = _build_fallback_chat(domain, q, {}, collected["cases"])
-                    emit(type="answer_chunk", text=fb.get("answer", ""))
-                    full = [fb.get("answer", "")]
+                def _collect(t):
+                    full.append(t); emit(type="answer_chunk", text=t)
+                if not _chat_stream_local(gp, 450, _collect):
+                    try:
+                        with ai_client.messages.stream(
+                            model="claude-haiku-4-5-20251001", max_tokens=450,
+                            messages=[{"role": "user", "content": gp}]
+                        ) as s:
+                            for t in s.text_stream:
+                                _collect(t)
+                        _ai_record_success()
+                    except Exception:
+                        _ai_record_failure()
+                        fb = _build_fallback_chat(domain, q, {}, collected["cases"])
+                        emit(type="answer_chunk", text=fb.get("answer", ""))
+                        full = [fb.get("answer", "")]
 
                 ds: dict = {}
                 for tag in collected["tags"]:
@@ -5224,7 +5545,9 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
                     fut.cancel(); return
                 try:
                     ev = await asyncio.wait_for(ev_q.get(), timeout=0.5)
-                    yield f"data: {_js.dumps(ev, ensure_ascii=False)}\n\n"
+                    # default=str：SQL 直查会带回 Decimal / datetime 等非原生 JSON 类型，
+                    # 不兜住会让整条 SSE 在 yield 处抛 TypeError、result 事件发不出去。
+                    yield f"data: {_js.dumps(ev, ensure_ascii=False, default=str)}\n\n"
                     if ev.get("type") == "done":
                         break
                 except asyncio.TimeoutError:
@@ -5244,4 +5567,3 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
             "Access-Control-Allow-Origin": "*",
         },
     )
-

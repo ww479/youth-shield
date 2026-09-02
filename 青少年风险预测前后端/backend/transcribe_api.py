@@ -13,7 +13,7 @@
 whisper-cli 每识别完一句就往 stdout 打一行，所以按解析速度实时出字，不必等全片跑完。
 """
 import os, re, json, asyncio, shutil, subprocess, tempfile, threading, queue, uuid, time
-from fastapi import APIRouter, FastAPI, HTTPException, UploadFile, File, Request
+from fastapi import APIRouter, Body, FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -54,18 +54,23 @@ MAX_UPLOAD_MB = int(os.environ.get("TRANSCRIBE_MAX_MB", "500"))
 
 # 句末标点：遇到就断句
 _SENT_END = "。！？!?…"
-# 句中标点：逗号/顿号/分号/冒号也作为断点，让长句拆成短句、每条各自对应一个时间点。
-# 断出来的短句保留末尾符号（"课本省略了历史真相，"），不去掉。
-# 但要有最小长度，否则"对，""是的，"这种两三个字的碎片会刷满列表。
+# 句中标点仅作为提示，不再直接断句。中文逗号经常连接同一句的前后分句
+# （例如“因为……，所以……”），在这里截断会让前端显示半句话。
 _SOFT_END = "，,、；;：:"
-SOFT_CUT_LEN = int(os.environ.get("TRANSCRIBE_SOFT_CUT", "8"))
+SOFT_CUT_LEN = int(os.environ.get("TRANSCRIBE_SOFT_CUT", "24"))
 # 兜底切分长度：万一连标点都不给，到这个字数就强制断
-FORCE_CUT_LEN = int(os.environ.get("TRANSCRIBE_FORCE_CUT", "40"))
+FORCE_CUT_LEN = int(os.environ.get("TRANSCRIBE_FORCE_CUT", "160"))
 # 静音间隔断句：字级时间戳下，两个字之间的空白就是说话人的停顿。
 # 实测停顿点与真实句子边界高度吻合（1.0-1.2s 的间隔正好落在句子之间），
 # 所以即便模型一个标点都不给，也能按停顿把句子切开——比纯靠字数硬切可靠得多。
 GAP_CUT_SEC = float(os.environ.get("TRANSCRIBE_GAP_CUT", "0.45"))
 GAP_MIN_LEN = int(os.environ.get("TRANSCRIBE_GAP_MIN_LEN", "5"))
+
+# whisper 线程数。实测 215 秒音频（M5 / large-v3-turbo）：
+#   -t 4 → 23s、-t 6 → 14s、-t 8 → 13s、-t 10 → 13s
+# 8 之后不再变快（性能核只有 4 个，超线程收益到此为止），加 -fa 也无额外收益。
+# 原先写死 4，等于白丢近一半速度。多人同时转写时可下调此值给彼此留余量。
+WHISPER_THREADS = os.environ.get("WHISPER_THREADS", "8")
 # 只剩标点的碎片，丢掉
 _PUNCT_ONLY = re.compile(r"^[\s。，、；：？！…—\-·「」『』《》（）()\.,;:!?\"']*$")
 
@@ -183,6 +188,13 @@ except Exception as e:      # 缺 pypinyin 之类的依赖时不要拖垮转写�
     major_lexicon = None
     print(f"[transcribe] 逐句红线检测不可用（仅转写不受影响）：{e}")
 
+# 链接下载：缺 yt-dlp 时只影响"从链接分析"，上传文件不受影响
+try:
+    import link_fetch
+except Exception as e:
+    link_fetch = None
+    print(f"[transcribe] 链接下载不可用（上传文件不受影响）：{e}")
+
 
 def detect_sentence_risk(text: str) -> dict:
     """返回 {"major": [M..], "major_names": [..], "homophone": [[原,纠正后],..]}。
@@ -283,6 +295,7 @@ class SentenceAssembler:
         self._pkeys = _prompt_echo_keys(prompt)   # 识别"复读提示词"
         self._recent = []       # 最近吐出的短句，用于压掉连续重复
         self._dropped = 0       # 丢弃的幻觉/重复条数（回传给前端提示）
+        self._sid = 0           # 完整句序号：逗号断不变，句末标点断才 +1
 
     def feed(self, tok_start: float, tok_end: float, text: str):
         """喂入一个 token（-ml 1 下通常是单字/单词；给整段也能正常处理）。"""
@@ -303,13 +316,18 @@ class SentenceAssembler:
         for ch in text:
             self._buf += ch
             if ch in _SENT_END:
-                self._flush(tok_end)
-            elif ch in _SOFT_END and len(self._buf.strip()) >= SOFT_CUT_LEN:
-                self._flush(tok_end)
+                self._flush(tok_end)              # 句末断：完整句到此结束
+            # 逗号/顿号/分号不截断：它们通常仍属于同一个完整句。
+            # 只有自然停顿（上面的 GAP_CUT_SEC）或句末标点才结束句子。
             elif len(self._buf) >= self._force:
                 self._flush(tok_end)          # 连标点都不给时的最后兜底
 
-    def _flush(self, end: float):
+    def _flush(self, end: float, soft: bool = False):
+        """soft=True 表示在逗号等句中标点处断开 —— 这条短句与前后属于同一个完整句。
+
+        为什么保留短句：跳播和风险色带需要精确到短句的时间戳。
+        为什么同时记完整句：展示与证据引用时用完整句，避免出现半截话。
+        """
         s = self._buf.strip()
         self._buf = ""
         start = self._start
@@ -336,7 +354,10 @@ class SentenceAssembler:
                 self._recent.pop(0)
         fixed = apply_corrections(s)
         ev = dict(type="segment", start=round(start, 2),
-                  end=round(max(end, start + 0.1), 2), text=fixed)
+                  end=round(max(end, start + 0.1), 2), text=fixed,
+                  sid=self._sid)     # 同一 sid 的短句拼起来就是一个完整句
+        if not soft:
+            self._sid += 1           # 句末标点：下一条起新句
         if fixed != s:
             ev["raw"] = s                      # 前端据此标记"已纠正"
         # 轨 A：这一句的重大风险红线，随字幕一起推，前端立刻能标红
@@ -431,6 +452,71 @@ async def transcribe_upload(file: UploadFile = File(...)):
             "duration": duration, "size": size}
 
 
+@router.post("/api/transcribe/link")
+async def transcribe_link(body: dict = Body(...)):
+    """从分享链接下载视频，产出与上传完全一致的 task_id，后续走同一条转写链路。
+
+    为什么不直接抓页面文案：短视频平台内容靠 JS 渲染且有反爬，实测抓取结果为空，
+    却仍会走完研判给出一个看着正常的等级 —— 那是无源之水。下载视频本体再转写，
+    结论才有出处。
+    """
+    if link_fetch is None:
+        raise HTTPException(503, "服务端未启用链接下载，请改用上传文件")
+    raw = str(body.get("url") or "").strip()
+    if not raw:
+        raise HTTPException(400, "请填写视频链接")
+    url = link_fetch.extract_url(raw) or raw      # 允许直接粘贴整段分享文案
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(400, "链接格式不正确")
+
+    cleanup_stale()
+    task_id = uuid.uuid4().hex[:16]
+    try:
+        # 下载耗时不定（取决于平台与网络），放线程池避免阻塞事件循环
+        got = await asyncio.get_running_loop().run_in_executor(
+            None, link_fetch.download, url, os.path.join(WORK_DIR, f"dl_{task_id}"))
+    except link_fetch.DownloadError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        print(f"[链接下载] 未预期错误: {e}")
+        raise HTTPException(500, "获取视频失败，请改用上传文件")
+
+    dst = got["path"]
+    duration = _probe_duration(dst)
+    if duration <= 0:
+        shutil.rmtree(os.path.dirname(dst), ignore_errors=True)
+        raise HTTPException(400, "下载到的文件无法解析，请改用上传文件")
+
+    size = os.path.getsize(dst)
+    name = got["title"] or os.path.basename(dst)
+    if got["site"]:
+        name = f"[{got['site']}] {name}"
+    _TASKS[task_id] = {"path": dst, "name": name, "duration": duration,
+                       "size": size, "created": time.time(),
+                       "from_link": url}
+    return {"task_id": task_id, "name": name, "duration": duration,
+            "size": size, "site": got["site"], "source": "link"}
+
+
+@router.post("/api/transcribe/link/probe")
+async def transcribe_link_probe(body: dict = Body(...)):
+    """只读元信息不下载，让用户先确认标题时长再决定是否分析。"""
+    if link_fetch is None:
+        raise HTTPException(503, "服务端未启用链接下载，请改用上传文件")
+    raw = str(body.get("url") or "").strip()
+    url = link_fetch.extract_url(raw) or raw
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(400, "链接格式不正确")
+    try:
+        meta = await asyncio.get_running_loop().run_in_executor(
+            None, link_fetch.probe, url)
+    except link_fetch.DownloadError as e:
+        raise HTTPException(400, str(e))
+    except Exception:
+        raise HTTPException(400, "无法读取该链接的视频信息")
+    return meta
+
+
 def run_whisper(wav: str, prompt: str, timeout: int = 3600) -> str:
     """跑一次 whisper 返回 stdout。带幻觉自动重试：
 
@@ -440,7 +526,8 @@ def run_whisper(wav: str, prompt: str, timeout: int = 3600) -> str:
     代价是这一轮没有"加标点"要求，断句退化到靠静音间隔 —— 但有内容总比全丢好。
     """
     def _run(p: str) -> str:
-        cmd = [WHISPER_BIN, "-m", WHISPER_MODEL, "-f", wav, "-l", "zh", "-t", "4", "-ml", "1"]
+        cmd = [WHISPER_BIN, "-m", WHISPER_MODEL, "-f", wav, "-l", "zh",
+               "-t", WHISPER_THREADS]
         if p:
             cmd[6:6] = ["--prompt", p]
         return subprocess.run(cmd, capture_output=True, text=True,
@@ -521,13 +608,10 @@ def _worker(task: dict, ev_q: queue.Queue, stop: threading.Event, prompt: str):
         if stop.is_set():
             return
 
-        # ② 跑 whisper：不加 -otxt/-osrt，纯靠 stdout 逐行捕获，实现边跑边出字。
-        #    用 -ml 1 拿字级时间戳（标点自己也带时间），再由 SentenceAssembler 按
-        #    标点组成短句。默认分段模式下时间戳只在段边界上，段内按逗号拆出的短句
-        #    只能共用段末时间、跳播会偏；字级模式下每条短句的起止秒都是真实值。
-        #    仍然不加 -pp：它会把多句合并成大段、时间戳退化成整秒。
+        # ② 跑 whisper：使用默认语句分段。-ml 1 会把中文拆成单字 token，
+        #    再由兜底长度截断成半句话；默认分段能保留模型识别出的完整标点句。
         cmd = [WHISPER_BIN, "-m", WHISPER_MODEL, "-f", wav,
-               "-l", "zh", "--prompt", prompt, "-t", "4", "-ml", "1"]
+               "-l", "zh", "--prompt", prompt, "-t", WHISPER_THREADS]
         asm = SentenceAssembler(emit, duration=dur, prompt=prompt)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 text=True, bufsize=1, encoding="utf-8", errors="replace")
@@ -701,4 +785,3 @@ def root():
     return {"service": "视频转写 API", "ui": "/ui/transcribe.html",
             "health": "/api/transcribe/health",
             "note": "六维研判请用主服务 (main.py) 的 /analyze/transcript"}
-

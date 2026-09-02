@@ -50,6 +50,31 @@ VIDEO_EXT = {".mp4", ".mov", ".mkv", ".avi", ".flv", ".webm", ".ts", ".m4v"}
 LV_NAME = {1: "低风险", 2: "轻度风险", 3: "中度风险", 4: "高风险", 5: "极高风险"}
 LV_COLOR = {1: "#2e9e5b", 2: "#e0b400", 3: "#e67e22", 4: "#d64541", 5: "#8e44ad"}
 
+# 文章模式：素材是文字稿，没有真实时间轴，位置一律用「第 N 句」。
+# 由 render_report / render_index 的调用方通过 set_article_mode() 打开。
+ARTICLE_MODE = False
+_SENT_NO = {}
+
+
+def set_article_mode(on: bool = True):
+    global ARTICLE_MODE
+    ARTICLE_MODE = bool(on)
+
+
+def pos_label(sec) -> str:
+    """位置标签：视频给 mm:ss，文章给「第 N 句」。"""
+    if not ARTICLE_MODE:
+        return fmt_time(sec)
+    try:
+        v = round(float(sec), 2)
+    except Exception:
+        v = 0.0
+    n = _SENT_NO.get(v)
+    if n is None and _SENT_NO:          # 证据锚点可能落在句中，取最近的前一句
+        ks = [k for k in _SENT_NO if k <= v]
+        n = _SENT_NO[max(ks)] if ks else 1
+    return f"第 {n or 1} 句"
+
 
 # ────────────────────────── 转写 ──────────────────────────
 
@@ -191,6 +216,10 @@ a:hover{text-decoration:underline}
 
 
 def render_report(item: dict, out_dir: str) -> str:
+    if ARTICLE_MODE:                       # 供 pos_label() 把秒数换算为句号
+        _SENT_NO.clear()
+        for k, x in enumerate(item.get("sentences") or [], 1):
+            _SENT_NO[round(float(x.get("start") or 0), 2)] = k
     """单个视频报告。聚焦两件事：① 解析出的原文　② 六维结果及其命中证据。"""
     s = item["summary"]
     sd = s.get("six_dim_detail") or {}
@@ -198,7 +227,9 @@ def render_report(item: dict, out_dir: str) -> str:
     color = LV_COLOR.get(lv, "#2e9e5b")
     dur = item["duration"]
     hits = sum(d["hit_count"] for d in (sd.get("dimensions") or []))
-    nred = len(sd.get("veto_rules") or []) + len(sd.get("major_rules") or [])
+    _ar = (sd.get("veto_rules") or []) + (sd.get("major_rules") or [])
+    _rc = any(r.get("recheck") for r in _ar)
+    nred = sum(1 for r in _ar if not _rc or r.get("recheck") == "已核实")
     hot_sents = [x for x in item["sentences"] if x.get("major")]
 
     # ── 证据按判据编号归拢：同一判据可能有多条原句支撑 ──
@@ -217,7 +248,7 @@ def render_report(item: dict, out_dir: str) -> str:
             evs = ev_by_item.get(it["id"]) or []
             quotes = "".join(
                 f'<div class="q">'
-                f'<span class="qt">{fmt_time(e["at"]) if e.get("at") is not None else "—"}</span>'
+                f'<span class="qt">{pos_label(e["at"]) if e.get("at") is not None else "—"}</span>'
                 f'“{esc(e.get("span"))}”'
                 + (f'<span class="why">{esc(e.get("note"))}</span>' if e.get("note") else "")
                 + "</div>"
@@ -242,23 +273,54 @@ def render_report(item: dict, out_dir: str) -> str:
     if miss:
         dim_blocks += f'<div class="misshint">未涉及：{esc(miss)}</div>'
 
-    # ── 风险红线：规则 + 触发原句 ──
+    # ── 风险红线：经模型复核后分组呈现 ──
+    #   已核实 = 关键词命中且模型确认为作者本人主张，参与定级
+    #   待复核 = 模型无法确认，或无对应语句，展示但不参与定级
+    #   判不成立的（多为转述、引用、批驳他人观点）不再展示
+    def _trig_html(r, show_verdict=False):
+        out = []
+        for t in (r.get("triggers") or [])[:4]:
+            if show_verdict and t.get("recheck") == "不成立":
+                continue
+            vd = ""
+            if show_verdict and t.get("recheck_reason"):
+                vd = f'<span class="why">{esc(t["recheck_reason"])}</span>'
+            out.append(f'<div class="q"><span class="qt">'
+                       f'{pos_label(t["at"]) if t.get("at") is not None else "—"}</span>'
+                       f'“{esc(t.get("span"))}”{vd}</div>')
+        return "".join(out) or '<div class="q nomatch">由全段语境综合判定</div>'
+
+    all_rules = (sd.get("veto_rules") or []) + (sd.get("major_rules") or [])
+    rechecked = any(r.get("recheck") for r in all_rules)
+    ok_rules = [r for r in all_rules
+                if not rechecked or r.get("recheck") == "已核实"]
+    pend_rules = [r for r in all_rules if rechecked and r.get("recheck") == "待复核"]
+    drop_n = sum(1 for r in all_rules if rechecked and r.get("recheck") == "复核不成立")
+
     reds = ""
-    for r in (sd.get("veto_rules") or []) + (sd.get("major_rules") or []):
-        trigs = "".join(
-            f'<div class="q"><span class="qt">'
-            f'{fmt_time(t["at"]) if t.get("at") is not None else "—"}</span>'
-            f'“{esc(t.get("span"))}”</div>'
-            for t in (r.get("triggers") or [])[:4]
-        ) or '<div class="q nomatch">由全段语境综合判定</div>'
+    for r in ok_rules:
         reds += (f'<div class="rl"><h4>{esc(r.get("name") or "")}'
-                 f'{"：" if r.get("name") else ""}{esc(r.get("desc"))}</h4>{trigs}</div>')
+                 f'{"：" if r.get("name") else ""}{esc(r.get("desc"))}</h4>'
+                 f'{_trig_html(r, rechecked)}</div>')
     if not reds:
-        reds = '<div class="card" style="color:#64748b">未发现触及风险红线的内容。</div>'
+        reds = '<div class="card" style="color:#64748b">未发现经核实的风险红线。</div>'
+    if pend_rules:
+        reds += ('<div class="card" style="border-color:rgba(224,180,0,.4)">'
+                 '<div style="font-size:13px;font-weight:700;color:#92650a;margin-bottom:8px">'
+                 f'待复核 {len(pend_rules)} 项（模型未能确认，不计入等级判定）</div>' +
+                 "".join(f'<div style="font-size:12.5px;color:#475569;padding:3px 0">'
+                         f'· {esc(r.get("name") or r.get("id"))}'
+                         f'{"：" + esc(r.get("recheck_note")) if r.get("recheck_note") else ""}</div>'
+                         for r in pend_rules) + '</div>')
+    if drop_n:
+        reds += (f'<div class="misshint">另有 {drop_n} 项关键词命中经复核不成立'
+                 f'（多为转述、引用或批驳他人观点），未计入。</div>')
+    # 已核实为 0 但有待复核或被复核掉的条目时，该节仍需展示（说明复核发生过）
+    _show_red = bool(ok_rules or pend_rules or drop_n)
 
     # ── 原文：风险句在前置摘要里，全文可折叠 ──
     hot_list = "".join(
-        f'<div class="seg hot"><span class="t">{fmt_time(x["start"])}</span>'
+        f'<div class="seg hot"><span class="t">{pos_label(x["start"])}</span>'
         f'<span>{esc(x["text"])}'
         f'<span class="tag">{esc("、".join(x.get("major_names") or []))}</span></span></div>'
         for x in hot_sents
@@ -266,7 +328,7 @@ def render_report(item: dict, out_dir: str) -> str:
 
     full = "".join(
         f'<div class="seg{" hot" if x.get("major") else ""}">'
-        f'<span class="t">{fmt_time(x["start"])}</span><span>{esc(x["text"])}</span></div>'
+        f'<span class="t">{pos_label(x["start"])}</span><span>{esc(x["text"])}</span></div>'
         for x in item["sentences"]
     )
 
@@ -274,14 +336,12 @@ def render_report(item: dict, out_dir: str) -> str:
 <title>{esc(item['name'])} · 风险研判报告</title><style>{CSS}</style></head><body><div class="wrap">
 <div class="sub"><a href="../index.html">← 返回总览</a></div>
 <h1>{esc(item['name'])}</h1>
-<div class="sub">时长 {fmt_time(dur)}　·　{item['segment_count']} 句　·　分析时间 {esc(item['analyzed_at'])}</div>
+<div class="sub">{(str(item.get("char_count", 0)) + " 字") if ARTICLE_MODE else "时长 " + fmt_time(dur)}　·　{item['segment_count']} 句　·　分析时间 {esc(item['analyzed_at'])}</div>
 
 <div class="card">
   <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
     <div class="lv" style="background:{color};font-size:15px;padding:6px 16px">
       {esc(s.get('risk_level'))}</div>
-    <div><span class="score" style="color:{color}">{s.get('risk_percent')}</span>
-      <span style="color:#94a3b8">/100</span></div>
     <div class="kv">
       <div>风险特征 <b>{hits}</b> 项</div>
       <div>触及红线 <b>{nred}</b> 项</div>
@@ -293,19 +353,21 @@ def render_report(item: dict, out_dir: str) -> str:
       f'<i style="left:{(b["start"]/dur*100):.2f}%;width:{max(0.6,(b.get("end",b["start"])-b["start"])/dur*100):.2f}%;'
       f'background:{LV_COLOR.get(b["level"],"#2e9e5b")};opacity:{0.3 if b["level"]<=1 else 1}"></i>'
       for b in item["sentence_bands"] if dur > 0)}</div>
-  <div class="ticks">{"".join(f'<span>{fmt_time(dur*f)}</span>' for f in (0,.25,.5,.75,1))}</div>
+  <div class="ticks">{"".join(
+      f'<span>{("第 " + str(max(1,int(item["segment_count"]*f))) + " 句") if ARTICLE_MODE else fmt_time(dur*f)}</span>'
+      for f in (0,.25,.5,.75,1))}</div>
 </div>
 
 <h2>一、六维研判结果与命中证据</h2>
 <div class="sub" style="margin:-4px 0 12px">每条判据下方为支撑它的原文语句及判定理由</div>
 {dim_blocks}
 
-{f'<h2>二、触及的风险红线</h2>{reds}' if nred else ''}
+{f'<h2>二、风险红线</h2>{reds}' if _show_red else ''}
 
-<h2>{'三' if nred else '二'}、涉及风险的语句</h2>
+<h2>{'三' if _show_red else '二'}、涉及风险的语句</h2>
 {hot_list}
 
-<h2>{'四' if nred else '三'}、视频解析原文（共 {item['segment_count']} 句）</h2>
+<h2>{'四' if _show_red else '三'}、{'文章原文' if ARTICLE_MODE else '视频解析原文'}（共 {item['segment_count']} 句）</h2>
 <details class="fold"><summary>展开查看全文</summary>
 <div class="card" style="margin-top:10px">{full}</div></details>
 
@@ -336,15 +398,19 @@ def render_index(items: list, failed: list, out_dir: str, src: str) -> str:
 
     rows = ""
     for it in sorted(items, key=lambda x: (-x["summary"].get("risk_level_num", 1),
-                                          -x["summary"].get("risk_percent", 0))):
+                                          -sum(d["hit_count"] for d in
+                                               ((x["summary"].get("six_dim_detail") or {}).get("dimensions") or [])))):
         s = it["summary"]; sd = s.get("six_dim_detail") or {}
         lv = s.get("risk_level_num", 1)
-        nred = len(sd.get("veto_rules") or []) + len(sd.get("major_rules") or [])
+        _ar = (sd.get("veto_rules") or []) + (sd.get("major_rules") or [])
+        _rc = any(r.get("recheck") for r in _ar)
+        nred = sum(1 for r in _ar if not _rc or r.get("recheck") == "已核实")
         doms = "、".join(d.get("name", "") for d in (sd.get("domains") or [])) or "—"
         rows += (f'<tr><td><a href="reports/{esc(it["report"])}">{esc(it["name"])}</a></td>'
-                 f'<td>{fmt_time(it["duration"])}</td>'
+                 f'<td>{it["segment_count"] if ARTICLE_MODE else fmt_time(it["duration"])}</td>'
                  f'<td><span class="lv" style="background:{LV_COLOR[lv]}">{LV_NAME[lv]}</span></td>'
-                 f'<td style="font-weight:700;color:{LV_COLOR[lv]}">{s.get("risk_percent")}</td>'
+                 f'<td style="font-weight:700;color:{LV_COLOR[lv]}">'
+                 f'{sum(x["hit_count"] for x in (sd.get("dimensions") or []))}/36</td>'
                  f'<td>{nred or "—"}</td>'
                  f'<td style="font-size:12px;color:#475569">{esc(doms)}</td></tr>')
 
@@ -356,21 +422,22 @@ def render_index(items: list, failed: list, out_dir: str, src: str) -> str:
 
     hi = cnt[4] + cnt[5]
     return f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
-<title>视频风险研判报告 · 总览</title><style>{CSS}</style></head><body><div class="wrap">
-<h1>视频意识形态风险研判报告</h1>
-<div class="sub">共 {len(items)} 个视频　·　总时长 {fmt_time(sum(i['duration'] for i in items))}
+<title>{"文章" if ARTICLE_MODE else "视频"}风险研判报告 · 总览</title><style>{CSS}</style></head><body><div class="wrap">
+<h1>{"文章" if ARTICLE_MODE else "视频"}意识形态风险研判报告</h1>
+<div class="sub">{f"共 {len(items)} 篇文章　·　总字数 {sum(i.get('char_count',0) for i in items):,}"
+   if ARTICLE_MODE else f"共 {len(items)} 个视频　·　总时长 {fmt_time(sum(i['duration'] for i in items))}"}
 　·　生成时间 {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
 
 <div class="card">
   <div style="display:flex;gap:10px;margin-bottom:14px">{dist}</div>
   <div class="bar" style="margin:0">{stack}</div>
   <div style="margin-top:12px;font-size:13.5px;color:#334155">
-    其中 <b style="color:#d64541">{hi}</b> 个视频达到高风险及以上，建议优先复核。
+    其中 <b style="color:#d64541">{hi}</b> {"篇文章" if ARTICLE_MODE else "个视频"}达到高风险及以上，建议优先复核。
   </div>
 </div>
 
-<h2>视频清单（按风险等级排序）</h2>
-<table><thead><tr><th>视频</th><th>时长</th><th>风险等级</th><th>风险分</th>
+<h2>{"文章" if ARTICLE_MODE else "视频"}清单（按风险等级排序）</h2>
+<table><thead><tr><th>{"文章" if ARTICLE_MODE else "视频"}</th><th>{"句数" if ARTICLE_MODE else "时长"}</th><th>风险等级</th><th>六维命中</th>
 <th>红线</th><th>涉及风险类型</th></tr></thead><tbody>{rows}</tbody></table>
 
 {fail_html}
@@ -483,14 +550,17 @@ def main():
         f.write(render_index(items, failed, out, src))
 
     slim = [{
-        "视频": i["name"], "时长秒": round(i["duration"], 1),
+        **({"文章": i["name"], "字数": i.get("char_count", 0),
+            "句数": i["segment_count"]} if ARTICLE_MODE else
+           {"视频": i["name"], "时长秒": round(i["duration"], 1)}),
         "风险等级": i["summary"].get("risk_level"),
-        "风险分": i["summary"].get("risk_percent"),
-        "风险特征数": sum(d["hit_count"] for d in
-                     ((i["summary"].get("six_dim_detail") or {}).get("dimensions") or [])),
-        "红线数": len((i["summary"].get("six_dim_detail") or {}).get("veto_rules") or [])
-                 + len((i["summary"].get("six_dim_detail") or {}).get("major_rules") or []),
-        "高风险句数": sum(1 for x in i["sentences"] if x.get("major")),
+        "定级依据": (i["summary"].get("six_dim_detail") or {}).get("level_source") or "",
+        "六维命中": sum(d["hit_count"] for d in
+                              ((i["summary"].get("six_dim_detail") or {}).get("dimensions") or [])),
+        "红线数": sum(1 for r in (((i["summary"].get("six_dim_detail") or {}).get("veto_rules") or [])
+                                 + ((i["summary"].get("six_dim_detail") or {}).get("major_rules") or []))
+                     if r.get("recheck") in (None, "已核实")),
+        "词库命中句数": sum(1 for x in i["sentences"] if x.get("major")),
         "涉及风险类型": "、".join(d.get("name", "") for d in
                           ((i["summary"].get("six_dim_detail") or {}).get("domains") or [])),
         "结论摘要": (i["summary"].get("six_dim_detail") or {}).get("summary") or "",
